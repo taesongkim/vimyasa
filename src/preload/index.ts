@@ -49,7 +49,7 @@ const api: VimyasaAPI = {
 
   // Window
   closeWindow: () => ipcRenderer.invoke('closeWindow'),
-  openListWindow: (listId) => ipcRenderer.invoke('openListWindow', listId),
+  openListWindow: (listId, position) => ipcRenderer.invoke('openListWindow', listId, position),
   openQuickAdd: (variant, targetListId) => ipcRenderer.invoke('openQuickAdd', variant, targetListId),
   openComments: (itemId) => ipcRenderer.invoke('openComments', itemId),
   openSettings: () => ipcRenderer.invoke('openSettings'),

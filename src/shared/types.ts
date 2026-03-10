@@ -114,7 +114,7 @@ export interface VimyasaAPI {
 
   // Window
   closeWindow: () => Promise<void>
-  openListWindow: (listId: string) => Promise<void>
+  openListWindow: (listId: string, position?: { x: number; y: number }) => Promise<void>
   openQuickAdd: (variant: 'fixed' | 'select', targetListId?: string) => Promise<void>
   openComments: (itemId: string) => Promise<void>
   openSettings: () => Promise<void>

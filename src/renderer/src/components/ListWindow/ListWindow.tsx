@@ -162,11 +162,13 @@ export function ListWindow({ listId }: { listId: string }) {
     onFilter2: () => setFilter('active'),
     onFilter3: () => setFilter('done'),
     onFilter4: () => setFilter('hold'),
-    onTab: () => {
+    onTab: async () => {
       const idx = lists.findIndex((l) => l.id === listId)
       if (lists.length > 1) {
         const nextList = lists[(idx + 1) % lists.length]
-        window.location.hash = `#/list/${nextList.id}`
+        const pos = { x: window.screenX, y: window.screenY }
+        await window.api.closeWindow()
+        window.api.openListWindow(nextList.id, pos)
       }
     }
   })

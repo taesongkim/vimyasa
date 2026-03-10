@@ -84,7 +84,7 @@ function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWind
 
 // ── List Window ─────────────────────────────────────────────────
 
-export function createListWindow(listId: string): BrowserWindow {
+export function createListWindow(listId: string, position?: { x: number; y: number }): BrowserWindow {
   const existing = listWindows.get(listId)
   if (existing && !existing.isDestroyed()) {
     existing.focus()
@@ -93,7 +93,7 @@ export function createListWindow(listId: string): BrowserWindow {
 
   const workArea = screen.getPrimaryDisplay().workArea
   const listWindowHeight = Math.round(workArea.height * 0.97)
-  const { x, y } = calculateStackedPosition()
+  const { x, y } = position || calculateStackedPosition()
   const win = makeWindow({
     width: LIST_WINDOW_WIDTH,
     height: listWindowHeight,
@@ -231,8 +231,8 @@ export function registerWindowIpcHandlers(): void {
     if (win) win.close()
   })
 
-  ipcMain.handle('openListWindow', (_e, listId: string) => {
-    createListWindow(listId)
+  ipcMain.handle('openListWindow', (_e, listId: string, position?: { x: number; y: number }) => {
+    createListWindow(listId, position)
   })
 
   ipcMain.handle('openQuickAdd', (_e, variant: 'fixed' | 'select', targetListId?: string) => {
