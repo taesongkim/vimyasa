@@ -81,16 +81,16 @@ export function ShortcutsTab() {
     action === 'openList' || action === 'quickAddFixed'
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-3 p-3">
       {/* Built-in shortcuts */}
       <div className="flex flex-col gap-1">
-        <div className="text-xs text-[var(--color-text-dim)] uppercase tracking-wider mb-1">
+        <div className="text-xs text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
           Default Shortcuts
         </div>
         {builtinShortcutDefs.map((def) => (
           <div
             key={def.key}
-            className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)]"
+            className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
           >
             <span className="text-xs font-medium text-[var(--color-text)]">
               {def.label}
@@ -100,14 +100,14 @@ export function ShortcutsTab() {
                 <>
                   <KeyCapture value={editingBuiltinAccel} onChange={setEditingBuiltinAccel} />
                   <button
-                    className="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors px-1"
+                    className="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-default px-1"
                     onClick={saveBuiltinShortcut}
                     title="Save"
                   >
                     ✓
                   </button>
                   <button
-                    className="text-xs text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-colors px-1"
+                    className="text-xs text-[var(--color-text-ghost)] hover:text-[var(--color-text)] transition-default px-1"
                     onClick={cancelEditingBuiltin}
                     title="Cancel"
                   >
@@ -116,7 +116,7 @@ export function ShortcutsTab() {
                 </>
               ) : (
                 <button
-                  className="text-xs font-mono text-[var(--color-accent)] hover:bg-[var(--color-surface-hover)] rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                  className="text-xs font-mono text-[var(--color-accent)] hover:bg-[var(--hover-highlight)] rounded px-1.5 py-0.5 transition-default cursor-pointer"
                   onClick={() => startEditingBuiltin(def.key)}
                   title="Click to change"
                 >
@@ -130,18 +130,18 @@ export function ShortcutsTab() {
 
       {/* Custom shortcuts */}
       <div className="flex flex-col gap-1">
-        <div className="text-xs text-[var(--color-text-dim)] uppercase tracking-wider mb-1">
+        <div className="text-xs text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
           Custom Shortcuts
         </div>
         {shortcuts.length === 0 && (
-          <div className="text-xs text-[var(--color-text-dim)] py-2">No custom shortcuts configured</div>
+          <div className="text-xs text-[var(--color-text-ghost)] py-2">No custom shortcuts configured</div>
         )}
         {shortcuts.map((s) => {
           const targetList = s.targetId ? lists.find((l) => l.id === s.targetId) : null
           return (
             <div
               key={s.id}
-              className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)]"
+              className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <span className="text-xs font-medium text-[var(--color-text)]">
@@ -157,7 +157,7 @@ export function ShortcutsTab() {
                 {formatAccelerator(s.accelerator)}
               </span>
               <button
-                className="text-[var(--color-text-dim)] hover:text-[var(--color-red)] transition-colors"
+                className="text-[var(--color-text-ghost)] hover:text-[var(--color-red)] transition-default"
                 onClick={() => handleDeleteShortcut(s.id)}
               >
                 <svg width="12" height="12" viewBox="0 0 10 10" fill="none">
@@ -171,7 +171,7 @@ export function ShortcutsTab() {
 
       {/* Add new shortcut */}
       <div className="border-t border-[var(--color-border)] pt-3">
-        <div className="text-xs text-[var(--color-text-dim)] uppercase tracking-wider mb-2">
+        <div className="text-xs text-[var(--color-text-ghost)] uppercase tracking-wider mb-2">
           Add Custom Shortcut
         </div>
         <div className="flex flex-col gap-2">
@@ -179,7 +179,7 @@ export function ShortcutsTab() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-[var(--color-text-muted)] w-16 shrink-0">Action</span>
             <select
-              className="flex-1 bg-[var(--color-surface)] text-xs text-[var(--color-text)] border border-[var(--color-border)] rounded-md px-2 py-1.5 outline-none"
+              className="flex-1 bg-[var(--color-surface)] text-xs text-[var(--color-text)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none"
               value={newAction}
               onChange={(e) => setNewAction(e.target.value as ShortcutAction)}
             >
@@ -196,7 +196,7 @@ export function ShortcutsTab() {
             <div className="flex items-center gap-2">
               <span className="text-xs text-[var(--color-text-muted)] w-16 shrink-0">Target</span>
               <select
-                className="flex-1 bg-[var(--color-surface)] text-xs text-[var(--color-text)] border border-[var(--color-border)] rounded-md px-2 py-1.5 outline-none"
+                className="flex-1 bg-[var(--color-surface)] text-xs text-[var(--color-text)] border border-[var(--color-border)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none"
                 value={newTarget}
                 onChange={(e) => setNewTarget(e.target.value)}
               >
@@ -216,7 +216,7 @@ export function ShortcutsTab() {
           </div>
 
           <button
-            className="mt-1 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="mt-1 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-default disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleAddShortcut}
             disabled={!newAccel}
           >

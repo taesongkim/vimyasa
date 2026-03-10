@@ -69,7 +69,7 @@ export default function App() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2 p-4 text-center">
         <span className="text-[var(--color-red)] text-sm font-medium">Failed to load data</span>
-        <span className="text-[var(--color-text-dim)] text-xs font-mono">{error}</span>
+        <span className="text-[var(--color-text-ghost)] text-xs font-mono">{error}</span>
       </div>
     )
   }

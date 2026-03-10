@@ -173,12 +173,12 @@ export function ListWindow({ listId }: { listId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full glass-surface">
       <TitleBar list={list} />
       <FilterBar active={filter} onChange={setFilter} counts={counts} />
 
       {/* Item list */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div className="flex-1 overflow-y-auto px-1 py-1">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -193,6 +193,7 @@ export function ListWindow({ listId }: { listId: string }) {
                   isFocused={idx === focusIndex}
                   onFocus={() => setFocusIndex(idx)}
                   lists={lists}
+                  index={idx}
                 />
               ))}
             </AnimatePresence>
@@ -200,7 +201,7 @@ export function ListWindow({ listId }: { listId: string }) {
         </DndContext>
 
         {listItems.length === 0 && (
-          <div className="flex items-center justify-center h-32 text-[var(--color-text-dim)] text-sm">
+          <div className="flex items-center justify-center h-20 text-[var(--color-text-muted)] text-[13px]">
             {filter === 'all' ? 'No items yet. Press N to add one.' : `No ${filter} items.`}
           </div>
         )}
@@ -210,7 +211,7 @@ export function ListWindow({ listId }: { listId: string }) {
 
       {/* Delete confirmation toast */}
       {confirmDelete && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-md bg-[var(--color-red)] text-white text-xs font-medium shadow-lg">
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-[var(--radius-md)] bg-[var(--color-red)] text-white text-[11px] font-medium" style={{ boxShadow: 'var(--shadow-tooltip)' }}>
           Press again to delete
         </div>
       )}

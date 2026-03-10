@@ -16,7 +16,11 @@ export function registerGlobalShortcuts(): void {
 }
 
 function registerBuiltinShortcuts(): void {
-  const config: BuiltinShortcuts = store.get('builtinShortcuts') || DEFAULT_BUILTIN_SHORTCUTS
+  const raw = store.get('builtinShortcuts')
+  const config: BuiltinShortcuts = raw && typeof raw === 'object'
+    ? { ...DEFAULT_BUILTIN_SHORTCUTS, ...raw }
+    : DEFAULT_BUILTIN_SHORTCUTS
+  console.log('[shortcuts] Registering builtin shortcuts:', JSON.stringify(config))
 
   // Open first list
   tryRegisterBuiltin(config.openFirstList, () => {
@@ -53,11 +57,12 @@ function tryRegisterBuiltin(accelerator: string, callback: () => void): void {
   if (!accelerator) return
   try {
     const success = globalShortcut.register(accelerator, callback)
+    console.log(`[shortcuts] Register builtin "${accelerator}": ${success ? 'OK' : 'FAILED (already taken?)'}`)
     if (success) {
       registeredBuiltinAccelerators.push(accelerator)
     }
   } catch (e) {
-    console.warn(`Failed to register builtin shortcut ${accelerator}:`, e)
+    console.warn(`[shortcuts] Failed to register builtin shortcut ${accelerator}:`, e)
   }
 }
 
@@ -102,6 +107,7 @@ function registerUserShortcuts(): void {
  * Call after the user changes built-in shortcut bindings.
  */
 export function refreshBuiltinShortcuts(): void {
+  console.log('[shortcuts] Refreshing builtin shortcuts, unregistering:', registeredBuiltinAccelerators)
   for (const accel of registeredBuiltinAccelerators) {
     try {
       globalShortcut.unregister(accel)

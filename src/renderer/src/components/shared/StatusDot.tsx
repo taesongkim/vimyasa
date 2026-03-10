@@ -1,9 +1,9 @@
 import type { ItemStatus } from '../../../../../shared/types'
 
-const statusColors: Record<ItemStatus, string> = {
-  active: 'bg-green-500',
-  done: 'bg-neutral-500',
-  hold: 'bg-amber-500'
+const statusStyles: Record<ItemStatus, string> = {
+  active: 'bg-[var(--color-green)]',
+  done: 'bg-[var(--color-text-muted)]',
+  hold: 'bg-[var(--color-amber)]'
 }
 
 const statusLabels: Record<ItemStatus, string> = {
@@ -25,7 +25,7 @@ export function StatusDot({
 
   return (
     <button
-      className={`${sizeClass} ${statusColors[status]} rounded-full shrink-0 no-drag transition-transform hover:scale-125 focus:outline-none`}
+      className={`${sizeClass} ${statusStyles[status]} rounded-full shrink-0 no-drag transition-default hover:scale-125 focus:outline-none`}
       onClick={onClick}
       title={statusLabels[status]}
       tabIndex={-1}

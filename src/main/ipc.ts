@@ -315,7 +315,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('updateBuiltinShortcuts', (e, updates: Partial<BuiltinShortcuts>): BuiltinShortcuts => {
     const current = store.get('builtinShortcuts') as BuiltinShortcuts
     const updated = { ...current, ...updates }
-    store.set('builtinShortcuts' as any, updated)
+    // Use dot-notation to ensure electron-store persists each field
+    for (const [key, value] of Object.entries(updated)) {
+      store.set(`builtinShortcuts.${key}` as any, value)
+    }
     refreshBuiltinShortcuts()
     broadcastDataChanged(e.sender.id)
     return updated

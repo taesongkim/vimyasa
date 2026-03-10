@@ -42,54 +42,48 @@ function CommentNode({
   onDelete: (id: string) => void
   depth?: number
 }) {
-  const [hovered, setHovered] = useState(false)
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: -4 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.12 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.15 }}
       style={{ marginLeft: depth > 0 ? 20 : 0 }}
     >
       <div
-        className={`group py-2 px-2 rounded-md transition-colors ${hovered ? 'bg-[var(--color-surface-hover)]' : ''}`}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        className="group py-2 px-2 rounded-[var(--radius-sm)] transition-default hover:bg-[var(--hover-highlight)]"
       >
         {/* Timestamp */}
         <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[10px] text-[var(--color-text-dim)]">
+          <span className="text-[10px] text-[var(--color-text-ghost)]">
             {formatTime(comment.createdAt)}
             {comment.updatedAt !== comment.createdAt && (
               <span className="ml-1 opacity-60">(edited)</span>
             )}
           </span>
-          {/* Hover actions */}
-          {hovered && (
-            <div className="flex items-center gap-1">
-              {depth === 0 && (
-                <button
-                  className="text-[10px] text-[var(--color-text-dim)] hover:text-[var(--color-text)] px-1"
-                  onClick={() => onReply(comment.id)}
-                >
-                  Reply
-                </button>
-              )}
+          {/* Hover actions — opacity reveal */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-default">
+            {depth === 0 && (
               <button
-                className="text-[10px] text-[var(--color-text-dim)] hover:text-[var(--color-text)] px-1"
-                onClick={() => onEdit(comment)}
+                className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text)] px-1.5 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+                onClick={() => onReply(comment.id)}
               >
-                Edit
+                Reply
               </button>
-              <button
-                className="text-[10px] text-[var(--color-text-dim)] hover:text-[var(--color-red)] px-1"
-                onClick={() => onDelete(comment.id)}
-              >
-                Delete
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text)] px-1.5 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+              onClick={() => onEdit(comment)}
+            >
+              Edit
+            </button>
+            <button
+              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-red)] px-1.5 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+              onClick={() => onDelete(comment.id)}
+            >
+              Delete
+            </button>
+          </div>
         </div>
         {/* Comment text */}
         <div
@@ -100,7 +94,7 @@ function CommentNode({
 
       {/* Render replies */}
       {replies.length > 0 && (
-        <div className="border-l border-[var(--color-border)] ml-2">
+        <div className="border-l border-[var(--color-border)] ml-3">
           {replies.map((reply) => (
             <CommentNode
               key={reply.id}
@@ -195,14 +189,14 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full glass-surface">
       {/* Title bar */}
       <div className="drag-region flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
         <span className="text-xs text-[var(--color-text-muted)] truncate flex-1">
           Comments on: <span className="text-[var(--color-text)]">{item?.text || 'Unknown item'}</span>
         </span>
         <button
-          className="no-drag w-6 h-6 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -212,7 +206,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
       </div>
 
       {/* Comment thread */}
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="flex-1 overflow-y-auto px-3 py-2">
         <AnimatePresence mode="popLayout">
           {topLevel.map((comment) => (
             <CommentNode
@@ -226,7 +220,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
           ))}
         </AnimatePresence>
         {topLevel.length === 0 && (
-          <div className="flex items-center justify-center h-24 text-[var(--color-text-dim)] text-xs">
+          <div className="flex items-center justify-center h-16 text-[var(--color-text-ghost)] text-xs">
             No comments yet
           </div>
         )}
@@ -240,7 +234,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
               {editing ? 'Editing comment' : 'Replying to comment'}
             </span>
             <button
-              className="text-[10px] text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text)]"
               onClick={handleCancel}
             >
               Cancel
@@ -249,7 +243,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
         )}
         <textarea
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-dim)] px-3 py-2 rounded-lg outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-colors resize-none"
+          className="w-full bg-[var(--color-surface)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default resize-none"
           placeholder={replyTo ? 'Write a reply...' : 'Add a comment...'}
           rows={2}
           value={text}
@@ -269,8 +263,8 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
           }}
         />
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[10px] text-[var(--color-text-dim)]">⌘Enter to send</span>
-          <span className="text-[10px] text-[var(--color-text-dim)]">Supports [text](url) links</span>
+          <span className="text-[10px] text-[var(--color-text-ghost)]">⌘Enter to send</span>
+          <span className="text-[10px] text-[var(--color-text-ghost)]">Supports [text](url) links</span>
         </div>
       </div>
     </div>

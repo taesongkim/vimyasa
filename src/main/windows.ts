@@ -68,8 +68,7 @@ function calculateStackedPosition(): { x: number; y: number } {
 function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWindow {
   return new BrowserWindow({
     frame: false,
-    transparent: false,
-    backgroundColor: '#000000',
+    transparent: true,
     vibrancy: 'under-window',
     visualEffectState: 'active',
     show: false,

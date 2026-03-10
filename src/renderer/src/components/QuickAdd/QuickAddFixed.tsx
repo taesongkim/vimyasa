@@ -21,15 +21,15 @@ export function QuickAddFixed({ listId }: { listId: string }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: -8 }}
+      initial={{ opacity: 0, scale: 0.95, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-      className="flex flex-col h-full"
+      transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+      className="flex flex-col h-full glass-surface"
     >
       {/* Drag region */}
       <div className="drag-region h-6 shrink-0" />
 
-      <div className="flex flex-col gap-3 px-4 pb-4 flex-1">
+      <div className="flex flex-col gap-2 px-3 pb-3 flex-1">
         {/* Target list label */}
         <div className="flex items-center gap-2">
           <span className="text-sm">{list?.icon || '📋'}</span>
@@ -41,7 +41,7 @@ export function QuickAddFixed({ listId }: { listId: string }) {
         {/* Input */}
         <input
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-dim)] px-3 py-2.5 rounded-lg outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-colors"
+          className="w-full bg-[var(--color-surface)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
           placeholder="What needs to be done?"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -57,7 +57,7 @@ export function QuickAddFixed({ listId }: { listId: string }) {
         />
 
         {/* Hint */}
-        <div className="flex items-center justify-between text-[10px] text-[var(--color-text-dim)]">
+        <div className="flex items-center justify-between text-[10px] text-[var(--color-text-ghost)]">
           <span>Enter to add</span>
           <span>Esc to close</span>
         </div>

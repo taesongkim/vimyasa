@@ -1,21 +1,84 @@
 @import "tailwindcss";
 
-/* ── Base ──────────────────────────────────────────────────────── */
+/* ── Fonts ────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('../assets/fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url('../assets/fonts/inter-tight-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── Design System Tokens ─────────────────────────────────────── */
 
 :root {
-  --color-bg: #000000;
-  --color-surface: #0a0a0a;
-  --color-surface-hover: #141414;
-  --color-border: #1e1e1e;
-  --color-text: #e5e5e5;
-  --color-text-muted: #737373;
-  --color-text-dim: #525252;
-  --color-accent: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-green: #22c55e;
-  --color-amber: #f59e0b;
-  --color-red: #ef4444;
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-tight: 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Roboto Mono', ui-monospace, monospace;
+
+  /* Backgrounds (darkest → lightest, alpha-aware for transparency) */
+  --color-bg: rgba(10, 10, 10, 0.85);
+  --color-surface: rgba(19, 19, 19, 0.7);
+  --color-surface-hover: rgba(26, 26, 26, 0.7);
+  --color-border: rgba(30, 30, 30, 0.8);
+  --color-border-focus: rgba(51, 51, 51, 0.8);
+
+  /* Text (brightest → dimmest) */
+  --color-text: #e0e0e0;
+  --color-text-secondary: #888888;
+  --color-text-muted: #4a4a4a;
+  --color-text-dim: #4a4a4a;
+  --color-text-ghost: rgba(212, 212, 212, 0.2);
+
+  /* Accents (semantic only — never decorative) */
+  --color-accent: #60a5fa;
+  --color-accent-hover: #3b82f6;
+  --color-green: #4ade80;
+  --color-amber: #fb923c;
+  --color-red: #f87171;
+  --color-purple: #a78bfa;
+
+  /* Surface opacity layers */
+  --card-bg: rgba(255, 255, 255, 0.035);
+  --card-border: rgba(255, 255, 255, 0.07);
+  --hover-highlight: rgba(255, 255, 255, 0.015);
+  --active-bg: rgba(255, 255, 255, 0.06);
+  --selection-highlight: rgba(255, 255, 255, 0.15);
+  --backdrop-dim: rgba(0, 0, 0, 0.3);
+
+  /* Shadows */
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.3);
+
+  /* Transitions */
+  --duration-fast: 100ms;
+  --duration-default: 150ms;
+  --duration-medium: 200ms;
+  --duration-slow: 300ms;
+  --ease-default: ease;
+
+  /* Border radius scale */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 100px;
 }
+
+/* ── Base Reset ───────────────────────────────────────────────── */
 
 * {
   margin: 0;
@@ -25,16 +88,16 @@
 
 html, body, #root {
   height: 100%;
-  background: var(--color-bg);
+  background: transparent;
   color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   user-select: none;
 }
 
-/* ── Drag regions ──────────────────────────────────────────────── */
+/* ── Drag regions ─────────────────────────────────────────────── */
 
 .drag-region {
   -webkit-app-region: drag;
@@ -44,10 +107,10 @@ html, body, #root {
   -webkit-app-region: no-drag;
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────────── */
+/* ── Scrollbar ────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -55,15 +118,80 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: #222222;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-dim);
+  background: #2e2e2e;
 }
 
-/* ── TipTap editor ─────────────────────────────────────────────── */
+/* ── Opacity States ───────────────────────────────────────────── */
+
+.state-active {
+  opacity: 1;
+}
+
+.state-done {
+  opacity: 0.6;
+}
+
+.state-hold {
+  opacity: 0.35;
+}
+
+.state-ghost {
+  opacity: 0.2;
+}
+
+/* ── Typography helpers ───────────────────────────────────────── */
+
+.font-tight {
+  font-family: var(--font-tight);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.heading-tracking {
+  letter-spacing: -0.02em;
+}
+
+.label-tracking {
+  letter-spacing: 0.04em;
+}
+
+.micro-tracking {
+  letter-spacing: 0.06em;
+}
+
+/* ── Transitions ──────────────────────────────────────────────── */
+
+.transition-default {
+  transition: color var(--duration-default) var(--ease-default),
+              opacity var(--duration-default) var(--ease-default),
+              background var(--duration-default) var(--ease-default),
+              border-color var(--duration-default) var(--ease-default),
+              transform var(--duration-default) var(--ease-default);
+}
+
+/* ── Glass tint (vibrancy handled by macOS at the window level) ── */
+
+.glass-surface {
+  background: rgba(10, 10, 10, 0.1);
+}
+
+/* ── Focus / Item states ──────────────────────────────────────── */
+
+.item-row-focused {
+  background: var(--hover-highlight) !important;
+  outline: 1px solid var(--color-border);
+  outline-offset: -1px;
+  border-radius: var(--radius-md);
+}
+
+/* ── TipTap editor ────────────────────────────────────────────── */
 
 .tiptap {
   outline: none;
@@ -79,13 +207,4 @@ html, body, #root {
   color: var(--color-accent);
   text-decoration: underline;
   cursor: pointer;
-}
-
-/* ── Focus visible ─────────────────────────────────────────────── */
-
-.item-row-focused {
-  background: var(--color-surface-hover) !important;
-  outline: 1px solid var(--color-border);
-  outline-offset: -1px;
-  border-radius: 6px;
 }

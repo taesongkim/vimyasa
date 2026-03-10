@@ -52,11 +52,11 @@ export function TitleBar({ list }: { list: List }) {
     <>
       <div className="drag-region flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm shrink-0">{list.icon}</span>
+          <span className="text-[14px] shrink-0">{list.icon}</span>
           {editing ? (
             <input
               ref={inputRef}
-              className="no-drag bg-transparent text-sm font-semibold text-[var(--color-text)] outline-none border-b border-[var(--color-accent)] w-full"
+              className="no-drag bg-transparent text-[14px] font-medium font-tight heading-tracking text-[var(--color-text)] outline-none border-b border-[var(--color-border-focus)] w-full"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={commitEdit}
@@ -67,7 +67,7 @@ export function TitleBar({ list }: { list: List }) {
             />
           ) : (
             <span
-              className="no-drag text-sm font-semibold truncate cursor-default"
+              className="no-drag text-[14px] font-medium font-tight heading-tracking truncate cursor-default"
               onDoubleClick={startEditing}
               title="Double-click to rename"
             >
@@ -79,7 +79,7 @@ export function TitleBar({ list }: { list: List }) {
         <div className="flex items-center gap-1 shrink-0">
           {/* Add new list button */}
           <button
-            className="no-drag w-6 h-6 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
             onClick={startCreating}
             title="New list"
           >
@@ -90,7 +90,7 @@ export function TitleBar({ list }: { list: List }) {
 
           {/* Close button */}
           <button
-            className="no-drag w-6 h-6 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
             onClick={() => window.api.closeWindow()}
             title="Close (Esc)"
           >
@@ -112,7 +112,7 @@ export function TitleBar({ list }: { list: List }) {
           <span className="text-xs text-[var(--color-text-muted)] shrink-0">New list:</span>
           <input
             ref={newInputRef}
-            className="flex-1 bg-transparent text-sm text-[var(--color-text)] outline-none placeholder-[var(--color-text-dim)]"
+            className="flex-1 bg-transparent text-sm text-[var(--color-text)] outline-none placeholder-[var(--color-text-ghost)]"
             value={newName}
             placeholder="List name..."
             onChange={(e) => setNewName(e.target.value)}
@@ -125,7 +125,7 @@ export function TitleBar({ list }: { list: List }) {
               if (e.key === 'Escape') cancelCreate()
             }}
           />
-          <span className="text-xs text-[var(--color-text-dim)]">↵ create · esc cancel</span>
+          <span className="text-xs text-[var(--color-text-ghost)]">↵ create · esc cancel</span>
         </div>
       )}
     </>

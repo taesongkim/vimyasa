@@ -26,12 +26,12 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full glass-surface">
       {/* Title bar */}
       <div className="drag-region flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
-        <span className="text-sm font-semibold">Archive</span>
+        <span className="text-[13px] font-tight heading-tracking font-semibold">Archive</span>
         <button
-          className="no-drag w-6 h-6 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -43,10 +43,10 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
       {/* List filter */}
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--color-border)] overflow-x-auto">
         <button
-          className={`no-drag px-2 py-0.5 rounded text-xs font-medium transition-colors shrink-0 ${
+          className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium transition-default shrink-0 ${
             selectedListId === 'all'
-              ? 'bg-[var(--color-accent)] text-white'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]'
+              ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
           }`}
           onClick={() => setSelectedListId('all')}
         >
@@ -55,10 +55,10 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
         {lists.map((list) => (
           <button
             key={list.id}
-            className={`no-drag px-2 py-0.5 rounded text-xs font-medium transition-colors shrink-0 ${
+            className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium transition-default shrink-0 ${
               selectedListId === list.id
-                ? 'bg-[var(--color-accent)] text-white'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]'
+                ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
             }`}
             onClick={() => setSelectedListId(list.id)}
           >
@@ -68,7 +68,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
       </div>
 
       {/* Archived items */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div className="flex-1 overflow-y-auto px-1 py-1">
         <AnimatePresence mode="popLayout">
           {archivedItems.map((item) => {
             const list = lists.find((l) => l.id === item.listId)
@@ -76,33 +76,33 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
               <motion.div
                 key={item.id}
                 layout
-                initial={{ opacity: 0, y: -8 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -40 }}
+                exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.15 }}
-                className="group flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--color-surface-hover)]"
+                className="group flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--hover-highlight)] transition-default"
               >
                 <StatusDot status={item.status} />
                 <span className="flex-1 text-sm text-[var(--color-text-muted)] truncate line-through">
                   {item.text}
                 </span>
                 {selectedListId === 'all' && list && (
-                  <span className="text-[10px] text-[var(--color-text-dim)] shrink-0">
+                  <span className="text-[10px] text-[var(--color-text-ghost)] shrink-0">
                     {list.icon}
                   </span>
                 )}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-default shrink-0">
                   <button
-                    className="no-drag px-1.5 py-0.5 rounded text-[10px] font-medium text-[var(--color-accent)] hover:bg-[var(--color-surface)] transition-colors"
+                    className="no-drag px-1.5 py-0.5 rounded-[var(--radius-xs)] text-[10px] font-medium text-[var(--color-accent)] hover:bg-[var(--hover-highlight)] transition-default"
                     onClick={() => restoreItem(item.id)}
                   >
                     Restore
                   </button>
                   <button
-                    className={`no-drag px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    className={`no-drag px-1.5 py-0.5 rounded-[var(--radius-xs)] text-[10px] font-medium transition-default ${
                       confirmDelete === item.id
                         ? 'bg-[var(--color-red)] text-white'
-                        : 'text-[var(--color-red)] hover:bg-[var(--color-surface)]'
+                        : 'text-[var(--color-red)] hover:bg-[var(--hover-highlight)]'
                     }`}
                     onClick={() => handleDelete(item.id)}
                   >
@@ -114,7 +114,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
           })}
         </AnimatePresence>
         {archivedItems.length === 0 && (
-          <div className="flex items-center justify-center h-32 text-[var(--color-text-dim)] text-sm">
+          <div className="flex items-center justify-center h-20 text-[var(--color-text-muted)] text-[13px]">
             No archived items
           </div>
         )}

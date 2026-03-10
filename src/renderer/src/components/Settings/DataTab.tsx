@@ -52,17 +52,17 @@ export function DataTab() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-3 p-3">
       {/* Data file location */}
       <div>
-        <div className="text-sm font-medium mb-1">Data File</div>
+        <div className="text-[13px] font-medium mb-1">Data File</div>
         <button
           className="text-xs text-[var(--color-accent)] hover:underline cursor-pointer"
           onClick={handleRevealDataFile}
         >
           ~/Library/Application Support/vimyasa/data.json
         </button>
-        <div className="text-[10px] text-[var(--color-text-dim)] mt-0.5">Click to reveal in Finder</div>
+        <div className="text-[10px] text-[var(--color-text-ghost)] mt-0.5">Click to reveal in Finder</div>
       </div>
 
       <div className="border-t border-[var(--color-border)]" />
@@ -70,11 +70,11 @@ export function DataTab() {
       {/* Export */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-medium">Export Data</div>
+          <div className="text-[13px] font-medium">Export Data</div>
           <div className="text-xs text-[var(--color-text-muted)]">Download a JSON backup</div>
         </div>
         <button
-          className="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={handleExport}
         >
           Export
@@ -84,11 +84,11 @@ export function DataTab() {
       {/* Import */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-medium">Import Data</div>
+          <div className="text-[13px] font-medium">Import Data</div>
           <div className="text-xs text-[var(--color-text-muted)]">Restore from a JSON backup</div>
         </div>
         <button
-          className="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={handleImport}
         >
           Import
@@ -100,14 +100,14 @@ export function DataTab() {
       {/* Reset */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-medium text-[var(--color-red)]">Reset All Data</div>
+          <div className="text-[13px] font-medium text-[var(--color-red)]">Reset All Data</div>
           <div className="text-xs text-[var(--color-text-muted)]">Delete everything and start fresh</div>
         </div>
         <button
-          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium transition-default ${
             confirmReset
               ? 'bg-[var(--color-red)] text-white'
-              : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-red)] hover:bg-red-950'
+              : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-red)] hover:bg-[var(--hover-highlight)]'
           }`}
           onClick={handleReset}
         >
