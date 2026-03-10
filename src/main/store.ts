@@ -1,6 +1,7 @@
 import Store from 'electron-store'
 import { v4 as uuid } from 'uuid'
 import type { DataStore } from '../shared/types'
+import { DEFAULT_BUILTIN_SHORTCUTS } from '../shared/types'
 
 const defaultGroupId = uuid()
 const defaultListId = uuid()
@@ -26,7 +27,8 @@ const defaults: DataStore = {
   ],
   items: [],
   comments: [],
-  shortcuts: []
+  shortcuts: [],
+  builtinShortcuts: DEFAULT_BUILTIN_SHORTCUTS
 }
 
 export const store = new Store<DataStore>({
@@ -38,6 +40,10 @@ export const store = new Store<DataStore>({
       // v1 schema — no migration needed yet
       if (!s.get('schemaVersion')) {
         s.set('schemaVersion', 1)
+      }
+      // Ensure builtinShortcuts exists for existing installs
+      if (!s.get('builtinShortcuts')) {
+        s.set('builtinShortcuts', DEFAULT_BUILTIN_SHORTCUTS)
       }
     }
   }

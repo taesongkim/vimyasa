@@ -1,7 +1,9 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { v4 as uuid } from 'uuid'
 import { store } from './store'
-import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction } from '../shared/types'
+import { refreshUserShortcuts, refreshBuiltinShortcuts } from './shortcuts'
+import { updateTrayMenu } from './tray'
+import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts } from '../shared/types'
 
 function now(): string {
   return new Date().toISOString()
@@ -28,7 +30,8 @@ export function registerIpcHandlers(): void {
       lists: store.get('lists'),
       items: store.get('items'),
       comments: store.get('comments'),
-      shortcuts: store.get('shortcuts')
+      shortcuts: store.get('shortcuts'),
+      builtinShortcuts: store.get('builtinShortcuts')
     }
   })
 
@@ -42,6 +45,7 @@ export function registerIpcHandlers(): void {
       sortOrder: groups.length
     }
     store.set('groups', [...groups, group])
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return group
   })
@@ -52,6 +56,7 @@ export function registerIpcHandlers(): void {
     if (idx === -1) throw new Error(`Group not found: ${id}`)
     groups[idx] = { ...groups[idx], ...updates }
     store.set('groups', groups)
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return groups[idx]
   })
@@ -69,6 +74,7 @@ export function registerIpcHandlers(): void {
       'items',
       store.get('items').filter((i) => !listIdsToDelete.includes(i.listId))
     )
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
   })
 
@@ -92,6 +98,7 @@ export function registerIpcHandlers(): void {
       store.set('groups', groups)
     }
 
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return list
   })
@@ -102,6 +109,7 @@ export function registerIpcHandlers(): void {
     if (idx === -1) throw new Error(`List not found: ${id}`)
     lists[idx] = { ...lists[idx], ...updates }
     store.set('lists', lists)
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return lists[idx]
   })
@@ -129,6 +137,7 @@ export function registerIpcHandlers(): void {
       'comments',
       store.get('comments').filter((c) => !itemIds.includes(c.itemId))
     )
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
   })
 
@@ -147,6 +156,7 @@ export function registerIpcHandlers(): void {
       archivedAt: null
     }
     store.set('items', [...items, item])
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return item
   })
@@ -157,6 +167,7 @@ export function registerIpcHandlers(): void {
     if (idx === -1) throw new Error(`Item not found: ${id}`)
     items[idx] = { ...items[idx], ...updates, updatedAt: now() }
     store.set('items', items)
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return items[idx]
   })
@@ -170,6 +181,7 @@ export function registerIpcHandlers(): void {
       'comments',
       store.get('comments').filter((c) => c.itemId !== id)
     )
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
   })
 
@@ -179,6 +191,7 @@ export function registerIpcHandlers(): void {
     if (idx === -1) throw new Error(`Item not found: ${id}`)
     items[idx] = { ...items[idx], status, updatedAt: now() }
     store.set('items', items)
+    updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return items[idx]
   })
@@ -265,6 +278,7 @@ export function registerIpcHandlers(): void {
         accelerator
       }
       store.set('shortcuts', [...shortcuts, shortcut])
+      refreshUserShortcuts()
       broadcastDataChanged(e.sender.id)
       return shortcut
     }
@@ -278,6 +292,7 @@ export function registerIpcHandlers(): void {
       if (idx === -1) throw new Error(`Shortcut not found: ${id}`)
       shortcuts[idx] = { ...shortcuts[idx], ...updates }
       store.set('shortcuts', shortcuts)
+      refreshUserShortcuts()
       broadcastDataChanged(e.sender.id)
       return shortcuts[idx]
     }
@@ -288,7 +303,22 @@ export function registerIpcHandlers(): void {
       'shortcuts',
       store.get('shortcuts').filter((s) => s.id !== id)
     )
+    refreshUserShortcuts()
     broadcastDataChanged(e.sender.id)
+  })
+
+  // ── Built-in Shortcuts ─────────────────────────────────────────
+  ipcMain.handle('getBuiltinShortcuts', (): BuiltinShortcuts => {
+    return store.get('builtinShortcuts') as BuiltinShortcuts
+  })
+
+  ipcMain.handle('updateBuiltinShortcuts', (e, updates: Partial<BuiltinShortcuts>): BuiltinShortcuts => {
+    const current = store.get('builtinShortcuts') as BuiltinShortcuts
+    const updated = { ...current, ...updates }
+    store.set('builtinShortcuts' as any, updated)
+    refreshBuiltinShortcuts()
+    broadcastDataChanged(e.sender.id)
+    return updated
   })
 
   // ── Data import/export/reset ──────────────────────────────────

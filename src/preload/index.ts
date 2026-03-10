@@ -39,6 +39,10 @@ const api: VimyasaAPI = {
   updateShortcut: (id, updates) => ipcRenderer.invoke('updateShortcut', id, updates),
   deleteShortcut: (id) => ipcRenderer.invoke('deleteShortcut', id),
 
+  // Built-in Shortcuts
+  getBuiltinShortcuts: () => ipcRenderer.invoke('getBuiltinShortcuts'),
+  updateBuiltinShortcuts: (updates) => ipcRenderer.invoke('updateBuiltinShortcuts', updates),
+
   // Window
   closeWindow: () => ipcRenderer.invoke('closeWindow'),
   openListWindow: (listId) => ipcRenderer.invoke('openListWindow', listId),

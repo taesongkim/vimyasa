@@ -46,6 +46,20 @@ export interface Shortcut {
   accelerator: string
 }
 
+export interface BuiltinShortcuts {
+  openFirstList: string
+  quickAddFirst: string
+  quickAddSelect: string
+  cycleAllLists: string
+}
+
+export const DEFAULT_BUILTIN_SHORTCUTS: BuiltinShortcuts = {
+  openFirstList: 'CommandOrControl+Shift+L',
+  quickAddFirst: 'CommandOrControl+Shift+N',
+  quickAddSelect: 'CommandOrControl+Shift+A',
+  cycleAllLists: 'CommandOrControl+Shift+J'
+}
+
 export interface DataStore {
   schemaVersion: number
   groups: Group[]
@@ -53,6 +67,7 @@ export interface DataStore {
   items: Item[]
   comments: Comment[]
   shortcuts: Shortcut[]
+  builtinShortcuts: BuiltinShortcuts
 }
 
 // ── IPC API Types ─────────────────────────────────────────────────
@@ -92,6 +107,10 @@ export interface VimyasaAPI {
   createShortcut: (action: ShortcutAction, accelerator: string, targetId?: string | null) => Promise<Shortcut>
   updateShortcut: (id: string, updates: Partial<Pick<Shortcut, 'action' | 'accelerator' | 'targetId'>>) => Promise<Shortcut>
   deleteShortcut: (id: string) => Promise<void>
+
+  // Built-in Shortcuts
+  getBuiltinShortcuts: () => Promise<BuiltinShortcuts>
+  updateBuiltinShortcuts: (updates: Partial<BuiltinShortcuts>) => Promise<BuiltinShortcuts>
 
   // Window
   closeWindow: () => Promise<void>

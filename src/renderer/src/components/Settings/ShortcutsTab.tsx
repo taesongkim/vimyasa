@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { KeyCapture } from './KeyCapture'
-import type { ShortcutAction } from '../../../../../shared/types'
+import type { ShortcutAction, BuiltinShortcuts } from '../../../../../shared/types'
 
 const actionLabels: Record<ShortcutAction, string> = {
   openList: 'Open List',
@@ -12,10 +12,28 @@ const actionLabels: Record<ShortcutAction, string> = {
 
 const actionOptions: ShortcutAction[] = ['openList', 'quickAddFixed', 'quickAddSelect', 'cycleAllLists']
 
+// Built-in shortcut definitions for display
+const builtinShortcutDefs: { key: keyof BuiltinShortcuts; label: string }[] = [
+  { key: 'openFirstList', label: 'Open First List' },
+  { key: 'quickAddFirst', label: 'Quick Add (First List)' },
+  { key: 'quickAddSelect', label: 'Quick Add (Select List)' },
+  { key: 'cycleAllLists', label: 'Cycle All Lists' }
+]
+
+function formatAccelerator(accel: string): string {
+  return accel
+    .replace('CommandOrControl', '⌘')
+    .replace('Alt', '⌥')
+    .replace('Shift', '⇧')
+    .replace(/\+/g, '')
+}
+
 export function ShortcutsTab() {
-  const { shortcuts, lists } = useStore()
+  const { shortcuts, lists, builtinShortcuts } = useStore()
   const [newAction, setNewAction] = useState<ShortcutAction>('openList')
   const [newTarget, setNewTarget] = useState<string>(lists[0]?.id || '')
+  const [editingBuiltin, setEditingBuiltin] = useState<keyof BuiltinShortcuts | null>(null)
+  const [editingBuiltinAccel, setEditingBuiltinAccel] = useState('')
 
   // Keep target in sync when lists change (e.g. new list created)
   useEffect(() => {
@@ -25,12 +43,10 @@ export function ShortcutsTab() {
   }, [lists, newTarget])
   const [newAccel, setNewAccel] = useState('')
 
-  // We need shortcuts CRUD in zustand — using window.api directly for now
   const handleAddShortcut = async () => {
     if (!newAccel) return
     const targetId = ['openList', 'quickAddFixed'].includes(newAction) ? newTarget : null
     await window.api.createShortcut(newAction, newAccel, targetId)
-    // Refresh store
     const store = useStore.getState()
     await store.refresh()
     setNewAccel('')
@@ -42,18 +58,83 @@ export function ShortcutsTab() {
     await store.refresh()
   }
 
+  const startEditingBuiltin = (key: keyof BuiltinShortcuts) => {
+    setEditingBuiltin(key)
+    setEditingBuiltinAccel(builtinShortcuts[key])
+  }
+
+  const saveBuiltinShortcut = async () => {
+    if (!editingBuiltin || !editingBuiltinAccel) return
+    await window.api.updateBuiltinShortcuts({ [editingBuiltin]: editingBuiltinAccel })
+    const store = useStore.getState()
+    await store.refresh()
+    setEditingBuiltin(null)
+    setEditingBuiltinAccel('')
+  }
+
+  const cancelEditingBuiltin = () => {
+    setEditingBuiltin(null)
+    setEditingBuiltinAccel('')
+  }
+
   const needsTarget = (action: ShortcutAction) =>
     action === 'openList' || action === 'quickAddFixed'
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      {/* Existing shortcuts */}
+      {/* Built-in shortcuts */}
       <div className="flex flex-col gap-1">
         <div className="text-xs text-[var(--color-text-dim)] uppercase tracking-wider mb-1">
-          Active Shortcuts
+          Default Shortcuts
+        </div>
+        {builtinShortcutDefs.map((def) => (
+          <div
+            key={def.key}
+            className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)]"
+          >
+            <span className="text-xs font-medium text-[var(--color-text)]">
+              {def.label}
+            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {editingBuiltin === def.key ? (
+                <>
+                  <KeyCapture value={editingBuiltinAccel} onChange={setEditingBuiltinAccel} />
+                  <button
+                    className="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors px-1"
+                    onClick={saveBuiltinShortcut}
+                    title="Save"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    className="text-xs text-[var(--color-text-dim)] hover:text-[var(--color-text)] transition-colors px-1"
+                    onClick={cancelEditingBuiltin}
+                    title="Cancel"
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="text-xs font-mono text-[var(--color-accent)] hover:bg-[var(--color-surface-hover)] rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                  onClick={() => startEditingBuiltin(def.key)}
+                  title="Click to change"
+                >
+                  {formatAccelerator(builtinShortcuts[def.key])}
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Custom shortcuts */}
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-[var(--color-text-dim)] uppercase tracking-wider mb-1">
+          Custom Shortcuts
         </div>
         {shortcuts.length === 0 && (
-          <div className="text-xs text-[var(--color-text-dim)] py-2">No shortcuts configured</div>
+          <div className="text-xs text-[var(--color-text-dim)] py-2">No custom shortcuts configured</div>
         )}
         {shortcuts.map((s) => {
           const targetList = s.targetId ? lists.find((l) => l.id === s.targetId) : null
@@ -73,11 +154,7 @@ export function ShortcutsTab() {
                 )}
               </div>
               <span className="text-xs font-mono text-[var(--color-accent)] shrink-0">
-                {s.accelerator
-                  .replace('CommandOrControl', '⌘')
-                  .replace('Alt', '⌥')
-                  .replace('Shift', '⇧')
-                  .replace(/\+/g, '')}
+                {formatAccelerator(s.accelerator)}
               </span>
               <button
                 className="text-[var(--color-text-dim)] hover:text-[var(--color-red)] transition-colors"
@@ -95,7 +172,7 @@ export function ShortcutsTab() {
       {/* Add new shortcut */}
       <div className="border-t border-[var(--color-border)] pt-3">
         <div className="text-xs text-[var(--color-text-dim)] uppercase tracking-wider mb-2">
-          Add Shortcut
+          Add Custom Shortcut
         </div>
         <div className="flex flex-col gap-2">
           {/* Action type */}

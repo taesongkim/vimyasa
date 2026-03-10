@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { DataStore, Group, List, Item, Comment, ItemStatus } from '../../../../shared/types'
+import type { DataStore, Group, List, Item, Comment, ItemStatus } from '@shared/types'
+import { DEFAULT_BUILTIN_SHORTCUTS } from '@shared/types'
 
 interface StoreState extends DataStore {
   hydrated: boolean
@@ -43,6 +44,7 @@ export const useStore = create<StoreState>((set, get) => ({
   items: [],
   comments: [],
   shortcuts: [],
+  builtinShortcuts: DEFAULT_BUILTIN_SHORTCUTS,
 
   hydrate: async () => {
     const data = await window.api.getAll()
