@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { v4 as uuid } from 'uuid'
 import { store } from './store'
-import { refreshUserShortcuts, refreshBuiltinShortcuts } from './shortcuts'
+import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
 import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts } from '../shared/types'
 
@@ -322,6 +322,15 @@ export function registerIpcHandlers(): void {
     refreshBuiltinShortcuts()
     broadcastDataChanged(e.sender.id)
     return updated
+  })
+
+  // ── Shortcut capture (pause/resume) ─────────────────────────
+  ipcMain.handle('pauseGlobalShortcuts', (): void => {
+    pauseGlobalShortcuts()
+  })
+
+  ipcMain.handle('resumeGlobalShortcuts', (): void => {
+    resumeGlobalShortcuts()
   })
 
   // ── Data import/export/reset ──────────────────────────────────

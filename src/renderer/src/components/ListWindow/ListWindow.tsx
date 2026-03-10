@@ -161,12 +161,19 @@ export function ListWindow({ listId }: { listId: string }) {
     onFilter1: () => setFilter('all'),
     onFilter2: () => setFilter('active'),
     onFilter3: () => setFilter('done'),
-    onFilter4: () => setFilter('hold')
+    onFilter4: () => setFilter('hold'),
+    onTab: () => {
+      const idx = lists.findIndex((l) => l.id === listId)
+      if (lists.length > 1) {
+        const nextList = lists[(idx + 1) % lists.length]
+        window.location.hash = `#/list/${nextList.id}`
+      }
+    }
   })
 
   if (!list) {
     return (
-      <div className="flex items-center justify-center h-full text-[var(--color-text-muted)]">
+      <div className="flex items-center justify-center h-full text-[color:var(--color-text-muted)]">
         List not found
       </div>
     )
@@ -201,7 +208,7 @@ export function ListWindow({ listId }: { listId: string }) {
         </DndContext>
 
         {listItems.length === 0 && (
-          <div className="flex items-center justify-center h-20 text-[var(--color-text-muted)] text-[var(--font-size-base)]">
+          <div className="flex items-center justify-center h-20 text-[color:var(--color-text-muted)] text-[length:var(--font-size-base)]">
             {filter === 'all' ? 'No items yet. Press N to add one.' : `No ${filter} items.`}
           </div>
         )}
@@ -211,7 +218,7 @@ export function ListWindow({ listId }: { listId: string }) {
 
       {/* Delete confirmation toast */}
       {confirmDelete && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-[var(--radius-md)] bg-[var(--color-red)] text-white text-[var(--font-size-xs)] font-medium" style={{ boxShadow: 'var(--shadow-tooltip)' }}>
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-[var(--radius-md)] bg-[var(--color-red)] text-white text-[length:var(--font-size-xs)] font-medium" style={{ boxShadow: 'var(--shadow-tooltip)' }}>
           Press again to delete
         </div>
       )}

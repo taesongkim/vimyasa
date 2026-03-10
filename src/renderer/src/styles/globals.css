@@ -33,7 +33,8 @@
   --font-size-xs: 11px;     /* filter tabs, tab buttons, toasts */
   --font-size-sm: 12px;     /* labels, descriptions, settings inputs */
   --font-size-base: 13px;   /* window titles, section headings, default */
-  --font-size-md: 14px;     /* item text, title display, primary inputs */
+  --font-size-md: 14px;     /* item text, title display */
+  --font-size-entry: 20px;  /* quick-add entry forms */
 
   /* Backgrounds (darkest → lightest, alpha-aware for transparency) */
   --color-bg: rgba(10, 10, 10, 0.85);

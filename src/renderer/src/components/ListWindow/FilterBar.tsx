@@ -23,10 +23,10 @@ export function FilterBar({
       {filters.map((f) => (
         <button
           key={f.key}
-          className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[var(--font-size-xs)] font-medium transition-default ${
+          className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium transition-default ${
             active === f.key
-              ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
+              ? 'bg-[var(--active-bg)] text-[color:var(--color-text)]'
+              : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
           }`}
           onClick={() => onChange(f.key)}
           title={`${f.label} (${f.shortcut})`}

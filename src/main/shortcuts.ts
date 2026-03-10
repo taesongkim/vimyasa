@@ -38,19 +38,6 @@ function registerBuiltinShortcuts(): void {
     }
   })
 
-  // Quick-add with list selector
-  tryRegisterBuiltin(config.quickAddSelect, () => {
-    createQuickAddWindow('select')
-  })
-
-  // Cycle through all lists
-  tryRegisterBuiltin(config.cycleAllLists, () => {
-    const lists = store.get('lists')
-    if (lists.length === 0) return
-    cycleIndex = cycleIndex % lists.length
-    createListWindow(lists[cycleIndex].id)
-    cycleIndex = (cycleIndex + 1) % lists.length
-  })
 }
 
 function tryRegisterBuiltin(accelerator: string, callback: () => void): void {
@@ -128,6 +115,15 @@ export function refreshUserShortcuts(): void {
     } catch { /* already unregistered */ }
   }
   registeredUserAccelerators.length = 0
+  registerUserShortcuts()
+}
+
+export function pauseGlobalShortcuts(): void {
+  globalShortcut.unregisterAll()
+}
+
+export function resumeGlobalShortcuts(): void {
+  registerBuiltinShortcuts()
   registerUserShortcuts()
 }
 

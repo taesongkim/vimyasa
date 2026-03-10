@@ -88,7 +88,7 @@ export function QuickAddWithSelect() {
         {/* Input */}
         <input
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-[var(--font-size-md)] text-[var(--color-text)] placeholder-[var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
+          className="w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
           placeholder="What needs to be done?"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -96,7 +96,7 @@ export function QuickAddWithSelect() {
 
         {/* List selector */}
         <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-          <span className="text-[var(--font-size-micro)] text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
+          <span className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] uppercase tracking-wider mb-1">
             Target list
           </span>
           {lists.map((list, idx) => (
@@ -105,20 +105,20 @@ export function QuickAddWithSelect() {
               ref={(el) => { listRefs.current[idx] = el }}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] text-left transition-default ${
                 idx === selectedIndex
-                  ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--hover-highlight)] hover:text-[var(--color-text)]'
+                  ? 'bg-[var(--active-bg)] text-[color:var(--color-text)]'
+                  : 'text-[color:var(--color-text-muted)] hover:bg-[var(--hover-highlight)] hover:text-[color:var(--color-text)]'
               }`}
               onClick={() => setSelectedIndex(idx)}
               tabIndex={-1}
             >
-              <span className="text-[var(--font-size-md)]">{list.icon}</span>
-              <span className="text-[var(--font-size-sm)] font-medium truncate">{list.name}</span>
+              <span className="text-[length:var(--font-size-md)]">{list.icon}</span>
+              <span className="text-[length:var(--font-size-sm)] font-medium truncate">{list.name}</span>
             </button>
           ))}
         </div>
 
         {/* Hints */}
-        <div className="flex items-center justify-between text-[var(--font-size-micro)] text-[var(--color-text-ghost)]">
+        <div className="flex items-center justify-between text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)]">
           <span>⌘↑↓ switch list</span>
           <span>Tab to navigate</span>
           <span>Enter to add</span>

@@ -55,14 +55,14 @@ export function DataTab() {
     <div className="flex flex-col gap-3 px-1 py-3">
       {/* Data file location */}
       <div>
-        <div className="text-[var(--font-size-base)] font-medium mb-1">Data File</div>
+        <div className="text-[length:var(--font-size-base)] font-medium mb-1">Data File</div>
         <button
-          className="text-[var(--font-size-sm)] text-[var(--color-accent)] hover:underline cursor-pointer"
+          className="text-[length:var(--font-size-sm)] text-[color:var(--color-accent)] hover:underline cursor-pointer"
           onClick={handleRevealDataFile}
         >
           ~/Library/Application Support/vimyasa/data.json
         </button>
-        <div className="text-[var(--font-size-micro)] text-[var(--color-text-ghost)] mt-0.5">Click to reveal in Finder</div>
+        <div className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] mt-0.5">Click to reveal in Finder</div>
       </div>
 
       <div className="border-t border-[var(--color-border)]" />
@@ -70,11 +70,11 @@ export function DataTab() {
       {/* Export */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[var(--font-size-base)] font-medium">Export Data</div>
-          <div className="text-[var(--font-size-sm)] text-[var(--color-text-muted)]">Download a JSON backup</div>
+          <div className="text-[length:var(--font-size-base)] font-medium">Export Data</div>
+          <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">Download a JSON backup</div>
         </div>
         <button
-          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={handleExport}
         >
           Export
@@ -84,11 +84,11 @@ export function DataTab() {
       {/* Import */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[var(--font-size-base)] font-medium">Import Data</div>
-          <div className="text-[var(--font-size-sm)] text-[var(--color-text-muted)]">Restore from a JSON backup</div>
+          <div className="text-[length:var(--font-size-base)] font-medium">Import Data</div>
+          <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">Restore from a JSON backup</div>
         </div>
         <button
-          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={handleImport}
         >
           Import
@@ -100,14 +100,14 @@ export function DataTab() {
       {/* Reset */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[var(--font-size-base)] font-medium text-[var(--color-red)]">Reset All Data</div>
-          <div className="text-[var(--font-size-sm)] text-[var(--color-text-muted)]">Delete everything and start fresh</div>
+          <div className="text-[length:var(--font-size-base)] font-medium text-[color:var(--color-red)]">Reset All Data</div>
+          <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">Delete everything and start fresh</div>
         </div>
         <button
-          className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-[var(--font-size-sm)] font-medium transition-default ${
+          className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium transition-default ${
             confirmReset
               ? 'bg-[var(--color-red)] text-white'
-              : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-red)] hover:bg-[var(--hover-highlight)]'
+              : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-red)] hover:bg-[var(--hover-highlight)]'
           }`}
           onClick={handleReset}
         >

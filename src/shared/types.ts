@@ -49,15 +49,11 @@ export interface Shortcut {
 export interface BuiltinShortcuts {
   openFirstList: string
   quickAddFirst: string
-  quickAddSelect: string
-  cycleAllLists: string
 }
 
 export const DEFAULT_BUILTIN_SHORTCUTS: BuiltinShortcuts = {
   openFirstList: 'CommandOrControl+Shift+L',
-  quickAddFirst: 'CommandOrControl+Shift+N',
-  quickAddSelect: 'CommandOrControl+Shift+A',
-  cycleAllLists: 'CommandOrControl+Shift+J'
+  quickAddFirst: 'CommandOrControl+Shift+;'
 }
 
 export interface DataStore {
@@ -111,6 +107,10 @@ export interface VimyasaAPI {
   // Built-in Shortcuts
   getBuiltinShortcuts: () => Promise<BuiltinShortcuts>
   updateBuiltinShortcuts: (updates: Partial<BuiltinShortcuts>) => Promise<BuiltinShortcuts>
+
+  // Shortcut capture
+  pauseGlobalShortcuts: () => Promise<void>
+  resumeGlobalShortcuts: () => Promise<void>
 
   // Window
   closeWindow: () => Promise<void>

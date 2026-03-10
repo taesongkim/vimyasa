@@ -24,10 +24,10 @@ export const AddRow = forwardRef<AddRowHandle, { listId: string }>(({ listId }, 
 
   return (
     <div className="flex items-center gap-2 px-1 py-2 border-t border-[var(--color-border)]">
-      <span className="text-[var(--color-text-ghost)] text-[var(--font-size-md)]">+</span>
+      <span className="text-[color:var(--color-text-ghost)] text-[length:var(--font-size-md)]">+</span>
       <input
         ref={inputRef}
-        className="flex-1 bg-transparent text-[var(--font-size-base)] text-[var(--color-text)] placeholder-[var(--color-text-ghost)] outline-none"
+        className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] outline-none"
         placeholder="Add item..."
         value={text}
         onChange={(e) => setText(e.target.value)}

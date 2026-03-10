@@ -13,6 +13,7 @@ interface KeyboardConfig {
   onFilter2?: () => void
   onFilter3?: () => void
   onFilter4?: () => void
+  onTab?: () => void
   enabled?: boolean
 }
 
@@ -92,6 +93,10 @@ export function useKeyboard(config: KeyboardConfig) {
         case '4':
           e.preventDefault()
           config.onFilter4?.()
+          break
+        case 'Tab':
+          e.preventDefault()
+          config.onTab?.()
           break
       }
     },

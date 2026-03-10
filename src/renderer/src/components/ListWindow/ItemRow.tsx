@@ -122,7 +122,7 @@ export function ItemRow({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: isDragging ? 0.5 : 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
-      transition={{ duration: 0.15, delay: index * 0.05 }}
+      transition={{ duration: 0.15, delay: index * 0.02 }}
       className={`group flex items-center gap-2 px-1 py-1.5 cursor-default ${
         isFocused ? 'item-row-focused' : ''
       }`}
@@ -139,7 +139,7 @@ export function ItemRow({
       {editing ? (
         <input
           ref={inputRef}
-          className="flex-1 bg-transparent text-[var(--font-size-md)] text-[var(--color-text)] outline-none border-b border-[var(--color-accent)]"
+          className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)]"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={commitEdit}
@@ -150,7 +150,7 @@ export function ItemRow({
         />
       ) : (
         <span
-          className={`flex-1 text-[var(--font-size-md)] truncate`}
+          className={`flex-1 text-[length:var(--font-size-md)] truncate`}
           style={{ opacity: statusOpacity[item.status] }}
         >
           {item.text}
@@ -163,7 +163,7 @@ export function ItemRow({
         style={{ opacity: hovered && !editing ? 1 : 0, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
       >
         <button
-          className="no-drag p-1 rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag p-1 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={(e) => {
             e.stopPropagation()
             navigator.clipboard.writeText(item.text)
@@ -176,7 +176,7 @@ export function ItemRow({
           </svg>
         </button>
         <button
-          className="no-drag p-1 rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag p-1 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-accent)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={(e) => {
             e.stopPropagation()
             window.api.openComments(item.id)
@@ -188,7 +188,7 @@ export function ItemRow({
           </svg>
         </button>
         <button
-          className="no-drag p-1 rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-amber)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag p-1 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-amber)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={(e) => {
             e.stopPropagation()
             archiveItem(item.id)
@@ -203,7 +203,7 @@ export function ItemRow({
 
       {/* Drag handle — opacity-reveal */}
       <div
-        className="no-drag cursor-grab active:cursor-grabbing text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-default"
+        className="no-drag cursor-grab active:cursor-grabbing text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-default"
         style={{ opacity: hovered && !editing ? 1 : 0, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
         {...attributes}
         {...listeners}

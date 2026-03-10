@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 
 const modifierKeys = new Set(['Meta', 'Control', 'Alt', 'Shift'])
 
-function keyToAccelerator(e: React.KeyboardEvent): string | null {
+function nativeKeyToAccelerator(e: KeyboardEvent): string | null {
   // Must have at least one modifier
   if (!e.metaKey && !e.ctrlKey && !e.altKey) return null
   // Must have a non-modifier key
@@ -45,22 +45,46 @@ export function KeyCapture({
 }) {
   const [capturing, setCapturing] = useState(false)
   const [display, setDisplay] = useState(value ? formatAccelerator(value) : '')
-  const inputRef = useRef<HTMLDivElement>(null)
+  const capturingRef = useRef(false)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+  // Window-level keydown listener — immune to div blur
+  useEffect(() => {
+    if (!capturing) return
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
       e.preventDefault()
       e.stopPropagation()
-      const accel = keyToAccelerator(e)
+      const accel = nativeKeyToAccelerator(e)
       if (accel) {
         setDisplay(formatAccelerator(accel))
-        onChange(accel)
+        onChangeRef.current(accel)
         setCapturing(false)
-        inputRef.current?.blur()
+        capturingRef.current = false
+        window.api.resumeGlobalShortcuts()
       }
-    },
-    [onChange]
-  )
+    }
+
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [capturing])
+
+  const startCapture = useCallback(async () => {
+    await window.api.pauseGlobalShortcuts()
+    setCapturing(true)
+    capturingRef.current = true
+    setDisplay('Press keys...')
+  }, [])
+
+  const cancelCapture = useCallback(() => {
+    if (capturingRef.current) {
+      setCapturing(false)
+      capturingRef.current = false
+      setDisplay(value ? formatAccelerator(value) : '')
+      window.api.resumeGlobalShortcuts()
+    }
+  }, [value])
 
   const borderColor =
     conflict === 'block'
@@ -73,25 +97,14 @@ export function KeyCapture({
 
   return (
     <div
-      ref={inputRef}
       tabIndex={0}
-      className={`px-2 py-1 rounded-[var(--radius-sm)] text-[var(--font-size-sm)] font-mono text-center min-w-[80px] cursor-pointer border transition-default outline-none ${borderColor} ${
+      className={`px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-mono text-center min-w-[80px] cursor-pointer border transition-default outline-none ${borderColor} ${
         capturing
-          ? 'bg-[var(--color-surface)] text-[var(--color-accent)]'
-          : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'
+          ? 'bg-[var(--color-surface)] text-[color:var(--color-accent)]'
+          : 'bg-[var(--color-surface)] text-[color:var(--color-text-muted)]'
       }`}
-      onClick={() => {
-        setCapturing(true)
-        setDisplay('Press keys...')
-        inputRef.current?.focus()
-      }}
-      onKeyDown={capturing ? handleKeyDown : undefined}
-      onBlur={() => {
-        if (capturing) {
-          setCapturing(false)
-          setDisplay(value ? formatAccelerator(value) : '')
-        }
-      }}
+      onClick={startCapture}
+      onBlur={cancelCapture}
     >
       {display || 'Click to set'}
     </div>

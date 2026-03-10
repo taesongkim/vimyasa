@@ -68,8 +68,8 @@ export default function App() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2 p-4 text-center">
-        <span className="text-[var(--color-red)] text-[var(--font-size-md)] font-medium">Failed to load data</span>
-        <span className="text-[var(--color-text-ghost)] text-[var(--font-size-sm)] font-mono">{error}</span>
+        <span className="text-[color:var(--color-red)] text-[length:var(--font-size-md)] font-medium">Failed to load data</span>
+        <span className="text-[color:var(--color-text-ghost)] text-[length:var(--font-size-sm)] font-mono">{error}</span>
       </div>
     )
   }
@@ -99,7 +99,7 @@ export default function App() {
       return <ArchiveWindow listId={route.params.listId || undefined} />
     default:
       return (
-        <div className="flex items-center justify-center h-full text-[var(--color-text-muted)] text-[var(--font-size-md)]">
+        <div className="flex items-center justify-center h-full text-[color:var(--color-text-muted)] text-[length:var(--font-size-md)]">
           Unknown route
         </div>
       )

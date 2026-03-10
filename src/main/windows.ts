@@ -3,17 +3,16 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 
 const LIST_WINDOW_WIDTH = 360
-const LIST_WINDOW_HEIGHT = 520
 const QUICKADD_WIDTH = 400
-const QUICKADD_HEIGHT = 160
+const QUICKADD_HEIGHT = 120
 const QUICKADD_SELECT_HEIGHT = 320
 const COMMENTS_WIDTH = 360
 const COMMENTS_HEIGHT = 480
 const SETTINGS_WIDTH = 420
 const SETTINGS_HEIGHT = 500
-const WINDOW_GAP = 12
-const INITIAL_X = 40
-const INITIAL_Y = 80
+const WINDOW_GAP = 8
+const INITIAL_X = 8
+const INITIAL_Y = 8
 
 // Track open windows
 const listWindows = new Map<string, BrowserWindow>()
@@ -40,7 +39,7 @@ function getCenteredPosition(width: number, height: number): { x: number; y: num
   const wa = display.workArea
   return {
     x: Math.round(wa.x + (wa.width - width) / 2),
-    y: Math.round(wa.y + (wa.height - height) / 3)
+    y: Math.round(wa.y + (wa.height - height) / 2)
   }
 }
 
@@ -51,13 +50,14 @@ function calculateStackedPosition(): { x: number; y: number } {
 
   const openCount = listWindows.size
   let x = INITIAL_X + openCount * (LIST_WINDOW_WIDTH + WINDOW_GAP)
-  let y = INITIAL_Y
+  let y = workArea.y + INITIAL_Y
 
   if (x + LIST_WINDOW_WIDTH > workArea.x + workArea.width) {
     x = workArea.x + workArea.width - LIST_WINDOW_WIDTH - 20
   }
-  if (y + LIST_WINDOW_HEIGHT > workArea.y + workArea.height) {
-    y = workArea.y + workArea.height - LIST_WINDOW_HEIGHT - 20
+  const listHeight = Math.round(workArea.height * 0.97)
+  if (y + listHeight > workArea.y + workArea.height) {
+    y = workArea.y + workArea.height - listHeight - 20
   }
   x = Math.max(workArea.x, x)
   y = Math.max(workArea.y, y)
@@ -91,12 +91,14 @@ export function createListWindow(listId: string): BrowserWindow {
     return existing
   }
 
+  const workArea = screen.getPrimaryDisplay().workArea
+  const listWindowHeight = Math.round(workArea.height * 0.97)
   const { x, y } = calculateStackedPosition()
   const win = makeWindow({
     width: LIST_WINDOW_WIDTH,
-    height: LIST_WINDOW_HEIGHT,
+    height: listWindowHeight,
     minWidth: 320,
-    minHeight: 400,
+    minHeight: 150,
     x,
     y,
     resizable: true
@@ -193,10 +195,11 @@ export function createArchiveWindow(listId?: string): BrowserWindow {
     return archiveWindow
   }
 
-  const { x, y } = getCenteredPosition(LIST_WINDOW_WIDTH, LIST_WINDOW_HEIGHT)
+  const archiveHeight = Math.round(screen.getPrimaryDisplay().workArea.height * 0.97)
+  const { x, y } = getCenteredPosition(LIST_WINDOW_WIDTH, archiveHeight)
   const win = makeWindow({
     width: LIST_WINDOW_WIDTH,
-    height: LIST_WINDOW_HEIGHT,
+    height: archiveHeight,
     x,
     y,
     resizable: true
