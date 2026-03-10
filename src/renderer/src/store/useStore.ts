@@ -1,0 +1,179 @@
+import { create } from 'zustand'
+import type { DataStore, Group, List, Item, Comment, ItemStatus } from '../../../../shared/types'
+
+interface StoreState extends DataStore {
+  hydrated: boolean
+
+  // Actions
+  hydrate: () => Promise<void>
+  refresh: () => Promise<void>
+
+  // Groups
+  addGroup: (name: string) => Promise<Group>
+  editGroup: (id: string, updates: Partial<Pick<Group, 'name' | 'listIds' | 'sortOrder'>>) => Promise<void>
+  removeGroup: (id: string) => Promise<void>
+
+  // Lists
+  addList: (groupId: string, name: string, icon?: string) => Promise<List>
+  editList: (id: string, updates: Partial<Pick<List, 'name' | 'icon' | 'sortOrder'>>) => Promise<void>
+  removeList: (id: string) => Promise<void>
+
+  // Items
+  addItem: (listId: string, text: string) => Promise<Item>
+  editItem: (id: string, updates: Partial<Pick<Item, 'text' | 'status' | 'listId' | 'sortOrder' | 'archivedAt'>>) => Promise<void>
+  removeItem: (id: string) => Promise<void>
+  changeItemStatus: (id: string, status: ItemStatus) => Promise<void>
+  sendItemToList: (id: string, targetListId: string) => Promise<void>
+  reorder: (listId: string, orderedIds: string[]) => Promise<void>
+  archiveItem: (id: string) => Promise<void>
+  restoreItem: (id: string) => Promise<void>
+
+  // Comments
+  addComment: (itemId: string, text: string, parentId?: string | null) => Promise<Comment>
+  editComment: (id: string, text: string) => Promise<void>
+  removeComment: (id: string) => Promise<void>
+}
+
+export const useStore = create<StoreState>((set, get) => ({
+  // Initial state
+  hydrated: false,
+  schemaVersion: 1,
+  groups: [],
+  lists: [],
+  items: [],
+  comments: [],
+  shortcuts: [],
+
+  hydrate: async () => {
+    const data = await window.api.getAll()
+    set({ ...data, hydrated: true })
+  },
+
+  refresh: async () => {
+    const data = await window.api.getAll()
+    set(data)
+  },
+
+  // ── Groups ────────────────────────────────────────────────────
+  addGroup: async (name) => {
+    const group = await window.api.createGroup(name)
+    set((s) => ({ groups: [...s.groups, group] }))
+    return group
+  },
+
+  editGroup: async (id, updates) => {
+    const group = await window.api.updateGroup(id, updates)
+    set((s) => ({
+      groups: s.groups.map((g) => (g.id === id ? group : g))
+    }))
+  },
+
+  removeGroup: async (id) => {
+    await window.api.deleteGroup(id)
+    await get().refresh()
+  },
+
+  // ── Lists ─────────────────────────────────────────────────────
+  addList: async (groupId, name, icon) => {
+    const list = await window.api.createList(groupId, name, icon)
+    set((s) => ({ lists: [...s.lists, list] }))
+    return list
+  },
+
+  editList: async (id, updates) => {
+    const list = await window.api.updateList(id, updates)
+    set((s) => ({
+      lists: s.lists.map((l) => (l.id === id ? list : l))
+    }))
+  },
+
+  removeList: async (id) => {
+    await window.api.deleteList(id)
+    await get().refresh()
+  },
+
+  // ── Items ─────────────────────────────────────────────────────
+  addItem: async (listId, text) => {
+    const item = await window.api.createItem(listId, text)
+    set((s) => ({ items: [...s.items, item] }))
+    return item
+  },
+
+  editItem: async (id, updates) => {
+    const item = await window.api.updateItem(id, updates)
+    set((s) => ({
+      items: s.items.map((i) => (i.id === id ? item : i))
+    }))
+  },
+
+  removeItem: async (id) => {
+    await window.api.deleteItem(id)
+    set((s) => ({
+      items: s.items.filter((i) => i.id !== id),
+      comments: s.comments.filter((c) => c.itemId !== id)
+    }))
+  },
+
+  changeItemStatus: async (id, status) => {
+    const item = await window.api.setItemStatus(id, status)
+    set((s) => ({
+      items: s.items.map((i) => (i.id === id ? item : i))
+    }))
+  },
+
+  sendItemToList: async (id, targetListId) => {
+    const item = await window.api.moveItem(id, targetListId)
+    set((s) => ({
+      items: s.items.map((i) => (i.id === id ? item : i))
+    }))
+  },
+
+  reorder: async (listId, orderedIds) => {
+    // Optimistic update
+    set((s) => ({
+      items: s.items.map((item) => {
+        const newIndex = orderedIds.indexOf(item.id)
+        if (newIndex !== -1) {
+          return { ...item, sortOrder: newIndex }
+        }
+        return item
+      })
+    }))
+    await window.api.reorderItems(listId, orderedIds)
+  },
+
+  archiveItem: async (id) => {
+    const item = await window.api.updateItem(id, { archivedAt: new Date().toISOString() })
+    set((s) => ({
+      items: s.items.map((i) => (i.id === id ? item : i))
+    }))
+  },
+
+  restoreItem: async (id) => {
+    const item = await window.api.updateItem(id, { archivedAt: null })
+    set((s) => ({
+      items: s.items.map((i) => (i.id === id ? item : i))
+    }))
+  },
+
+  // ── Comments ──────────────────────────────────────────────────
+  addComment: async (itemId, text, parentId) => {
+    const comment = await window.api.createComment(itemId, text, parentId)
+    set((s) => ({ comments: [...s.comments, comment] }))
+    return comment
+  },
+
+  editComment: async (id, text) => {
+    const comment = await window.api.updateComment(id, text)
+    set((s) => ({
+      comments: s.comments.map((c) => (c.id === id ? comment : c))
+    }))
+  },
+
+  removeComment: async (id) => {
+    await window.api.deleteComment(id)
+    set((s) => ({
+      comments: s.comments.filter((c) => c.id !== id && c.parentId !== id)
+    }))
+  }
+}))

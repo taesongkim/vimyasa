@@ -1,0 +1,105 @@
+import { useEffect, useCallback } from 'react'
+
+interface KeyboardConfig {
+  onArrowUp?: () => void
+  onArrowDown?: () => void
+  onEnter?: () => void
+  onSpace?: () => void
+  onEscape?: () => void
+  onBackspace?: () => void
+  onN?: () => void
+  onCopy?: () => void
+  onFilter1?: () => void
+  onFilter2?: () => void
+  onFilter3?: () => void
+  onFilter4?: () => void
+  enabled?: boolean
+}
+
+export function useKeyboard(config: KeyboardConfig) {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (config.enabled === false) return
+
+      // Don't intercept when typing in an input/textarea
+      const target = e.target as HTMLElement
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        // Only intercept Escape in inputs
+        if (e.key === 'Escape') {
+          config.onEscape?.()
+          e.preventDefault()
+        }
+        return
+      }
+
+      switch (e.key) {
+        case 'ArrowUp':
+        case 'k':
+          e.preventDefault()
+          config.onArrowUp?.()
+          break
+        case 'ArrowDown':
+        case 'j':
+          e.preventDefault()
+          config.onArrowDown?.()
+          break
+        case 'Enter':
+          e.preventDefault()
+          config.onEnter?.()
+          break
+        case ' ':
+          e.preventDefault()
+          config.onSpace?.()
+          break
+        case 'Escape':
+          e.preventDefault()
+          config.onEscape?.()
+          break
+        case 'Backspace':
+        case 'Delete':
+          e.preventDefault()
+          config.onBackspace?.()
+          break
+        case 'n':
+        case 'N':
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            config.onN?.()
+          }
+          break
+        case 'c':
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault()
+            config.onCopy?.()
+          }
+          break
+        case '1':
+          e.preventDefault()
+          config.onFilter1?.()
+          break
+        case '2':
+          e.preventDefault()
+          config.onFilter2?.()
+          break
+        case '3':
+          e.preventDefault()
+          config.onFilter3?.()
+          break
+        case '4':
+          e.preventDefault()
+          config.onFilter4?.()
+          break
+      }
+    },
+    [config]
+  )
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+}
