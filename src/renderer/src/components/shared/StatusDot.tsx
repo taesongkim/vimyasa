@@ -25,7 +25,7 @@ export function StatusDot({
 
   return (
     <button
-      className="p-1 -m-1 shrink-0 no-drag flex items-center justify-center focus:outline-none"
+      className="pr-1 shrink-0 no-drag flex items-center justify-center focus:outline-none"
       onClick={onClick}
       title={statusLabels[status]}
       tabIndex={-1}

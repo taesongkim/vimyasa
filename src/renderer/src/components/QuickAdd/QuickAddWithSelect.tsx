@@ -16,6 +16,15 @@ export function QuickAddWithSelect() {
     inputRef.current?.focus()
   }, [])
 
+  // Global Escape handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') window.api.closeWindow()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const handleSubmit = async () => {
     const trimmed = text.trim()
     if (!trimmed || !selectedList) return
@@ -34,10 +43,6 @@ export function QuickAddWithSelect() {
     if (e.key === 'Enter') {
       e.preventDefault()
       handleSubmit()
-      return
-    }
-    if (e.key === 'Escape') {
-      window.api.closeWindow()
       return
     }
     if (e.key === 'Tab') {
@@ -78,7 +83,7 @@ export function QuickAddWithSelect() {
       initial={{ opacity: 0, scale: 0.95, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-      className="flex flex-col h-full glass-surface p-2"
+      className="flex flex-col h-full glass-surface px-4 py-2"
       onKeyDown={handleKeyDown}
     >
       {/* Drag region */}
@@ -88,7 +93,7 @@ export function QuickAddWithSelect() {
         {/* Input */}
         <input
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
+          className="w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] transition-default"
           placeholder="What needs to be done?"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -111,17 +116,9 @@ export function QuickAddWithSelect() {
               onClick={() => setSelectedIndex(idx)}
               tabIndex={-1}
             >
-              <span className="text-[length:var(--font-size-md)]">{list.icon}</span>
               <span className="text-[length:var(--font-size-sm)] font-medium truncate">{list.name}</span>
             </button>
           ))}
-        </div>
-
-        {/* Hints */}
-        <div className="flex items-center justify-between text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)]">
-          <span>⌘↑↓ switch list</span>
-          <span>Tab to navigate</span>
-          <span>Enter to add</span>
         </div>
       </div>
     </motion.div>

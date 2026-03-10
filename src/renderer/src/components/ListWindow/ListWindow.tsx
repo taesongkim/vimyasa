@@ -17,7 +17,7 @@ import {
 import { useStore } from '../../store/useStore'
 import { useKeyboard } from '../../hooks/useKeyboard'
 import { TitleBar } from './TitleBar'
-import { FilterBar, type FilterType } from './FilterBar'
+import { type FilterType } from './FilterBar'
 import { ItemRow } from './ItemRow'
 import { AddRow, type AddRowHandle } from './AddRow'
 import type { Item, ItemStatus } from '../../../../../shared/types'
@@ -186,10 +186,9 @@ export function ListWindow({ listId }: { listId: string }) {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-      className="flex flex-col h-full glass-surface p-2"
+      className="flex flex-col h-full glass-surface px-4 py-2"
     >
-      <TitleBar list={list} />
-      <FilterBar active={filter} onChange={setFilter} counts={counts} />
+      <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
       <div className="flex-1 overflow-y-auto py-1">

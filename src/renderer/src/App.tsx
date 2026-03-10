@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useStore } from './store/useStore'
 import { ListWindow } from './components/ListWindow/ListWindow'
 import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
-import { QuickAddWithSelect } from './components/QuickAdd/QuickAddWithSelect'
 import { CommentsWindow } from './components/Comments/CommentsWindow'
 import { SettingsWindow } from './components/Settings/SettingsWindow'
 import { ArchiveWindow } from './components/Archive/ArchiveWindow'
@@ -89,8 +88,10 @@ export default function App() {
       const listId = route.params.listId || lists[0]?.id || ''
       return <QuickAddFixed listId={listId} />
     }
-    case 'quickadd-select':
-      return <QuickAddWithSelect />
+    case 'quickadd-select': {
+      const defaultListId = lists[0]?.id || ''
+      return <QuickAddFixed listId={defaultListId} />
+    }
     case 'comments':
       return <CommentsWindow itemId={route.params.itemId} />
     case 'settings':

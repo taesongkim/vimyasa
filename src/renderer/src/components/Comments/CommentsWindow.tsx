@@ -189,7 +189,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full glass-surface p-2">
+    <div className="flex flex-col h-full glass-surface px-4 py-2">
       {/* Title bar */}
       <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] truncate flex-1">

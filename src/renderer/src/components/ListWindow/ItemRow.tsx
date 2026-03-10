@@ -123,7 +123,7 @@ export function ItemRow({
       animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.15, delay: index * 0.02 }}
-      className={`group flex items-center gap-2 px-1 py-1.5 cursor-default ${
+      className={`group flex items-center gap-1 px-1 py-1.5 cursor-default ${
         isFocused ? 'item-row-focused' : ''
       }`}
       onMouseEnter={() => setHovered(true)}
