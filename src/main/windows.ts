@@ -87,6 +87,10 @@ function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWind
 export function createListWindow(listId: string, position?: { x: number; y: number }): BrowserWindow {
   const existing = listWindows.get(listId)
   if (existing && !existing.isDestroyed()) {
+    if (existing.isFocused()) {
+      existing.close()
+      return existing
+    }
     existing.focus()
     return existing
   }
@@ -120,6 +124,10 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
 
 export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?: string): BrowserWindow {
   if (quickAddWindow && !quickAddWindow.isDestroyed()) {
+    if (quickAddWindow.isFocused()) {
+      quickAddWindow.close()
+      return quickAddWindow
+    }
     quickAddWindow.focus()
     return quickAddWindow
   }
