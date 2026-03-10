@@ -22,37 +22,38 @@ import { ItemRow } from './ItemRow'
 import { AddRow, type AddRowHandle } from './AddRow'
 import type { Item, ItemStatus } from '../../../../../shared/types'
 
-export function ListWindow({ listId }: { listId: string }) {
+export function ListWindow({ listId: initialListId }: { listId: string }) {
   const { items, lists, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
     useStore()
 
+  const [activeListId, setActiveListId] = useState(initialListId)
   const [filter, setFilter] = useState<FilterType>('all')
   const [focusIndex, setFocusIndex] = useState(-1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [cycling, setCycling] = useState(false)
-  const cycleTargetRef = useRef<{ listId: string; pos: { x: number; y: number } } | null>(null)
+  const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
+  const cycleTargetRef = useRef<string | null>(null)
   const addRowRef = useRef<AddRowHandle>(null)
 
-  const list = lists.find((l) => l.id === listId)
+  const list = lists.find((l) => l.id === activeListId)
 
   // Filter and sort items
   const listItems = useMemo(() => {
     return items
-      .filter((i) => i.listId === listId && !i.archivedAt)
+      .filter((i) => i.listId === activeListId && !i.archivedAt)
       .filter((i) => filter === 'all' || i.status === filter)
       .sort((a, b) => a.sortOrder - b.sortOrder)
-  }, [items, listId, filter])
+  }, [items, activeListId, filter])
 
   // Counts for filter bar
   const counts = useMemo(() => {
-    const all = items.filter((i) => i.listId === listId && !i.archivedAt)
+    const all = items.filter((i) => i.listId === activeListId && !i.archivedAt)
     return {
       all: all.length,
       active: all.filter((i) => i.status === 'active').length,
       done: all.filter((i) => i.status === 'done').length,
       hold: all.filter((i) => i.status === 'hold').length
     }
-  }, [items, listId])
+  }, [items, activeListId])
 
   const focusedItem = listItems[focusIndex] || null
 
@@ -120,11 +121,11 @@ export function ListWindow({ listId }: { listId: string }) {
       newOrder.splice(newIndex, 0, moved)
 
       reorder(
-        listId,
+        activeListId,
         newOrder.map((i) => i.id)
       )
     },
-    [listItems, listId, reorder]
+    [listItems, activeListId, reorder]
   )
 
   // Keyboard navigation
@@ -165,11 +166,11 @@ export function ListWindow({ listId }: { listId: string }) {
     onFilter3: () => setFilter('done'),
     onFilter4: () => setFilter('hold'),
     onTab: () => {
-      const idx = lists.findIndex((l) => l.id === listId)
-      if (lists.length > 1 && !cycling) {
+      const idx = lists.findIndex((l) => l.id === activeListId)
+      if (lists.length > 1 && cyclePhase === 'idle') {
         const nextList = lists[(idx + 1) % lists.length]
-        cycleTargetRef.current = { listId: nextList.id, pos: { x: window.screenX, y: window.screenY } }
-        setCycling(true)
+        cycleTargetRef.current = nextList.id
+        setCyclePhase('out')
       }
     }
   })
@@ -184,14 +185,17 @@ export function ListWindow({ listId }: { listId: string }) {
 
   return (
     <motion.div
+      key={activeListId}
       initial={{ opacity: 0, x: -20 }}
-      animate={cycling ? { opacity: 0, x: -30 } : { opacity: 1, x: 0 }}
-      transition={{ duration: cycling ? 0.08 : 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+      animate={cyclePhase === 'out' ? { opacity: 0, x: -30 } : { opacity: 1, x: 0 }}
+      transition={{ duration: cyclePhase === 'out' ? 0.08 : 0.1, ease: [0.25, 0.1, 0.25, 1] }}
       onAnimationComplete={() => {
-        if (cycling && cycleTargetRef.current) {
-          const { listId: nextId, pos } = cycleTargetRef.current
-          window.api.openListWindow(nextId, pos)
-          window.api.closeWindow()
+        if (cyclePhase === 'out' && cycleTargetRef.current) {
+          setActiveListId(cycleTargetRef.current)
+          setFilter('all')
+          setFocusIndex(-1)
+          cycleTargetRef.current = null
+          setCyclePhase('idle')
         }
       }}
       className="flex flex-col h-full glass-surface px-4 py-2"
@@ -228,7 +232,7 @@ export function ListWindow({ listId }: { listId: string }) {
         )}
       </div>
 
-      <AddRow ref={addRowRef} listId={listId} />
+      <AddRow ref={addRowRef} listId={activeListId} />
 
       {/* Delete confirmation toast */}
       {confirmDelete && (
