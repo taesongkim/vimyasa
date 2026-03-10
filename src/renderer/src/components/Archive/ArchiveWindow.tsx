@@ -29,7 +29,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
     <div className="flex flex-col h-full glass-surface p-2">
       {/* Title bar */}
       <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
-        <span className="text-[13px] font-tight heading-tracking font-semibold">Archive</span>
+        <span className="text-[var(--font-size-base)] font-tight heading-tracking font-semibold">Archive</span>
         <button
           className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
@@ -43,7 +43,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
       {/* List filter */}
       <div className="flex items-center gap-1 px-1 py-1.5 border-b border-[var(--color-border)] overflow-x-auto">
         <button
-          className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium transition-default shrink-0 ${
+          className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[var(--font-size-xs)] font-medium transition-default shrink-0 ${
             selectedListId === 'all'
               ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
@@ -55,7 +55,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
         {lists.map((list) => (
           <button
             key={list.id}
-            className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium transition-default shrink-0 ${
+            className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[var(--font-size-xs)] font-medium transition-default shrink-0 ${
               selectedListId === list.id
                 ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
@@ -83,23 +83,23 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
                 className="group flex items-center gap-2 px-1 py-1.5 hover:bg-[var(--hover-highlight)] transition-default"
               >
                 <StatusDot status={item.status} />
-                <span className="flex-1 text-sm text-[var(--color-text-muted)] truncate line-through">
+                <span className="flex-1 text-[var(--font-size-md)] text-[var(--color-text-muted)] truncate line-through">
                   {item.text}
                 </span>
                 {selectedListId === 'all' && list && (
-                  <span className="text-[10px] text-[var(--color-text-ghost)] shrink-0">
+                  <span className="text-[var(--font-size-micro)] text-[var(--color-text-ghost)] shrink-0">
                     {list.icon}
                   </span>
                 )}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-default shrink-0">
                   <button
-                    className="no-drag px-2 py-0.5 rounded-[var(--radius-xs)] text-[10px] font-medium text-[var(--color-accent)] hover:bg-[var(--hover-highlight)] transition-default"
+                    className="no-drag px-2 py-0.5 rounded-[var(--radius-xs)] text-[var(--font-size-micro)] font-medium text-[var(--color-accent)] hover:bg-[var(--hover-highlight)] transition-default"
                     onClick={() => restoreItem(item.id)}
                   >
                     Restore
                   </button>
                   <button
-                    className={`no-drag px-2 py-0.5 rounded-[var(--radius-xs)] text-[10px] font-medium transition-default ${
+                    className={`no-drag px-2 py-0.5 rounded-[var(--radius-xs)] text-[var(--font-size-micro)] font-medium transition-default ${
                       confirmDelete === item.id
                         ? 'bg-[var(--color-red)] text-white'
                         : 'text-[var(--color-red)] hover:bg-[var(--hover-highlight)]'
@@ -114,7 +114,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
           })}
         </AnimatePresence>
         {archivedItems.length === 0 && (
-          <div className="flex items-center justify-center h-20 text-[var(--color-text-muted)] text-[13px]">
+          <div className="flex items-center justify-center h-20 text-[var(--color-text-muted)] text-[var(--font-size-base)]">
             No archived items
           </div>
         )}

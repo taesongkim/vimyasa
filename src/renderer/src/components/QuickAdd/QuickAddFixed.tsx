@@ -32,8 +32,8 @@ export function QuickAddFixed({ listId }: { listId: string }) {
       <div className="flex flex-col gap-2 pb-1 flex-1">
         {/* Target list label */}
         <div className="flex items-center gap-2">
-          <span className="text-sm">{list?.icon || '📋'}</span>
-          <span className="text-xs text-[var(--color-text-muted)] font-medium">
+          <span className="text-[var(--font-size-md)]">{list?.icon || '📋'}</span>
+          <span className="text-[var(--font-size-sm)] text-[var(--color-text-muted)] font-medium">
             Add to {list?.name || 'Unknown'}
           </span>
         </div>
@@ -41,7 +41,7 @@ export function QuickAddFixed({ listId }: { listId: string }) {
         {/* Input */}
         <input
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
+          className="w-full bg-[var(--color-surface)] text-[var(--font-size-md)] text-[var(--color-text)] placeholder-[var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
           placeholder="What needs to be done?"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -57,7 +57,7 @@ export function QuickAddFixed({ listId }: { listId: string }) {
         />
 
         {/* Hint */}
-        <div className="flex items-center justify-between text-[10px] text-[var(--color-text-ghost)]">
+        <div className="flex items-center justify-between text-[var(--font-size-micro)] text-[var(--color-text-ghost)]">
           <span>Enter to add</span>
           <span>Esc to close</span>
         </div>

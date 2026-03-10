@@ -21,8 +21,8 @@ export function GeneralTab() {
       {/* Launch at login */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[13px] font-medium">Launch at login</div>
-          <div className="text-xs text-[var(--color-text-muted)]">Start Vimyasa when you log in</div>
+          <div className="text-[var(--font-size-base)] font-medium">Launch at login</div>
+          <div className="text-[var(--font-size-sm)] text-[var(--color-text-muted)]">Start Vimyasa when you log in</div>
         </div>
         <button
           className={`w-9 h-5 rounded-full transition-default relative ${
@@ -43,9 +43,9 @@ export function GeneralTab() {
 
       {/* App info */}
       <div className="flex flex-col gap-1">
-        <div className="text-[13px] font-medium">About</div>
-        <div className="text-xs text-[var(--color-text-muted)]">Vimyasa v0.1.0</div>
-        <div className="text-xs text-[var(--color-text-ghost)]">Keyboard-first list manager for macOS</div>
+        <div className="text-[var(--font-size-base)] font-medium">About</div>
+        <div className="text-[var(--font-size-sm)] text-[var(--color-text-muted)]">Vimyasa v0.1.0</div>
+        <div className="text-[var(--font-size-sm)] text-[var(--color-text-ghost)]">Keyboard-first list manager for macOS</div>
       </div>
     </div>
   )

@@ -88,7 +88,7 @@ export function QuickAddWithSelect() {
         {/* Input */}
         <input
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
+          className="w-full bg-[var(--color-surface)] text-[var(--font-size-md)] text-[var(--color-text)] placeholder-[var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default"
           placeholder="What needs to be done?"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -96,7 +96,7 @@ export function QuickAddWithSelect() {
 
         {/* List selector */}
         <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-          <span className="text-[10px] text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
+          <span className="text-[var(--font-size-micro)] text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
             Target list
           </span>
           {lists.map((list, idx) => (
@@ -111,14 +111,14 @@ export function QuickAddWithSelect() {
               onClick={() => setSelectedIndex(idx)}
               tabIndex={-1}
             >
-              <span className="text-sm">{list.icon}</span>
-              <span className="text-xs font-medium truncate">{list.name}</span>
+              <span className="text-[var(--font-size-md)]">{list.icon}</span>
+              <span className="text-[var(--font-size-sm)] font-medium truncate">{list.name}</span>
             </button>
           ))}
         </div>
 
         {/* Hints */}
-        <div className="flex items-center justify-between text-[10px] text-[var(--color-text-ghost)]">
+        <div className="flex items-center justify-between text-[var(--font-size-micro)] text-[var(--color-text-ghost)]">
           <span>⌘↑↓ switch list</span>
           <span>Tab to navigate</span>
           <span>Enter to add</span>

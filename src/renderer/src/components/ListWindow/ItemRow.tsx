@@ -139,7 +139,7 @@ export function ItemRow({
       {editing ? (
         <input
           ref={inputRef}
-          className="flex-1 bg-transparent text-sm text-[var(--color-text)] outline-none border-b border-[var(--color-accent)]"
+          className="flex-1 bg-transparent text-[var(--font-size-md)] text-[var(--color-text)] outline-none border-b border-[var(--color-accent)]"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={commitEdit}
@@ -150,7 +150,7 @@ export function ItemRow({
         />
       ) : (
         <span
-          className={`flex-1 text-sm truncate`}
+          className={`flex-1 text-[var(--font-size-md)] truncate`}
           style={{ opacity: statusOpacity[item.status] }}
         >
           {item.text}

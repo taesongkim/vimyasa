@@ -75,7 +75,7 @@ export function KeyCapture({
     <div
       ref={inputRef}
       tabIndex={0}
-      className={`px-2 py-1 rounded-[var(--radius-sm)] text-xs font-mono text-center min-w-[80px] cursor-pointer border transition-default outline-none ${borderColor} ${
+      className={`px-2 py-1 rounded-[var(--radius-sm)] text-[var(--font-size-sm)] font-mono text-center min-w-[80px] cursor-pointer border transition-default outline-none ${borderColor} ${
         capturing
           ? 'bg-[var(--color-surface)] text-[var(--color-accent)]'
           : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'

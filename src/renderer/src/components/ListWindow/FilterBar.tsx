@@ -23,7 +23,7 @@ export function FilterBar({
       {filters.map((f) => (
         <button
           key={f.key}
-          className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium transition-default ${
+          className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[var(--font-size-xs)] font-medium transition-default ${
             active === f.key
               ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'

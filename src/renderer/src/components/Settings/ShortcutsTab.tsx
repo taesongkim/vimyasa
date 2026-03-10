@@ -84,7 +84,7 @@ export function ShortcutsTab() {
     <div className="flex flex-col gap-3 px-1 py-3">
       {/* Built-in shortcuts */}
       <div className="flex flex-col gap-1">
-        <div className="text-xs text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
+        <div className="text-[var(--font-size-sm)] text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
           Default Shortcuts
         </div>
         {builtinShortcutDefs.map((def) => (
@@ -92,7 +92,7 @@ export function ShortcutsTab() {
             key={def.key}
             className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
           >
-            <span className="text-xs font-medium text-[var(--color-text)]">
+            <span className="text-[var(--font-size-sm)] font-medium text-[var(--color-text)]">
               {def.label}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -100,14 +100,14 @@ export function ShortcutsTab() {
                 <>
                   <KeyCapture value={editingBuiltinAccel} onChange={setEditingBuiltinAccel} />
                   <button
-                    className="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-default px-1"
+                    className="text-[var(--font-size-sm)] text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-default px-1"
                     onClick={saveBuiltinShortcut}
                     title="Save"
                   >
                     ✓
                   </button>
                   <button
-                    className="text-xs text-[var(--color-text-ghost)] hover:text-[var(--color-text)] transition-default px-1"
+                    className="text-[var(--font-size-sm)] text-[var(--color-text-ghost)] hover:text-[var(--color-text)] transition-default px-1"
                     onClick={cancelEditingBuiltin}
                     title="Cancel"
                   >
@@ -116,7 +116,7 @@ export function ShortcutsTab() {
                 </>
               ) : (
                 <button
-                  className="text-xs font-mono text-[var(--color-accent)] hover:bg-[var(--hover-highlight)] rounded-[var(--radius-sm)] px-2 py-0.5 transition-default cursor-pointer"
+                  className="text-[var(--font-size-sm)] font-mono text-[var(--color-accent)] hover:bg-[var(--hover-highlight)] rounded-[var(--radius-sm)] px-2 py-0.5 transition-default cursor-pointer"
                   onClick={() => startEditingBuiltin(def.key)}
                   title="Click to change"
                 >
@@ -130,11 +130,11 @@ export function ShortcutsTab() {
 
       {/* Custom shortcuts */}
       <div className="flex flex-col gap-1">
-        <div className="text-xs text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
+        <div className="text-[var(--font-size-sm)] text-[var(--color-text-ghost)] uppercase tracking-wider mb-1">
           Custom Shortcuts
         </div>
         {shortcuts.length === 0 && (
-          <div className="text-xs text-[var(--color-text-ghost)] py-2">No custom shortcuts configured</div>
+          <div className="text-[var(--font-size-sm)] text-[var(--color-text-ghost)] py-2">No custom shortcuts configured</div>
         )}
         {shortcuts.map((s) => {
           const targetList = s.targetId ? lists.find((l) => l.id === s.targetId) : null
@@ -144,16 +144,16 @@ export function ShortcutsTab() {
               className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="text-xs font-medium text-[var(--color-text)]">
+                <span className="text-[var(--font-size-sm)] font-medium text-[var(--color-text)]">
                   {actionLabels[s.action]}
                 </span>
                 {targetList && (
-                  <span className="text-xs text-[var(--color-text-muted)]">
+                  <span className="text-[var(--font-size-sm)] text-[var(--color-text-muted)]">
                     → {targetList.icon} {targetList.name}
                   </span>
                 )}
               </div>
-              <span className="text-xs font-mono text-[var(--color-accent)] shrink-0">
+              <span className="text-[var(--font-size-sm)] font-mono text-[var(--color-accent)] shrink-0">
                 {formatAccelerator(s.accelerator)}
               </span>
               <button
@@ -171,15 +171,15 @@ export function ShortcutsTab() {
 
       {/* Add new shortcut */}
       <div className="border-t border-[var(--color-border)] pt-3">
-        <div className="text-xs text-[var(--color-text-ghost)] uppercase tracking-wider mb-2">
+        <div className="text-[var(--font-size-sm)] text-[var(--color-text-ghost)] uppercase tracking-wider mb-2">
           Add Custom Shortcut
         </div>
         <div className="flex flex-col gap-2">
           {/* Action type */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-text-muted)] w-16 shrink-0">Action</span>
+            <span className="text-[var(--font-size-sm)] text-[var(--color-text-muted)] w-16 shrink-0">Action</span>
             <select
-              className="flex-1 bg-[var(--color-surface)] text-xs text-[var(--color-text)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
+              className="flex-1 bg-[var(--color-surface)] text-[var(--font-size-sm)] text-[var(--color-text)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
               value={newAction}
               onChange={(e) => setNewAction(e.target.value as ShortcutAction)}
             >
@@ -194,9 +194,9 @@ export function ShortcutsTab() {
           {/* Target (if needed) */}
           {needsTarget(newAction) && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[var(--color-text-muted)] w-16 shrink-0">Target</span>
+              <span className="text-[var(--font-size-sm)] text-[var(--color-text-muted)] w-16 shrink-0">Target</span>
               <select
-                className="flex-1 bg-[var(--color-surface)] text-xs text-[var(--color-text)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
+                className="flex-1 bg-[var(--color-surface)] text-[var(--font-size-sm)] text-[var(--color-text)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
                 value={newTarget}
                 onChange={(e) => setNewTarget(e.target.value)}
               >
@@ -211,12 +211,12 @@ export function ShortcutsTab() {
 
           {/* Key capture */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[var(--color-text-muted)] w-16 shrink-0">Key</span>
+            <span className="text-[var(--font-size-sm)] text-[var(--color-text-muted)] w-16 shrink-0">Key</span>
             <KeyCapture value={newAccel} onChange={setNewAccel} />
           </div>
 
           <button
-            className="mt-2 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-default disabled:opacity-40 disabled:cursor-not-allowed"
+            className="mt-2 px-3 py-1.5 rounded-[var(--radius-sm)] text-[var(--font-size-sm)] font-medium bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-default disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleAddShortcut}
             disabled={!newAccel}
           >
