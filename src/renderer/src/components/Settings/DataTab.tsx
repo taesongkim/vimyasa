@@ -52,7 +52,7 @@ export function DataTab() {
   }
 
   return (
-    <div className="flex flex-col gap-3 p-3">
+    <div className="flex flex-col gap-3 px-1 py-3">
       {/* Data file location */}
       <div>
         <div className="text-[13px] font-medium mb-1">Data File</div>

@@ -48,7 +48,7 @@ function CommentNode({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.15 }}
-      style={{ marginLeft: depth > 0 ? 20 : 0 }}
+      className={depth > 0 ? 'ml-4' : ''}
     >
       <div
         className="group py-2 px-2 rounded-[var(--radius-sm)] transition-default hover:bg-[var(--hover-highlight)]"
@@ -65,20 +65,20 @@ function CommentNode({
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-default">
             {depth === 0 && (
               <button
-                className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text)] px-1.5 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+                className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text)] px-2 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
                 onClick={() => onReply(comment.id)}
               >
                 Reply
               </button>
             )}
             <button
-              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text)] px-1.5 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-text)] px-2 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
               onClick={() => onEdit(comment)}
             >
               Edit
             </button>
             <button
-              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-red)] px-1.5 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+              className="text-[10px] text-[var(--color-text-ghost)] hover:text-[var(--color-red)] px-2 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
               onClick={() => onDelete(comment.id)}
             >
               Delete
@@ -94,7 +94,7 @@ function CommentNode({
 
       {/* Render replies */}
       {replies.length > 0 && (
-        <div className="border-l border-[var(--color-border)] ml-3">
+        <div className="border-l border-[var(--color-border)] ml-4">
           {replies.map((reply) => (
             <CommentNode
               key={reply.id}
@@ -189,9 +189,9 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full glass-surface">
+    <div className="flex flex-col h-full glass-surface p-2">
       {/* Title bar */}
-      <div className="drag-region flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
+      <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <span className="text-xs text-[var(--color-text-muted)] truncate flex-1">
           Comments on: <span className="text-[var(--color-text)]">{item?.text || 'Unknown item'}</span>
         </span>
@@ -199,14 +199,14 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
           className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </button>
       </div>
 
       {/* Comment thread */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div className="flex-1 overflow-y-auto px-1 py-2">
         <AnimatePresence mode="popLayout">
           {topLevel.map((comment) => (
             <CommentNode
@@ -227,7 +227,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
       </div>
 
       {/* Input area */}
-      <div className="border-t border-[var(--color-border)] px-3 py-2">
+      <div className="border-t border-[var(--color-border)] px-1 py-2">
         {(replyTo || editing) && (
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] text-[var(--color-accent)]">

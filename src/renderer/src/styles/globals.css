@@ -38,9 +38,8 @@
   /* Text (brightest → dimmest) */
   --color-text: #e0e0e0;
   --color-text-secondary: #888888;
-  --color-text-muted: #4a4a4a;
-  --color-text-dim: #4a4a4a;
-  --color-text-ghost: rgba(212, 212, 212, 0.2);
+  --color-text-muted: #666666;
+  --color-text-ghost: rgba(212, 212, 212, 0.4);
 
   /* Accents (semantic only — never decorative) */
   --color-accent: #60a5fa;
@@ -48,7 +47,6 @@
   --color-green: #4ade80;
   --color-amber: #fb923c;
   --color-red: #f87171;
-  --color-purple: #a78bfa;
 
   /* Surface opacity layers */
   --card-bg: rgba(255, 255, 255, 0.035);
@@ -70,9 +68,9 @@
   --ease-default: ease;
 
   /* Border radius scale */
-  --radius-xs: 3px;
+  --radius-xs: 2px;
   --radius-sm: 4px;
-  --radius-md: 6px;
+  --radius-md: 8px;
   --radius-lg: 8px;
   --radius-xl: 12px;
   --radius-pill: 100px;
@@ -80,9 +78,13 @@
 
 /* ── Base Reset ───────────────────────────────────────────────── */
 
+/* Reset: margin and box-sizing only.
+   padding: 0 is NOT included — Tailwind v4 handles its own
+   base reset via @layer base, and an unlayered * { padding: 0 }
+   overrides ALL Tailwind padding utilities (p-2, px-3, etc.)
+   because unlayered CSS beats @layer utilities in specificity. */
 * {
   margin: 0;
-  padding: 0;
   box-sizing: border-box;
 }
 
@@ -118,12 +120,12 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #222222;
-  border-radius: 3px;
+  background: var(--color-border);
+  border-radius: var(--radius-xs);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2e2e2e;
+  background: var(--color-border-focus);
 }
 
 /* ── Opacity States ───────────────────────────────────────────── */

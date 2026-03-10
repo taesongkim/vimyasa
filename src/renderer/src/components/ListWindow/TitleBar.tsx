@@ -50,7 +50,7 @@ export function TitleBar({ list }: { list: List }) {
 
   return (
     <>
-      <div className="drag-region flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
+      <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-[14px] shrink-0">{list.icon}</span>
           {editing ? (
@@ -94,9 +94,9 @@ export function TitleBar({ list }: { list: List }) {
             onClick={() => window.api.closeWindow()}
             title="Close (Esc)"
           >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path
-                d="M1 1L9 9M9 1L1 9"
+                d="M2 2L10 10M10 2L2 10"
                 stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinecap="round"
@@ -108,7 +108,7 @@ export function TitleBar({ list }: { list: List }) {
 
       {/* Inline new list creation bar */}
       {creating && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--color-accent)] bg-[var(--color-surface)]">
+        <div className="flex items-center gap-2 px-1 py-2 border-b border-[var(--color-accent)] bg-[var(--color-surface)]">
           <span className="text-xs text-[var(--color-text-muted)] shrink-0">New list:</span>
           <input
             ref={newInputRef}

@@ -15,26 +15,26 @@ export function SettingsWindow() {
   const [activeTab, setActiveTab] = useState<Tab>('general')
 
   return (
-    <div className="flex flex-col h-full glass-surface">
+    <div className="flex flex-col h-full glass-surface p-2">
       {/* Title bar */}
-      <div className="drag-region flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
+      <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <span className="text-[13px] font-tight heading-tracking font-semibold">Settings</span>
         <button
           className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </button>
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--color-border)]">
+      <div className="flex items-center gap-1 px-1 py-1.5 border-b border-[var(--color-border)]">
         {tabs.map((tab) => (
           <button
             key={tab.key}
-            className={`no-drag px-2.5 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium transition-default ${
+            className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[11px] font-medium transition-default ${
               activeTab === tab.key
                 ? 'bg-[var(--active-bg)] text-[var(--color-text)]'
                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'

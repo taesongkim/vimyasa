@@ -173,12 +173,12 @@ export function ListWindow({ listId }: { listId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full glass-surface">
+    <div className="flex flex-col h-full glass-surface p-2">
       <TitleBar list={list} />
       <FilterBar active={filter} onChange={setFilter} counts={counts} />
 
       {/* Item list */}
-      <div className="flex-1 overflow-y-auto px-1 py-1">
+      <div className="flex-1 overflow-y-auto py-1">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

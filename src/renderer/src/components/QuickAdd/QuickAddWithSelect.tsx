@@ -78,13 +78,13 @@ export function QuickAddWithSelect() {
       initial={{ opacity: 0, scale: 0.95, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-      className="flex flex-col h-full glass-surface"
+      className="flex flex-col h-full glass-surface p-2"
       onKeyDown={handleKeyDown}
     >
       {/* Drag region */}
-      <div className="drag-region h-6 shrink-0" />
+      <div className="drag-region h-4 shrink-0" />
 
-      <div className="flex flex-col gap-2 px-3 pb-3 flex-1">
+      <div className="flex flex-col gap-2 pb-1 flex-1">
         {/* Input */}
         <input
           ref={inputRef}

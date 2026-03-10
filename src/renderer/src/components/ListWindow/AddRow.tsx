@@ -23,7 +23,7 @@ export const AddRow = forwardRef<AddRowHandle, { listId: string }>(({ listId }, 
   }
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 border-t border-[var(--color-border)]">
+    <div className="flex items-center gap-2 px-1 py-2 border-t border-[var(--color-border)]">
       <span className="text-[var(--color-text-ghost)] text-sm">+</span>
       <input
         ref={inputRef}

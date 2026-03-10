@@ -17,7 +17,7 @@ export function GeneralTab() {
   }
 
   return (
-    <div className="flex flex-col gap-3 p-3">
+    <div className="flex flex-col gap-3 px-1 py-3">
       {/* Launch at login */}
       <div className="flex items-center justify-between">
         <div>

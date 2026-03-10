@@ -19,7 +19,7 @@ export function FilterBar({
   counts: Record<FilterType, number>
 }) {
   return (
-    <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--color-border)]">
+    <div className="flex items-center gap-1 px-1 py-1.5 border-b border-[var(--color-border)]">
       {filters.map((f) => (
         <button
           key={f.key}
