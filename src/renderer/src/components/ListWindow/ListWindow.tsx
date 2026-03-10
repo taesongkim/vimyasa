@@ -29,6 +29,8 @@ export function ListWindow({ listId }: { listId: string }) {
   const [filter, setFilter] = useState<FilterType>('all')
   const [focusIndex, setFocusIndex] = useState(-1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [cycling, setCycling] = useState(false)
+  const cycleTargetRef = useRef<{ listId: string; pos: { x: number; y: number } } | null>(null)
   const addRowRef = useRef<AddRowHandle>(null)
 
   const list = lists.find((l) => l.id === listId)
@@ -162,13 +164,12 @@ export function ListWindow({ listId }: { listId: string }) {
     onFilter2: () => setFilter('active'),
     onFilter3: () => setFilter('done'),
     onFilter4: () => setFilter('hold'),
-    onTab: async () => {
+    onTab: () => {
       const idx = lists.findIndex((l) => l.id === listId)
-      if (lists.length > 1) {
+      if (lists.length > 1 && !cycling) {
         const nextList = lists[(idx + 1) % lists.length]
-        const pos = { x: window.screenX, y: window.screenY }
-        await window.api.closeWindow()
-        window.api.openListWindow(nextList.id, pos)
+        cycleTargetRef.current = { listId: nextList.id, pos: { x: window.screenX, y: window.screenY } }
+        setCycling(true)
       }
     }
   })
@@ -184,8 +185,15 @@ export function ListWindow({ listId }: { listId: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+      animate={cycling ? { opacity: 0, x: -30 } : { opacity: 1, x: 0 }}
+      transition={{ duration: cycling ? 0.08 : 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+      onAnimationComplete={() => {
+        if (cycling && cycleTargetRef.current) {
+          const { listId: nextId, pos } = cycleTargetRef.current
+          window.api.openListWindow(nextId, pos)
+          window.api.closeWindow()
+        }
+      }}
       className="flex flex-col h-full glass-surface px-4 py-2"
     >
       <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
