@@ -249,7 +249,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               handleSubmit()
             }
@@ -263,7 +263,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
           }}
         />
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)]">⌘Enter to send</span>
+          <span className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)]">Enter to send · Shift+Enter for new line</span>
           <span className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)]">Supports [text](url) links</span>
         </div>
       </div>
