@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   DndContext,
   closestCenter,
@@ -180,7 +180,12 @@ export function ListWindow({ listId }: { listId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full glass-surface p-2">
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+      className="flex flex-col h-full glass-surface p-2"
+    >
       <TitleBar list={list} />
       <FilterBar active={filter} onChange={setFilter} counts={counts} />
 
@@ -222,6 +227,6 @@ export function ListWindow({ listId }: { listId: string }) {
           Press again to delete
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

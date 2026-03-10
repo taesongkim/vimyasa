@@ -119,9 +119,9 @@ export function ItemRow({
       ref={setNodeRef}
       style={style}
       layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: isDragging ? 0.5 : 1, y: 0 }}
-      exit={{ opacity: 0, y: -6 }}
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
+      exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.15, delay: index * 0.02 }}
       className={`group flex items-center gap-2 px-1 py-1.5 cursor-default ${
         isFocused ? 'item-row-focused' : ''

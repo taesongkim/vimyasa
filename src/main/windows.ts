@@ -106,7 +106,12 @@ export function createListWindow(listId: string): BrowserWindow {
 
   listWindows.set(listId, win)
   loadRoute(win, `/list/${listId}`)
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    win.setOpacity(0)
+    win.show()
+    // Let the Framer Motion slide handle the visual entrance
+    setTimeout(() => win.setOpacity(1), 10)
+  })
   win.on('closed', () => listWindows.delete(listId))
   return win
 }
