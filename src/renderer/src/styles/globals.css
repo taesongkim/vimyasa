@@ -125,6 +125,15 @@ html, body, #root {
   transition: scroll-position 20ms ease-out;
 }
 
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
 }

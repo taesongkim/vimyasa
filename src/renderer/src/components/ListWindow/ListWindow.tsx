@@ -35,7 +35,36 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const addRowRef = useRef<AddRowHandle>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
+  // Custom scrollbar state
+  const [scrollbarVisible, setScrollbarVisible] = useState(false)
+  const [isScrolling, setIsScrolling] = useState(false)
+  const [scrollbarTop, setScrollbarTop] = useState(0)
+  const [scrollbarHeight, setScrollbarHeight] = useState(0)
+  const [isDraggingScrollbar, setIsDraggingScrollbar] = useState(false)
+  const scrollbarRef = useRef<HTMLDivElement>(null)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   const list = lists.find((l) => l.id === activeListId)
+
+  // Update custom scrollbar
+  const updateScrollbar = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const { scrollTop, scrollHeight, clientHeight } = container
+    const hasOverflow = scrollHeight > clientHeight
+
+    setScrollbarVisible(hasOverflow)
+
+    if (hasOverflow) {
+      const scrollRatio = scrollTop / (scrollHeight - clientHeight)
+      const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 30)
+      const thumbTop = scrollRatio * (clientHeight - thumbHeight)
+
+      setScrollbarTop(thumbTop)
+      setScrollbarHeight(thumbHeight)
+    }
+  }, [])
 
   // Filter and sort items
   const listItems = useMemo(() => {
@@ -250,6 +279,79 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   })
 
+  // Custom scrollbar event listeners
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      updateScrollbar()
+      setIsScrolling(true)
+
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+
+      // Hide scrollbar after 300ms of no scrolling
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false)
+      }, 300)
+    }
+    const handleResize = () => updateScrollbar()
+
+    container.addEventListener('scroll', handleScroll)
+    window.addEventListener('resize', handleResize)
+
+    // Initial update
+    updateScrollbar()
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleResize)
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [updateScrollbar, listItems.length])
+
+  // Scrollbar mouse interactions
+  useEffect(() => {
+    if (!isDraggingScrollbar) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = scrollContainerRef.current
+      if (!container) return
+
+      const containerRect = container.getBoundingClientRect()
+      const relativeY = e.clientY - containerRect.top
+      const scrollRatio = relativeY / (containerRect.height - scrollbarHeight)
+      const newScrollTop = scrollRatio * (container.scrollHeight - container.clientHeight)
+
+      container.scrollTop = Math.max(0, Math.min(newScrollTop, container.scrollHeight - container.clientHeight))
+    }
+
+    const handleMouseUp = () => {
+      setIsDraggingScrollbar(false)
+      setIsScrolling(true)
+      // Hide scrollbar after 300ms when drag ends
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false)
+      }, 300)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDraggingScrollbar, scrollbarHeight])
+
   if (!list) {
     return (
       <div className="flex items-center justify-center h-full text-[color:var(--color-text-muted)]">
@@ -273,12 +375,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           setCyclePhase('idle')
         }
       }}
-      className="flex flex-col h-full glass-surface px-4 py-2"
+      className="flex flex-col h-full glass-surface px-4 py-2 relative"
     >
       <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-2">
+      <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative">
         <div className="flex flex-col gap-1.5">
         <DndContext
           sensors={sensors}
@@ -308,9 +410,36 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
             {filter === 'all' ? 'No items yet. Press N to add one.' : `No ${filter} items.`}
           </div>
         )}
+
       </div>
 
       <AddRow ref={addRowRef} listId={activeListId} />
+
+      {/* Custom scrollbar - positioned outside scroll container but aligned to it */}
+      {scrollbarVisible && (
+        <div
+          className="absolute right-2 w-px bg-[rgba(255,255,255,0.08)] pointer-events-auto"
+          style={{
+            top: `${scrollContainerRef.current?.offsetTop || 0}px`,
+            height: `${scrollContainerRef.current?.clientHeight || 0}px`,
+            opacity: (isScrolling || isDraggingScrollbar) ? 1 : 0,
+            transition: `opacity ${(isScrolling || isDraggingScrollbar) ? '100ms' : '350ms'} ease`
+          }}
+        >
+          <div
+            ref={scrollbarRef}
+            className="absolute right-0 w-px bg-[rgba(255,255,255,0.3)] cursor-pointer hover:bg-[rgba(255,255,255,0.35)] transition-default"
+            style={{
+              top: `${scrollbarTop}px`,
+              height: `${scrollbarHeight}px`
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsDraggingScrollbar(true)
+            }}
+          />
+        </div>
+      )}
 
       {/* Delete confirmation toast */}
       {confirmDelete && (
@@ -318,6 +447,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           Press again to delete
         </div>
       )}
+
     </motion.div>
   )
 }
