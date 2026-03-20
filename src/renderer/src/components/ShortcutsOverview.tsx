@@ -94,7 +94,6 @@ export function ShortcutsOverview() {
                       <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
                         {s.action === 'openList' ? 'Open List' :
                          s.action === 'quickAddFixed' ? 'Quick Add' :
-                         s.action === 'quickAddSelect' ? 'Quick Add (Select)' :
                          'Cycle All Lists'}
                       </span>
                       {targetList && (

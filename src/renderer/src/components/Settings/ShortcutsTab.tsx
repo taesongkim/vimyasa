@@ -5,12 +5,11 @@ import type { ShortcutAction, BuiltinShortcuts } from '../../../../../shared/typ
 
 const actionLabels: Record<ShortcutAction, string> = {
   openList: 'Open List',
-  quickAddFixed: 'Quick Add (Fixed)',
-  quickAddSelect: 'Quick Add (Select)',
+  quickAddFixed: 'Quick Add',
   cycleAllLists: 'Cycle All Lists'
 }
 
-const actionOptions: ShortcutAction[] = ['openList', 'quickAddFixed', 'quickAddSelect', 'cycleAllLists']
+const actionOptions: ShortcutAction[] = ['openList', 'quickAddFixed', 'cycleAllLists']
 
 // Built-in shortcut definitions for display
 const builtinShortcutDefs: { key: keyof BuiltinShortcuts; label: string }[] = [

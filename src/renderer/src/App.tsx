@@ -23,7 +23,7 @@ function parseHash(): RouteInfo {
     return { route: 'quickadd-fixed', params: { listId: parts[3] || '' } }
   }
   if (parts[1] === 'quickadd' && parts[2] === 'select') {
-    return { route: 'quickadd-select', params: {} }
+    return { route: 'quickadd-fixed', params: { listId: '' } }
   }
   if (parts[1] === 'comments' && parts[2]) {
     return { route: 'comments', params: { itemId: parts[2] } }
@@ -91,10 +91,6 @@ export default function App() {
     case 'quickadd-fixed': {
       const listId = route.params.listId || lists[0]?.id || ''
       return <QuickAddFixed listId={listId} />
-    }
-    case 'quickadd-select': {
-      const defaultListId = lists[0]?.id || ''
-      return <QuickAddFixed listId={defaultListId} />
     }
     case 'comments':
       return <CommentsWindow itemId={route.params.itemId} />

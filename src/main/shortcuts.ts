@@ -80,9 +80,6 @@ function registerUserShortcuts(): void {
           case 'quickAddFixed':
             createQuickAddWindow('fixed', shortcut.targetId || lists[0]?.id)
             break
-          case 'quickAddSelect':
-            createQuickAddWindow('select')
-            break
           case 'cycleAllLists': {
             const currentLists = store.get('lists')
             if (currentLists.length === 0) return

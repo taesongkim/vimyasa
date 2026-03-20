@@ -2,7 +2,7 @@
 
 export type ItemStatus = 'active' | 'done' | 'hold'
 
-export type ShortcutAction = 'openList' | 'quickAddFixed' | 'quickAddSelect' | 'cycleAllLists'
+export type ShortcutAction = 'openList' | 'quickAddFixed' | 'cycleAllLists'
 
 export interface Group {
   id: string

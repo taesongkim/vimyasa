@@ -5,7 +5,6 @@ import { is } from '@electron-toolkit/utils'
 const LIST_WINDOW_WIDTH = 360
 const QUICKADD_WIDTH = 400
 const QUICKADD_HEIGHT = 116
-const QUICKADD_SELECT_HEIGHT = 320
 const COMMENTS_WIDTH = 360
 const COMMENTS_HEIGHT = 480
 const SETTINGS_WIDTH = 420
@@ -145,7 +144,7 @@ export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?:
     return quickAddWindow
   }
 
-  const height = variant === 'select' ? QUICKADD_SELECT_HEIGHT : QUICKADD_HEIGHT
+  const height = QUICKADD_HEIGHT
   const { x, y } = getCenteredPosition(QUICKADD_WIDTH, height)
   const win = makeWindow({
     width: QUICKADD_WIDTH,
@@ -157,9 +156,7 @@ export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?:
   })
 
   quickAddWindow = win
-  const hash = variant === 'fixed'
-    ? `/quickadd/fixed/${targetListId || ''}`
-    : '/quickadd/select'
+  const hash = `/quickadd/fixed/${targetListId || ''}`
   loadRoute(win, hash)
   win.once('ready-to-show', () => win.show())
   win.on('closed', () => { quickAddWindow = null })

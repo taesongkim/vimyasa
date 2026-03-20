@@ -102,17 +102,12 @@ export function updateTrayMenu(): void {
     { type: 'separator' },
     {
       label: 'Quick Add...',
-      accelerator: 'CommandOrControl+Shift+N',
+      accelerator: 'CommandOrControl+Shift+;',
       click: () => {
         if (lists.length > 0) {
           createQuickAddWindow('fixed', lists[0].id)
         }
       }
-    },
-    {
-      label: 'Quick Add to List...',
-      accelerator: 'CommandOrControl+Shift+A',
-      click: () => createQuickAddWindow('select')
     },
     { type: 'separator' },
     {
@@ -126,7 +121,6 @@ export function updateTrayMenu(): void {
     { type: 'separator' },
     {
       label: 'Quit Vimyasa',
-      accelerator: 'CommandOrControl+Q',
       click: () => app.quit()
     }
   ])
