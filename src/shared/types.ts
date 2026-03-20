@@ -119,6 +119,7 @@ export interface VimyasaAPI {
   openComments: (itemId: string) => Promise<void>
   openSettings: () => Promise<void>
   openArchive: (listId?: string) => Promise<void>
+  openShortcutsOverview: () => Promise<void>
   showContextMenu: (template: any[]) => Promise<void>
 
   // Events

@@ -93,7 +93,7 @@ export function QuickAddWithSelect() {
         {/* Input */}
         <input
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] transition-default"
+          className="w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
           placeholder="What needs to be done?"
           value={text}
           onChange={(e) => setText(e.target.value)}

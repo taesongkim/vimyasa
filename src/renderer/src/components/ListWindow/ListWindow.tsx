@@ -279,7 +279,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-2">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

@@ -125,7 +125,7 @@ export function ItemRow({
       animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.15, delay: index * 0.02 }}
-      className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-white/5 ${
+      className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
       data-index={dataIndex}

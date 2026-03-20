@@ -1,6 +1,6 @@
 import { globalShortcut } from 'electron'
 import { store } from './store'
-import { createListWindow, createQuickAddWindow } from './windows'
+import { createListWindow, createQuickAddWindow, createShortcutsOverviewWindow } from './windows'
 import type { BuiltinShortcuts } from '../shared/types'
 import { DEFAULT_BUILTIN_SHORTCUTS } from '../shared/types'
 
@@ -36,6 +36,11 @@ function registerBuiltinShortcuts(): void {
     if (lists.length > 0) {
       createQuickAddWindow('fixed', lists[0].id)
     }
+  })
+
+  // Shortcuts overview
+  tryRegisterBuiltin('CommandOrControl+Shift+\'', () => {
+    createShortcutsOverviewWindow()
   })
 
 }

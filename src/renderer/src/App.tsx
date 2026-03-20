@@ -5,6 +5,7 @@ import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
 import { CommentsWindow } from './components/Comments/CommentsWindow'
 import { SettingsWindow } from './components/Settings/SettingsWindow'
 import { ArchiveWindow } from './components/Archive/ArchiveWindow'
+import { ShortcutsOverview } from './components/ShortcutsOverview'
 
 interface RouteInfo {
   route: string
@@ -32,6 +33,9 @@ function parseHash(): RouteInfo {
   }
   if (parts[1] === 'archive') {
     return { route: 'archive', params: { listId: parts[2] || '' } }
+  }
+  if (parts[1] === 'shortcuts-overview') {
+    return { route: 'shortcuts-overview', params: {} }
   }
   return { route: 'unknown', params: {} }
 }
@@ -98,6 +102,8 @@ export default function App() {
       return <SettingsWindow />
     case 'archive':
       return <ArchiveWindow listId={route.params.listId || undefined} />
+    case 'shortcuts-overview':
+      return <ShortcutsOverview />
     default:
       return (
         <div className="flex items-center justify-center h-full text-[color:var(--color-text-muted)] text-[length:var(--font-size-md)]">

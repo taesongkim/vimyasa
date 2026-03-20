@@ -10,8 +10,7 @@ const COMMENTS_WIDTH = 360
 const COMMENTS_HEIGHT = 480
 const SETTINGS_WIDTH = 420
 const SETTINGS_HEIGHT = 500
-const SHORTCUTS_OVERVIEW_WIDTH = 480
-const SHORTCUTS_OVERVIEW_HEIGHT = 400
+const SHORTCUTS_OVERVIEW_WIDTH = LIST_WINDOW_WIDTH
 const WINDOW_GAP = 8
 const INITIAL_X = 8
 const INITIAL_Y = 8
@@ -43,6 +42,16 @@ function getCenteredPosition(width: number, height: number): { x: number; y: num
   return {
     x: Math.round(wa.x + (wa.width - width) / 2),
     y: Math.round(wa.y + (wa.height - height) / 2)
+  }
+}
+
+function getRightEdgePosition(width: number, height: number): { x: number; y: number } {
+  const cursor = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(cursor)
+  const wa = display.workArea
+  return {
+    x: wa.x + wa.width - width - INITIAL_X,
+    y: wa.y + INITIAL_Y
   }
 }
 
@@ -208,17 +217,22 @@ export function createSettingsWindow(): BrowserWindow {
 
 export function createShortcutsOverviewWindow(): BrowserWindow {
   if (shortcutsOverviewWindow && !shortcutsOverviewWindow.isDestroyed()) {
+    if (shortcutsOverviewWindow.isFocused()) {
+      shortcutsOverviewWindow.close()
+      return shortcutsOverviewWindow
+    }
     shortcutsOverviewWindow.focus()
     return shortcutsOverviewWindow
   }
 
-  const { x, y } = getCenteredPosition(SHORTCUTS_OVERVIEW_WIDTH, SHORTCUTS_OVERVIEW_HEIGHT)
+  const shortcutsHeight = Math.round(screen.getPrimaryDisplay().workArea.height * 0.97)
+  const { x, y } = getRightEdgePosition(SHORTCUTS_OVERVIEW_WIDTH, shortcutsHeight)
   const win = makeWindow({
     width: SHORTCUTS_OVERVIEW_WIDTH,
-    height: SHORTCUTS_OVERVIEW_HEIGHT,
+    height: shortcutsHeight,
     x,
     y,
-    resizable: false,
+    resizable: true,
     alwaysOnTop: true
   })
 

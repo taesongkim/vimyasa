@@ -54,6 +54,7 @@ const api: VimyasaAPI = {
   openComments: (itemId) => ipcRenderer.invoke('openComments', itemId),
   openSettings: () => ipcRenderer.invoke('openSettings'),
   openArchive: (listId) => ipcRenderer.invoke('openArchive', listId),
+  openShortcutsOverview: () => ipcRenderer.invoke('openShortcutsOverview'),
   showContextMenu: (template) => ipcRenderer.invoke('showContextMenu', template),
 
   // Events

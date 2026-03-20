@@ -100,7 +100,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       {/* Input */}
       <input
         ref={inputRef}
-        className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] transition-default"
+        className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
         placeholder=""
         value={text}
         onChange={(e) => setText(e.target.value)}

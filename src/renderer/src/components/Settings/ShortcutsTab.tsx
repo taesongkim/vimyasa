@@ -94,7 +94,7 @@ export function ShortcutsTab() {
     <div className="flex flex-col gap-3 px-1 py-3">
       {/* Built-in shortcuts */}
       <div className="flex flex-col gap-1">
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] uppercase tracking-wider mb-1">
+        <div className="section-header">
           Default Shortcuts
         </div>
         {builtinShortcutDefs.map((def) => (
@@ -140,7 +140,7 @@ export function ShortcutsTab() {
 
       {/* List navigation shortcuts */}
       <div className="flex flex-col gap-1">
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] uppercase tracking-wider mb-1">
+        <div className="section-header">
           List Navigation
         </div>
         <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] mb-2">
@@ -170,7 +170,7 @@ export function ShortcutsTab() {
 
       {/* Custom shortcuts */}
       <div className="flex flex-col gap-1">
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] uppercase tracking-wider mb-1">
+        <div className="section-header">
           Custom Shortcuts
         </div>
         {shortcuts.length === 0 && (
@@ -211,7 +211,7 @@ export function ShortcutsTab() {
 
       {/* Add new shortcut */}
       <div className="border-t border-[var(--color-border)] pt-3">
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] uppercase tracking-wider mb-2">
+        <div className="section-header">
           Add Custom Shortcut
         </div>
         <div className="flex flex-col gap-2">
