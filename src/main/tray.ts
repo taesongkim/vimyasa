@@ -1,4 +1,6 @@
 import { Tray, Menu, nativeImage, app, dialog } from 'electron'
+import { join } from 'path'
+import { is } from '@electron-toolkit/utils'
 import { v4 as uuid } from 'uuid'
 import { store } from './store'
 import {
@@ -10,12 +12,12 @@ import {
 
 let tray: Tray | null = null
 
-// 32x32 "V" icon — black on transparent, used as macOS template image
-const TRAY_ICON_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAArUlEQVR4nO2WwQ7CMAxD3/j/f96OICCL7fSCqI9VktlPVTrY2vp3HcX5KdQ4Kuc9ioYVH5XmVgZedfYlef+dgdUUvs5TCEBOoe3rDKyiUM5RCYBPQapXDEwp3PY7BECnINNSDaQU2j6XAPTprLviGHApSPUJAahT2vvCNaBSkGmlBOAzbbQtEwNdOuuuTAjAM3X8YqYGqpT2vpgSgOH/wsTAe9poW64gsLX127oAuncTLWv+yY8AAAAASUVORK5CYII='
-
 export function createTray(): Tray {
-  const icon = nativeImage.createFromDataURL(`data:image/png;base64,${TRAY_ICON_BASE64}`)
+  // Load the V symbol PNG as tray icon
+  const iconPath = is.dev
+    ? join(__dirname, '../../resources/tray-icon.png')
+    : join(process.resourcesPath, 'tray-icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
   icon.setTemplateImage(true)
 
   tray = new Tray(icon)
