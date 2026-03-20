@@ -123,8 +123,8 @@ export function ItemRow({
       animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.15, delay: index * 0.02 }}
-      className={`group flex items-center gap-1 px-1 py-1.5 cursor-default ${
-        isFocused ? 'item-row-focused' : ''
+      className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-white/5 ${
+        isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -132,35 +132,40 @@ export function ItemRow({
       onDoubleClick={startEditing}
       onContextMenu={handleContextMenu}
     >
-      {/* Status dot */}
-      <StatusDot status={item.status} onClick={cycleStatus} />
+      {/* Content with baseline alignment */}
+      <div className="flex items-baseline gap-1 flex-1">
+        {/* Status dot */}
+        <div className="-translate-y-0.5">
+          <StatusDot status={item.status} onClick={cycleStatus} />
+        </div>
 
-      {/* Text */}
-      {editing ? (
-        <input
-          ref={inputRef}
-          className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)]"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitEdit()
-            if (e.key === 'Escape') setEditing(false)
-          }}
-        />
-      ) : (
-        <span
-          className={`flex-1 text-[length:var(--font-size-md)] truncate`}
-          style={{ opacity: statusOpacity[item.status] }}
-        >
-          {item.text}
-        </span>
-      )}
+        {/* Text */}
+        {editing ? (
+          <input
+            ref={inputRef}
+            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)]"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitEdit()
+              if (e.key === 'Escape') setEditing(false)
+            }}
+          />
+        ) : (
+          <span
+            className={`flex-1 text-[length:var(--font-size-md)]`}
+            style={{ opacity: statusOpacity[item.status], lineHeight: '1.5rem' }}
+          >
+            {item.text}
+          </span>
+        )}
+      </div>
 
       {/* Hover actions — always rendered, opacity-reveal on hover */}
       <div
         className="flex items-center gap-1 shrink-0 transition-default"
-        style={{ opacity: hovered && !editing ? 1 : 0, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
+        style={{ opacity: hovered && !editing ? 1 : 0.3, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
       >
         <button
           className="no-drag p-1 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
@@ -203,8 +208,8 @@ export function ItemRow({
 
       {/* Drag handle — opacity-reveal */}
       <div
-        className="no-drag cursor-grab active:cursor-grabbing text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-default"
-        style={{ opacity: hovered && !editing ? 1 : 0, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
+        className="no-drag cursor-grab active:cursor-grabbing text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-default self-center"
+        style={{ opacity: hovered && !editing ? 1 : 0.2, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
         {...attributes}
         {...listeners}
       >
