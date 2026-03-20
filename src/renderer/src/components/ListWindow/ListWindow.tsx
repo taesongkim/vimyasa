@@ -44,9 +44,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const scrollbarRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Shadow state for content clipping indicators
+  const [showTopShadow, setShowTopShadow] = useState(false)
+  const [showBottomShadow, setShowBottomShadow] = useState(false)
+
   const list = lists.find((l) => l.id === activeListId)
 
-  // Update custom scrollbar
+  // Update custom scrollbar and shadow visibility
   const updateScrollbar = useCallback(() => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -55,6 +59,10 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     const hasOverflow = scrollHeight > clientHeight
 
     setScrollbarVisible(hasOverflow)
+
+    // Update shadow visibility based on scroll position
+    setShowTopShadow(scrollTop > 0)
+    setShowBottomShadow(hasOverflow && scrollTop < scrollHeight - clientHeight)
 
     if (hasOverflow) {
       const scrollRatio = scrollTop / (scrollHeight - clientHeight)
@@ -379,6 +387,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     >
       <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
 
+      {/* Top shadow - indicates content is clipped above */}
+      {showTopShadow && (
+        <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
+             style={{
+               top: `${scrollContainerRef.current?.offsetTop || 0}px`,
+               background: `linear-gradient(to bottom, rgba(10, 10, 10, 0.3), transparent)`
+             }}
+        />
+      )}
+
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative">
         <div className="flex flex-col gap-1.5">
@@ -412,6 +430,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         )}
 
       </div>
+
+      {/* Bottom shadow - indicates content is clipped below */}
+      {showBottomShadow && (
+        <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
+             style={{
+               bottom: `${scrollContainerRef.current ? (scrollContainerRef.current.parentElement?.clientHeight || 0) - (scrollContainerRef.current.offsetTop + scrollContainerRef.current.clientHeight) : 0}px`,
+               background: `linear-gradient(to top, rgba(10, 10, 10, 0.3), transparent)`
+             }}
+        />
+      )}
 
       <AddRow ref={addRowRef} listId={activeListId} />
 
