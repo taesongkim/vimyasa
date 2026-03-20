@@ -23,13 +23,15 @@ export function ItemRow({
   isFocused,
   onFocus,
   lists,
-  index = 0
+  index = 0,
+  dataIndex
 }: {
   item: Item
   isFocused: boolean
   onFocus: () => void
   lists: List[]
   index?: number
+  dataIndex?: number
 }) {
   const { editItem, removeItem, changeItemStatus, sendItemToList, archiveItem } = useStore()
   const [editing, setEditing] = useState(false)
@@ -126,6 +128,7 @@ export function ItemRow({
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-white/5 ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
+      data-index={dataIndex}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onFocus}

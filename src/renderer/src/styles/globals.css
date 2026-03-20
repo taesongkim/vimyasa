@@ -120,6 +120,11 @@ html, body, #root {
 
 /* ── Scrollbar ────────────────────────────────────────────────── */
 
+.fast-scroll {
+  scroll-behavior: smooth;
+  transition: scroll-position 20ms ease-out;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
 }

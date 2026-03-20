@@ -9,6 +9,8 @@ interface KeyboardConfig {
   onBackspace?: () => void
   onN?: () => void
   onCopy?: () => void
+  onComments?: () => void
+  onA?: () => void
   onFilter1?: () => void
   onFilter2?: () => void
   onFilter3?: () => void
@@ -76,6 +78,19 @@ export function useKeyboard(config: KeyboardConfig) {
           if (e.metaKey || e.ctrlKey) {
             e.preventDefault()
             config.onCopy?.()
+          }
+          break
+        case 'o':
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault()
+            config.onComments?.()
+          }
+          break
+        case 'a':
+        case 'A':
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            config.onA?.()
           }
           break
         case '1':

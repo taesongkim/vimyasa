@@ -33,6 +33,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
   const cycleTargetRef = useRef<string | null>(null)
   const addRowRef = useRef<AddRowHandle>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const list = lists.find((l) => l.id === activeListId)
 
@@ -56,6 +57,37 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   }, [items, activeListId])
 
   const focusedItem = listItems[focusIndex] || null
+
+  // Auto-scroll focused item into view
+  useEffect(() => {
+    if (focusIndex >= 0 && scrollContainerRef.current) {
+      const container = scrollContainerRef.current
+      const focusedElement = container.querySelector(`[data-index="${focusIndex}"]`) as HTMLElement
+
+      if (focusedElement) {
+        const containerRect = container.getBoundingClientRect()
+        const elementRect = focusedElement.getBoundingClientRect()
+
+        const isAbove = elementRect.top < containerRect.top
+        const isBelow = elementRect.bottom > containerRect.bottom
+
+        if (isAbove || isBelow) {
+          const targetScrollTop = isAbove
+            ? container.scrollTop + elementRect.top - containerRect.top
+            : container.scrollTop + elementRect.bottom - containerRect.bottom
+
+          // Fast smooth scroll
+          container.style.scrollBehavior = 'smooth'
+          container.scrollTo({ top: targetScrollTop })
+
+          // Reset scroll behavior after a brief delay
+          setTimeout(() => {
+            container.style.scrollBehavior = ''
+          }, 150)
+        }
+      }
+    }
+  }, [focusIndex])
 
   // Listen for context menu actions from main process
   useEffect(() => {
@@ -130,8 +162,25 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
   // Keyboard navigation
   useKeyboard({
-    onArrowUp: () => setFocusIndex((i) => Math.max(0, i - 1)),
-    onArrowDown: () => setFocusIndex((i) => Math.min(listItems.length - 1, i + 1)),
+    onArrowUp: () => {
+      setFocusIndex((i) => {
+        if (listItems.length === 0) return -1
+        if (i === -1) return 0 // k when nothing selected = first item
+        return i === listItems.length - 1 ? 0 : i + 1 // wrap from bottom to top
+      })
+    },
+    onArrowDown: () => {
+      setFocusIndex((i) => {
+        if (listItems.length === 0) return -1
+        if (i === -1) return listItems.length - 1 // j when nothing selected = last item
+        return i === 0 ? listItems.length - 1 : i - 1 // wrap from top to bottom
+      })
+    },
+    onEnter: () => {
+      if (focusedItem) {
+        archiveItem(focusedItem.id)
+      }
+    },
     onSpace: () => {
       if (focusedItem) {
         const next: Record<ItemStatus, ItemStatus> = {
@@ -159,8 +208,24 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         navigator.clipboard.writeText(focusedItem.text)
       }
     },
+    onComments: () => {
+      if (focusedItem) {
+        window.api.openComments(focusedItem.id)
+      }
+    },
+    onA: () => {
+      if (focusedItem) {
+        archiveItem(focusedItem.id)
+      }
+    },
     onN: () => addRowRef.current?.focus(),
-    onEscape: () => window.api.closeWindow(),
+    onEscape: () => {
+      if (focusIndex === -1) {
+        window.api.closeWindow()
+      } else {
+        setFocusIndex(-1) // deselect if something is selected
+      }
+    },
     onFilter1: () => setFilter('all'),
     onFilter2: () => setFilter('active'),
     onFilter3: () => setFilter('done'),
@@ -203,7 +268,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-1">
+        <div className="flex flex-col gap-1">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -219,11 +285,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   onFocus={() => setFocusIndex(idx)}
                   lists={lists}
                   index={idx}
+                  dataIndex={idx}
                 />
               ))}
             </AnimatePresence>
           </SortableContext>
         </DndContext>
+        </div>
 
         {listItems.length === 0 && (
           <div className="flex items-center justify-center h-20 text-[color:var(--color-text-muted)] text-[length:var(--font-size-base)]">

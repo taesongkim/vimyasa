@@ -28,7 +28,7 @@ export const AddRow = forwardRef<AddRowHandle, { listId: string }>(({ listId }, 
       <input
         ref={inputRef}
         className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] outline-none"
-        placeholder="Add item..."
+        placeholder="Add item... (shortcut: N)"
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
