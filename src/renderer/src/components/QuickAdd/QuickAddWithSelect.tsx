@@ -120,6 +120,13 @@ export function QuickAddWithSelect() {
             </button>
           ))}
         </div>
+
+        {/* Help text */}
+        <div className="flex justify-center pt-1">
+          <span className="text-[length:10px] text-[color:var(--color-text-muted)]">
+            ESC to exit | TAB to switch focus | ↑↓ to select list
+          </span>
+        </div>
       </div>
     </motion.div>
   )

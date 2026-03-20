@@ -4,12 +4,14 @@ import { is } from '@electron-toolkit/utils'
 
 const LIST_WINDOW_WIDTH = 360
 const QUICKADD_WIDTH = 400
-const QUICKADD_HEIGHT = 120
+const QUICKADD_HEIGHT = 116
 const QUICKADD_SELECT_HEIGHT = 320
 const COMMENTS_WIDTH = 360
 const COMMENTS_HEIGHT = 480
 const SETTINGS_WIDTH = 420
 const SETTINGS_HEIGHT = 500
+const SHORTCUTS_OVERVIEW_WIDTH = 480
+const SHORTCUTS_OVERVIEW_HEIGHT = 400
 const WINDOW_GAP = 8
 const INITIAL_X = 8
 const INITIAL_Y = 8
@@ -20,6 +22,7 @@ let quickAddWindow: BrowserWindow | null = null
 let commentsWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let archiveWindow: BrowserWindow | null = null
+let shortcutsOverviewWindow: BrowserWindow | null = null
 
 function getPreloadPath(): string {
   return join(__dirname, '../preload/index.mjs')
@@ -105,7 +108,8 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
     minHeight: 150,
     x,
     y,
-    resizable: true
+    resizable: true,
+    alwaysOnTop: true
   })
 
   listWindows.set(listId, win)
@@ -200,6 +204,31 @@ export function createSettingsWindow(): BrowserWindow {
   return win
 }
 
+// ── Shortcuts Overview Window ──────────────────────────────────
+
+export function createShortcutsOverviewWindow(): BrowserWindow {
+  if (shortcutsOverviewWindow && !shortcutsOverviewWindow.isDestroyed()) {
+    shortcutsOverviewWindow.focus()
+    return shortcutsOverviewWindow
+  }
+
+  const { x, y } = getCenteredPosition(SHORTCUTS_OVERVIEW_WIDTH, SHORTCUTS_OVERVIEW_HEIGHT)
+  const win = makeWindow({
+    width: SHORTCUTS_OVERVIEW_WIDTH,
+    height: SHORTCUTS_OVERVIEW_HEIGHT,
+    x,
+    y,
+    resizable: false,
+    alwaysOnTop: true
+  })
+
+  shortcutsOverviewWindow = win
+  loadRoute(win, '/shortcuts-overview')
+  win.once('ready-to-show', () => win.show())
+  win.on('closed', () => { shortcutsOverviewWindow = null })
+  return win
+}
+
 // ── Archive Window ──────────────────────────────────────────────
 
 export function createArchiveWindow(listId?: string): BrowserWindow {
@@ -257,6 +286,10 @@ export function registerWindowIpcHandlers(): void {
 
   ipcMain.handle('openArchive', (_e, listId?: string) => {
     createArchiveWindow(listId)
+  })
+
+  ipcMain.handle('openShortcutsOverview', () => {
+    createShortcutsOverviewWindow()
   })
 
   ipcMain.handle('revealDataFile', () => {

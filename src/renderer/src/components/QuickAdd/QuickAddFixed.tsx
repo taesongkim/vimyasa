@@ -72,13 +72,13 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
 
           {dropdownOpen && (
             <div
-              className="absolute left-1/2 -translate-x-1/2 top-8 z-50 min-w-[140px] max-h-[45px] overflow-y-auto py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[rgb(19,19,19)]"
+              className="absolute left-1/2 -translate-x-1/2 top-8 z-50 min-w-[140px] max-h-[64px] overflow-y-auto py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[rgb(19,19,19)]"
               style={{ boxShadow: 'var(--shadow-tooltip)' }}
             >
               {lists.map((list) => (
                 <button
                   key={list.id}
-                  className={`w-full text-left px-3 py-1.5 text-[length:var(--font-size-xs)] transition-default ${
+                  className={`w-full text-left px-3 py-0.5 text-[length:var(--font-size-xs)] transition-default ${
                     list.id === selectedListId
                       ? 'text-[color:var(--color-accent)]'
                       : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)]'
@@ -117,6 +117,13 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
           }
         }}
       />
+
+      {/* Help text */}
+      <div className="flex justify-center">
+        <span className="text-[length:10px] text-[color:var(--color-text-muted)]">
+          ESC to exit | TAB to cycle target list
+        </span>
+      </div>
     </motion.div>
   )
 }

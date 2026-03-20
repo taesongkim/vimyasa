@@ -278,8 +278,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-1">
-        <div className="flex flex-col gap-1">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-2">
+        <div className="flex flex-col gap-2">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
