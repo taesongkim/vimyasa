@@ -213,6 +213,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         window.api.openComments(focusedItem.id)
       }
     },
+    onC: () => {
+      if (focusedItem) {
+        navigator.clipboard.writeText(focusedItem.text)
+      }
+    },
+    onO: () => {
+      if (focusedItem) {
+        window.api.openComments(focusedItem.id)
+      }
+    },
     onA: () => {
       if (focusedItem) {
         archiveItem(focusedItem.id)

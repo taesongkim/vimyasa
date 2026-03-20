@@ -10,6 +10,8 @@ interface KeyboardConfig {
   onN?: () => void
   onCopy?: () => void
   onComments?: () => void
+  onC?: () => void
+  onO?: () => void
   onA?: () => void
   onFilter1?: () => void
   onFilter2?: () => void
@@ -75,15 +77,19 @@ export function useKeyboard(config: KeyboardConfig) {
           }
           break
         case 'c':
+          e.preventDefault()
           if (e.metaKey || e.ctrlKey) {
-            e.preventDefault()
             config.onCopy?.()
+          } else {
+            config.onC?.()
           }
           break
         case 'o':
+          e.preventDefault()
           if (e.metaKey || e.ctrlKey) {
-            e.preventDefault()
             config.onComments?.()
+          } else {
+            config.onO?.()
           }
           break
         case 'a':

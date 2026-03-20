@@ -18,6 +18,18 @@ const builtinShortcutDefs: { key: keyof BuiltinShortcuts; label: string }[] = [
   { key: 'quickAddFirst', label: 'Quick Add (First List)' }
 ]
 
+// List navigation shortcuts (non-configurable)
+const listNavigationShortcuts: { key: string; label: string; description?: string }[] = [
+  { key: 'j/k', label: 'Navigate Items', description: 'j = up, k = down (with wrapping)' },
+  { key: 'Space', label: 'Cycle Status', description: 'active → done → hold → active' },
+  { key: 'Enter or a', label: 'Archive Item', description: 'Archive selected item' },
+  { key: 'c or ⌘C', label: 'Copy Text', description: 'Copy item text to clipboard' },
+  { key: 'o or ⌘O', label: 'Open Comments', description: 'Open comments for selected item' },
+  { key: 'Backspace', label: 'Delete Item', description: 'Delete selected item (with confirmation)' },
+  { key: 'Escape', label: 'Deselect/Close', description: 'Deselect item or close window' },
+  { key: 'n', label: 'New Item', description: 'Focus the add item input' }
+]
+
 function formatAccelerator(accel: string): string {
   return accel
     .replace('CommandOrControl', '⌘')
@@ -122,6 +134,36 @@ export function ShortcutsTab() {
                 </button>
               )}
             </div>
+          </div>
+        ))}
+      </div>
+
+      {/* List navigation shortcuts */}
+      <div className="flex flex-col gap-1">
+        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] uppercase tracking-wider mb-1">
+          List Navigation
+        </div>
+        <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] mb-2">
+          Available when viewing a list (non-configurable)
+        </div>
+        {listNavigationShortcuts.map((shortcut) => (
+          <div
+            key={shortcut.key}
+            className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] opacity-80"
+          >
+            <div className="flex-1">
+              <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
+                {shortcut.label}
+              </span>
+              {shortcut.description && (
+                <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] mt-0.5">
+                  {shortcut.description}
+                </div>
+              )}
+            </div>
+            <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)] shrink-0">
+              {shortcut.key}
+            </span>
           </div>
         ))}
       </div>
