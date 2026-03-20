@@ -51,7 +51,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 8 }}
+      initial={{ opacity: 0, scale: 1, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
       className="drag-region flex flex-col justify-center h-full glass-surface px-4 py-2 gap-2"
