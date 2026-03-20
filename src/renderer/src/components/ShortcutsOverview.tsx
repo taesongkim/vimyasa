@@ -70,7 +70,9 @@ export function ShortcutsOverview() {
             </h2>
             <div className="flex flex-col gap-1">
               {/* Built-in shortcuts */}
-              {Object.entries(builtinShortcuts).map(([key, accel]) => (
+              {Object.entries(builtinShortcuts)
+                .filter(([key, accel]) => !['CommandOrControl+Shift+A', 'CommandOrControl+Shift+J'].includes(accel))
+                .map(([key, accel]) => (
                 <div key={key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)]">
                   <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
                     {key === 'openFirstList' ? 'Open First List' : 'Quick Add (First List)'}
@@ -82,7 +84,9 @@ export function ShortcutsOverview() {
               ))}
 
               {/* Custom shortcuts */}
-              {shortcuts.map((s) => {
+              {shortcuts
+                .filter((s) => !(s.action === 'quickAddFixed' && ['a', 'j'].includes(s.accelerator)))
+                .map((s) => {
                 const targetList = s.targetId ? lists.find((l) => l.id === s.targetId) : null
                 return (
                   <div key={s.id} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)]">

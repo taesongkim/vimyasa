@@ -20,6 +20,14 @@ function registerBuiltinShortcuts(): void {
   const config: BuiltinShortcuts = raw && typeof raw === 'object'
     ? { ...DEFAULT_BUILTIN_SHORTCUTS, ...raw }
     : DEFAULT_BUILTIN_SHORTCUTS
+
+  // Filter out unwanted shortcuts
+  Object.keys(config).forEach((key) => {
+    if (['CommandOrControl+Shift+A', 'CommandOrControl+Shift+J'].includes(config[key as keyof BuiltinShortcuts])) {
+      delete config[key as keyof BuiltinShortcuts]
+    }
+  })
+
   console.log('[shortcuts] Registering builtin shortcuts:', JSON.stringify(config))
 
   // Open first list
