@@ -383,7 +383,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           setCyclePhase('idle')
         }
       }}
-      className="flex flex-col h-full glass-surface px-4 py-2 relative"
+      className="flex flex-col h-full glass-surface relative"
+      style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}
     >
       <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
 
@@ -392,14 +393,14 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
              style={{
                top: `${scrollContainerRef.current?.offsetTop || 0}px`,
-               background: `linear-gradient(to bottom, rgba(10, 10, 10, 0.3), transparent)`
+               background: `var(--shadow-content-clip)`
              }}
         />
       )}
 
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative">
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -436,7 +437,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
              style={{
                bottom: `${scrollContainerRef.current ? (scrollContainerRef.current.parentElement?.clientHeight || 0) - (scrollContainerRef.current.offsetTop + scrollContainerRef.current.clientHeight) : 0}px`,
-               background: `linear-gradient(to top, rgba(10, 10, 10, 0.3), transparent)`
+               background: `var(--shadow-content-clip-up)`
              }}
         />
       )}
@@ -446,7 +447,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       {/* Custom scrollbar - positioned outside scroll container but aligned to it */}
       {scrollbarVisible && (
         <div
-          className="absolute right-2 w-px bg-[rgba(255,255,255,0.08)] pointer-events-auto"
+          className="absolute right-2 w-px bg-[var(--white-priority-1)] pointer-events-auto"
           style={{
             top: `${scrollContainerRef.current?.offsetTop || 0}px`,
             height: `${scrollContainerRef.current?.clientHeight || 0}px`,
@@ -456,7 +457,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         >
           <div
             ref={scrollbarRef}
-            className="absolute right-0 w-px bg-[rgba(255,255,255,0.3)] cursor-pointer hover:bg-[rgba(255,255,255,0.35)] transition-default"
+            className="absolute right-0 w-px bg-[var(--white-priority-2)] cursor-pointer hover:bg-[var(--white-priority-3)] transition-default"
             style={{
               top: `${scrollbarTop}px`,
               height: `${scrollbarHeight}px`

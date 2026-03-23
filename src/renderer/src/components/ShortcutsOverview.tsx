@@ -61,14 +61,14 @@ export function ShortcutsOverview() {
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto space-y-4">
+        <div className="flex-1 overflow-y-auto" style={{ gap: `var(--space-section-margin)`, display: 'flex', flexDirection: 'column' }}>
 
           {/* Global shortcuts */}
           <div>
             <h2 className="section-header">
               Global
             </h2>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
               {/* Built-in shortcuts */}
               {Object.entries(builtinShortcuts)
                 .filter(([key, accel]) => !['CommandOrControl+Shift+A', 'CommandOrControl+Shift+J'].includes(accel))
@@ -128,7 +128,7 @@ export function ShortcutsOverview() {
             <h2 className="section-header">
               List Navigation
             </h2>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
               {listNavigationShortcuts.map((shortcut) => (
                 <div key={shortcut.key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)] opacity-90">
                   <div>
@@ -152,7 +152,7 @@ export function ShortcutsOverview() {
             <h2 className="section-header">
               Entry Form
             </h2>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
               {entryFormShortcuts.map((shortcut) => (
                 <div key={shortcut.key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)] opacity-90">
                   <div>

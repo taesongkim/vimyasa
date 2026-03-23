@@ -41,7 +41,7 @@
   --color-bg: rgba(10, 10, 10, 0.85);
   --color-surface: rgba(255, 255, 255, 0.05);
   --color-surface-hover: rgba(26, 26, 26, 0.7);
-  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border: var(--white-priority-1);
   --color-border-focus: rgba(51, 51, 51, 0.8);
 
   /* Text (brightest → dimmest) */
@@ -65,6 +65,11 @@
   --selection-highlight: rgba(255, 255, 255, 0.15);
   --backdrop-dim: rgba(0, 0, 0, 0.3);
 
+  /* Generalized white priority system */
+  --white-priority-1: rgba(255, 255, 255, 0.08);  /* scrollbar track, border elements */
+  --white-priority-2: rgba(255, 255, 255, 0.3);   /* scrollbar thumb, content shadows */
+  --white-priority-3: rgba(255, 255, 255, 0.5);   /* hover states, emphasized elements */
+
   /* Shadows */
   --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.3);
@@ -83,6 +88,29 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
   --radius-pill: 100px;
+
+  /* Semantic spacing system */
+  --space-item-gap: 6px;              /* gap-1.5 standardization */
+  --space-container-padding: 16px;     /* px-4 standardization */
+  --space-section-margin: 16px;        /* consistent section spacing */
+  --space-component-padding: 8px;      /* py-2 standardization */
+
+  /* Component sizing tokens */
+  --button-height-sm: 24px;           /* Small buttons */
+  --button-height-md: 32px;           /* Medium buttons */
+  --button-padding-x: 8px;            /* Horizontal padding */
+  --icon-size-sm: 12px;               /* Small icons */
+  --icon-size-md: 14px;               /* Medium icons */
+
+  /* Content shadows */
+  --shadow-content-clip: linear-gradient(to bottom, var(--white-priority-2), transparent);
+  --shadow-content-clip-up: linear-gradient(to top, var(--white-priority-2), transparent);
+
+  /* Animation tokens */
+  --motion-item-entry: opacity 150ms ease, transform 150ms ease;
+  --motion-hover: all 150ms ease;
+  --motion-scroll-fade: opacity 350ms ease;
+  --motion-scale-hover: transform 150ms ease;
 }
 
 /* ── Base Reset ───────────────────────────────────────────────── */
@@ -203,11 +231,7 @@ html, body, #root {
 /* ── Transitions ──────────────────────────────────────────────── */
 
 .transition-default {
-  transition: color var(--duration-default) var(--ease-default),
-              opacity var(--duration-default) var(--ease-default),
-              background var(--duration-default) var(--ease-default),
-              border-color var(--duration-default) var(--ease-default),
-              transform var(--duration-default) var(--ease-default);
+  transition: var(--motion-hover);
 }
 
 /* ── Glass tint (vibrancy handled by macOS at the window level) ── */

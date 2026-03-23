@@ -15,7 +15,7 @@ export function SettingsWindow() {
   const [activeTab, setActiveTab] = useState<Tab>('general')
 
   return (
-    <div className="flex flex-col h-full glass-surface px-4 py-2">
+    <div className="flex flex-col h-full glass-surface" style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}>
       {/* Title bar */}
       <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <span className="text-[length:var(--font-size-base)] font-tight heading-tracking font-semibold">Settings</span>
