@@ -31,6 +31,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const [focusIndex, setFocusIndex] = useState(-1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
+  const focusedItemCopyFnRef = useRef<(() => void) | null>(null)
   const cycleTargetRef = useRef<string | null>(null)
   const addRowRef = useRef<AddRowHandle>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -95,6 +96,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
   const focusedItem = listItems[focusIndex] || null
 
+  // Clear copy function when focus changes
+  useEffect(() => {
+    if (focusIndex === -1) {
+      focusedItemCopyFnRef.current = null
+    }
+  }, [focusIndex])
+
   // Auto-scroll focused item into view
   useEffect(() => {
     if (focusIndex >= 0 && scrollContainerRef.current) {
@@ -135,8 +143,10 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           break
         case 'copy':
           {
-            const item = items.find((i) => i.id === data.itemId)
-            if (item) navigator.clipboard.writeText(item.text)
+            // Use the centralized copy function which includes feedback
+            if (focusedItemCopyFnRef.current) {
+              focusedItemCopyFnRef.current()
+            }
           }
           break
         case 'setStatus':
@@ -241,8 +251,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       }
     },
     onCopy: () => {
-      if (focusedItem) {
-        navigator.clipboard.writeText(focusedItem.text)
+      if (focusedItemCopyFnRef.current) {
+        focusedItemCopyFnRef.current()
       }
     },
     onComments: () => {
@@ -251,8 +261,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       }
     },
     onC: () => {
-      if (focusedItem) {
-        navigator.clipboard.writeText(focusedItem.text)
+      if (focusedItemCopyFnRef.current) {
+        focusedItemCopyFnRef.current()
       }
     },
     onO: () => {
@@ -417,6 +427,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   lists={lists}
                   index={idx}
                   dataIndex={idx}
+                  onCopyRequest={(fn) => { focusedItemCopyFnRef.current = fn }}
                 />
               ))}
             </AnimatePresence>

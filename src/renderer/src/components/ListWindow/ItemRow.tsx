@@ -24,7 +24,8 @@ export function ItemRow({
   onFocus,
   lists,
   index = 0,
-  dataIndex
+  dataIndex,
+  onCopyRequest
 }: {
   item: Item
   isFocused: boolean
@@ -32,12 +33,16 @@ export function ItemRow({
   lists: List[]
   index?: number
   dataIndex?: number
+  onCopyRequest?: (copyFn: () => void) => void
 }) {
   const { editItem, removeItem, changeItemStatus, sendItemToList, archiveItem } = useStore()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(item.text)
   const [hovered, setHovered] = useState(false)
+  const [showCopyConfirmation, setShowCopyConfirmation] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const copyFunctionRef = useRef<() => void>()
 
   const {
     attributes,
@@ -60,6 +65,23 @@ export function ItemRow({
     }
   }, [editing])
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Register copy function with parent when focused - only on focus change
+  useEffect(() => {
+    if (onCopyRequest && isFocused) {
+      // Use a wrapper function that calls the current copy function from ref
+      onCopyRequest(() => copyFunctionRef.current?.())
+    }
+  }, [isFocused, onCopyRequest])
+
   const startEditing = useCallback(() => {
     setText(item.text)
     setEditing(true)
@@ -76,6 +98,25 @@ export function ItemRow({
   const cycleStatus = useCallback(() => {
     changeItemStatus(item.id, nextStatus[item.status])
   }, [item.id, item.status, changeItemStatus])
+
+  // Centralized copy function with feedback - called from any copy trigger
+  const copyItemWithFeedback = useCallback(() => {
+    navigator.clipboard.writeText(item.text)
+    setShowCopyConfirmation(true)
+
+    // Clear any existing timeout
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current)
+    }
+
+    // Hide confirmation after 400ms
+    copyTimeoutRef.current = setTimeout(() => {
+      setShowCopyConfirmation(false)
+    }, 400)
+  }, [item.text])
+
+  // Keep ref updated with current copy function
+  copyFunctionRef.current = copyItemWithFeedback
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -125,7 +166,7 @@ export function ItemRow({
       animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.15, delay: index * 0.02 }}
-      className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] ${
+      className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
       data-index={dataIndex}
@@ -136,7 +177,8 @@ export function ItemRow({
       onContextMenu={handleContextMenu}
     >
       {/* Content with baseline alignment */}
-      <div className="flex items-baseline gap-1 flex-1">
+      <div className="flex items-baseline gap-1 flex-1 transition-opacity duration-150"
+           style={{ opacity: showCopyConfirmation ? 0.2 : 1 }}>
         {/* Status dot */}
         <div className="-translate-y-0.5">
           <StatusDot status={item.status} onClick={cycleStatus} />
@@ -168,13 +210,16 @@ export function ItemRow({
       {/* Hover actions — always rendered, opacity-reveal on hover */}
       <div
         className="flex items-center gap-1 shrink-0 transition-default"
-        style={{ opacity: hovered && !editing ? 1 : 0.3, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
+        style={{
+          opacity: showCopyConfirmation ? 0.2 : (hovered && !editing ? 1 : 0.3),
+          pointerEvents: hovered && !editing ? 'auto' : 'none'
+        }}
       >
         <button
           className="no-drag p-1 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={(e) => {
             e.stopPropagation()
-            navigator.clipboard.writeText(item.text)
+            copyItemWithFeedback()
           }}
           title="Copy"
         >
@@ -212,7 +257,10 @@ export function ItemRow({
       {/* Drag handle — opacity-reveal */}
       <div
         className="no-drag cursor-grab active:cursor-grabbing text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-default self-center"
-        style={{ opacity: hovered && !editing ? 1 : 0.2, pointerEvents: hovered && !editing ? 'auto' : 'none' }}
+        style={{
+          opacity: showCopyConfirmation ? 0.2 : (hovered && !editing ? 1 : 0.2),
+          pointerEvents: hovered && !editing ? 'auto' : 'none'
+        }}
         {...attributes}
         {...listeners}
       >
@@ -225,6 +273,19 @@ export function ItemRow({
           <circle cx="7" cy="12" r="1.5" />
         </svg>
       </div>
+
+      {/* Copy confirmation overlay */}
+      {showCopyConfirmation && (
+        <div className="absolute inset-0 rounded bg-[rgba(0,0,0,0.2)] flex items-center justify-center z-10"
+             style={{
+               animation: showCopyConfirmation ? 'fadeIn 150ms ease-out' : 'fadeOut 200ms ease-out'
+             }}
+        >
+          <span className="text-[length:var(--font-size-sm)] text-white font-medium">
+            Copied text to clipboard.
+          </span>
+        </div>
+      )}
     </motion.div>
   )
 }
