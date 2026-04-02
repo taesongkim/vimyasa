@@ -50,6 +50,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const [showBottomShadow, setShowBottomShadow] = useState(false)
 
   const list = lists.find((l) => l.id === activeListId)
+  const listNumber = lists.findIndex((l) => l.id === activeListId) + 1
 
   // Update custom scrollbar and shadow visibility
   const updateScrollbar = useCallback(() => {
@@ -410,7 +411,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       className="flex flex-col h-full glass-surface relative"
       style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}
     >
-      <TitleBar list={list} filter={filter} onFilterChange={setFilter} counts={counts} />
+      <TitleBar list={list} listNumber={listNumber} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Top shadow - indicates content is clipped above */}
       {showTopShadow && (

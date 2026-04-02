@@ -5,11 +5,13 @@ import type { List } from '../../../../../shared/types'
 
 export function TitleBar({
   list,
+  listNumber,
   filter,
   onFilterChange,
   counts
 }: {
   list: List
+  listNumber: number
   filter: FilterType
   onFilterChange: (filter: FilterType) => void
   counts: Record<FilterType, number>
@@ -61,6 +63,9 @@ export function TitleBar({
   return (
     <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
       <div className="flex items-center gap-2 flex-1 min-w-0">
+        <span className="text-[length:var(--font-size-lg)] font-medium font-tight heading-tracking text-[color:var(--color-text-muted)] shrink-0">
+          {listNumber}
+        </span>
         {editing ? (
           <input
             ref={inputRef}

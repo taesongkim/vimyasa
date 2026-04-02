@@ -44,6 +44,7 @@ export function updateTrayMenu(): void {
 
   // Build list menu items grouped by group
   const groupMenuItems: Electron.MenuItemConstructorOptions[] = []
+  let listNumber = 1
 
   for (const group of groups) {
     if (groups.length > 1) {
@@ -58,9 +59,10 @@ export function updateTrayMenu(): void {
       if (!list) continue
       const count = activeCountByList.get(list.id) || 0
       groupMenuItems.push({
-        label: `${list.icon} ${list.name}${count > 0 ? ` (${count})` : ''}`,
+        label: `${listNumber}. ${list.name}${count > 0 ? ` (${count})` : ''}`,
         click: () => createListWindow(list.id)
       })
+      listNumber++
     }
   }
 
