@@ -103,6 +103,15 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [focusIndex])
 
+  // Switch to list by number (1-indexed)
+  const switchToListByNumber = useCallback((listNumber: number) => {
+    const targetList = lists[listNumber - 1]
+    if (targetList && targetList.id !== activeListId && cyclePhase === 'idle') {
+      cycleTargetRef.current = targetList.id
+      setCyclePhase('out')
+    }
+  }, [lists, activeListId, cyclePhase])
+
   // Auto-scroll focused item into view
   useEffect(() => {
     if (focusIndex >= 0 && scrollContainerRef.current) {
@@ -283,10 +292,15 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         setFocusIndex(-1) // deselect if something is selected
       }
     },
-    onFilter1: () => setFilter('all'),
-    onFilter2: () => setFilter('active'),
-    onFilter3: () => setFilter('done'),
-    onFilter4: () => setFilter('hold'),
+    onNumber1: () => switchToListByNumber(1),
+    onNumber2: () => switchToListByNumber(2),
+    onNumber3: () => switchToListByNumber(3),
+    onNumber4: () => switchToListByNumber(4),
+    onNumber5: () => switchToListByNumber(5),
+    onNumber6: () => switchToListByNumber(6),
+    onNumber7: () => switchToListByNumber(7),
+    onNumber8: () => switchToListByNumber(8),
+    onNumber9: () => switchToListByNumber(9),
     onTab: () => {
       const idx = lists.findIndex((l) => l.id === activeListId)
       if (lists.length > 1 && cyclePhase === 'idle') {

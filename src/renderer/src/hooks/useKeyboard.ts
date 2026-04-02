@@ -13,10 +13,15 @@ interface KeyboardConfig {
   onC?: () => void
   onO?: () => void
   onA?: () => void
-  onFilter1?: () => void
-  onFilter2?: () => void
-  onFilter3?: () => void
-  onFilter4?: () => void
+  onNumber1?: () => void
+  onNumber2?: () => void
+  onNumber3?: () => void
+  onNumber4?: () => void
+  onNumber5?: () => void
+  onNumber6?: () => void
+  onNumber7?: () => void
+  onNumber8?: () => void
+  onNumber9?: () => void
   onTab?: () => void
   enabled?: boolean
 }
@@ -101,19 +106,39 @@ export function useKeyboard(config: KeyboardConfig) {
           break
         case '1':
           e.preventDefault()
-          config.onFilter1?.()
+          config.onNumber1?.()
           break
         case '2':
           e.preventDefault()
-          config.onFilter2?.()
+          config.onNumber2?.()
           break
         case '3':
           e.preventDefault()
-          config.onFilter3?.()
+          config.onNumber3?.()
           break
         case '4':
           e.preventDefault()
-          config.onFilter4?.()
+          config.onNumber4?.()
+          break
+        case '5':
+          e.preventDefault()
+          config.onNumber5?.()
+          break
+        case '6':
+          e.preventDefault()
+          config.onNumber6?.()
+          break
+        case '7':
+          e.preventDefault()
+          config.onNumber7?.()
+          break
+        case '8':
+          e.preventDefault()
+          config.onNumber8?.()
+          break
+        case '9':
+          e.preventDefault()
+          config.onNumber9?.()
           break
         case 'Tab':
           e.preventDefault()
