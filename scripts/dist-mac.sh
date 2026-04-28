@@ -16,13 +16,18 @@ source "$ENV_FILE"
 set +a
 
 SIGNING_IDENTITY="Developer ID Application: Taesong Kim (SPJZZKVU87)"
+REPO="taesongkim/vimyasa"
+VERSION=$(node -p "require('./package.json').version")
+TAG="v$VERSION"
 
+echo "=== Building artifacts (no publish) ==="
 npm run build
-npx electron-builder --mac --publish always
+# --publish never: build artifacts only. We sign+notarize+staple the DMG
+# ourselves, regenerate the manifest with correct hashes, then publish via gh.
+npx electron-builder --mac --publish never
 
-# electron-builder signs and notarizes the .app, but not the DMG itself.
-# Sign + notarize + staple every DMG produced so Gatekeeper accepts the
-# DMG on first download (no "unidentified developer" warning).
+# Sign + notarize + staple every DMG produced. electron-builder only handles
+# the .app inside; the DMG itself comes out unsigned.
 shopt -s nullglob
 for dmg in release/*.dmg; do
   echo ""
@@ -42,5 +47,43 @@ for dmg in release/*.dmg; do
 done
 
 echo ""
+echo "=== Regenerating latest-mac.yml hashes ==="
+node scripts/regenerate-manifest.cjs
+
+# Replace any existing draft release for this version so we don't leave stale
+# artifacts attached. Published releases (visible to users) are left alone —
+# you should never re-use a version number for a published release.
+echo ""
+echo "=== Preparing GitHub release $TAG ==="
+if gh release view "$TAG" --repo "$REPO" --json isDraft -q .isDraft 2>/dev/null | grep -q true; then
+  echo "Existing draft for $TAG found; deleting before re-creating."
+  gh release delete "$TAG" --repo "$REPO" --yes
+fi
+
+if gh release view "$TAG" --repo "$REPO" &>/dev/null; then
+  echo "Release $TAG already exists and is published. Aborting — bump the version in package.json and try again."
+  exit 1
+fi
+
+echo "Creating draft release $TAG..."
+gh release create "$TAG" \
+  --repo "$REPO" \
+  --title "$VERSION" \
+  --draft \
+  --notes "Vimyasa $VERSION"
+
+echo ""
+echo "=== Uploading artifacts ==="
+gh release upload "$TAG" --repo "$REPO" \
+  release/Vimyasa-*.dmg \
+  release/Vimyasa-*.dmg.blockmap \
+  release/Vimyasa-*-mac.zip \
+  release/Vimyasa-*-mac.zip.blockmap \
+  release/latest-mac.yml
+
+echo ""
 echo "=== Done ==="
 ls -lh release/*.dmg release/*.zip 2>/dev/null
+echo ""
+echo "Draft release: https://github.com/$REPO/releases/tag/$TAG"
+echo "Edit the draft on GitHub to add release notes, then publish it."
