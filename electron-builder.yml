@@ -1,0 +1,38 @@
+appId: com.taesongkim.vimyasa
+productName: Vimyasa
+copyright: Copyright © 2026 Taesong Kim
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+
+extraResources:
+  - resources/**/*
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: universal
+    - target: zip
+      arch: universal
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  identity: "Taesong Kim (SPJZZKVU87)"
+  notarize: true
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
