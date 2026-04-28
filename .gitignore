@@ -1,6 +1,14 @@
 node_modules/
 out/
 dist/
+release/
 .DS_Store
 *.log
 electron.vite.config.*.mjs
+
+# Signing artifacts — never commit
+*.p12
+*.cer
+*.certSigningRequest
+*.key
+*.mobileprovision
