@@ -5,6 +5,7 @@ import { registerWindowIpcHandlers, createListWindow } from './windows'
 import { createTray } from './tray'
 import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts'
 import { store } from './store'
+import { setupAutoUpdater } from './updater'
 
 // Hide dock icon (menubar-only app)
 if (process.platform === 'darwin') {
@@ -35,6 +36,9 @@ app.whenReady().then(() => {
   if (lists.length > 0) {
     createListWindow(lists[0].id)
   }
+
+  // Check for updates (skipped automatically in dev / unpackaged builds)
+  setupAutoUpdater()
 })
 
 app.on('will-quit', () => {

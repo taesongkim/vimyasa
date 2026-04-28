@@ -5,7 +5,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    define: {
+      'process.env.VIMYASA_UPDATE_TOKEN': JSON.stringify(process.env.VIMYASA_UPDATE_TOKEN || '')
+    }
   },
   preload: {
     plugins: [externalizeDepsPlugin()]
