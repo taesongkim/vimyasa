@@ -12,3 +12,7 @@ electron.vite.config.*.mjs
 *.certSigningRequest
 *.key
 *.mobileprovision
+*.p8
+*.env
+.env
+.env.*

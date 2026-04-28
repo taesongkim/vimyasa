@@ -18,19 +18,15 @@ mac:
   icon: build/icon.icns
   target:
     - target: dmg
-      arch:
-        - x64
-        - arm64
+      arch: universal
     - target: zip
-      arch:
-        - x64
-        - arm64
+      arch: universal
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   identity: "Taesong Kim (SPJZZKVU87)"
-  notarize: false
+  notarize: true
 
 dmg:
   contents:

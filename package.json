@@ -9,7 +9,7 @@
     "preview": "electron-vite preview",
     "postinstall": "electron-vite build",
     "pack": "npm run build && electron-builder --mac --dir",
-    "dist:mac": "npm run build && electron-builder --mac"
+    "dist:mac": "bash scripts/dist-mac.sh"
   },
   "type": "module",
   "dependencies": {
