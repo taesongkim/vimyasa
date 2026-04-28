@@ -36,3 +36,9 @@ dmg:
       y: 220
       type: link
       path: /Applications
+
+publish:
+  provider: github
+  owner: taesongkim
+  repo: vimyasa
+  private: true

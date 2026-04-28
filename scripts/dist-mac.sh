@@ -18,7 +18,7 @@ set +a
 SIGNING_IDENTITY="Developer ID Application: Taesong Kim (SPJZZKVU87)"
 
 npm run build
-npx electron-builder --mac
+npx electron-builder --mac --publish always
 
 # electron-builder signs and notarizes the .app, but not the DMG itself.
 # Sign + notarize + staple every DMG produced so Gatekeeper accepts the
