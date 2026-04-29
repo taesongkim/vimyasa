@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
+import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
 
 export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const { lists, addItem } = useStore()
@@ -10,6 +11,18 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const selectedList = lists.find((l) => l.id === selectedListId)
+
+  // TODO: source this from settings once the settings UI exists.
+  const submitAnim = useSubmitAnimation('white-glow')
+
+  // Form-level exit phase that runs after the white-glow confirmation is
+  // done, before the window actually closes. The form translates upward
+  // and fades to opacity 0; the still-glowing input fades with it for a
+  // "released upward" feel. Distinct concern from the in-form confirmation
+  // animation above, so kept separate from useSubmitAnimation.
+  const [exiting, setExiting] = useState(false)
+  const EXIT_DURATION_MS = 150
+  const EXIT_OFFSET_PX = 4
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -43,21 +56,46 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   }, [dropdownOpen])
 
   const handleSubmit = async () => {
+    if (submitAnim.isPlaying || exiting) return // guard against double-Enter while we're closing
     const trimmed = text.trim()
     if (!trimmed) return
+    // Phase 1: in-form confirmation animation (input glows, siblings fade,
+    // bg fades). Run in parallel with addItem so the visual signal lands
+    // the instant the user hits Enter rather than after the IPC roundtrip.
+    const animationPromise = submitAnim.play()
     await addItem(selectedListId, trimmed)
+    await animationPromise
+    // Phase 2: form slides up + fades, then we actually close the window.
+    setExiting(true)
+    await new Promise<void>((resolve) => setTimeout(resolve, EXIT_DURATION_MS))
     window.api.closeWindow()
   }
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 1, y: 8 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-      className="drag-region flex flex-col justify-center h-full glass-surface px-4 py-2 gap-2"
+      animate={
+        exiting
+          ? { opacity: 0, y: -EXIT_OFFSET_PX }
+          : { opacity: 1, scale: 1, y: 0 }
+      }
+      transition={
+        exiting
+          ? {
+              // Decouple the two properties so the lift kicks in *during*
+              // the fade rather than at the start of it. Opacity ease-out
+              // drops alpha fast at the start; y ease-in delays the visual
+              // motion to the back half of the same window. End state lands
+              // at the same time for both.
+              opacity: { duration: EXIT_DURATION_MS / 1000, ease: 'easeOut' },
+              y: { duration: EXIT_DURATION_MS / 1000, ease: 'easeIn' }
+            }
+          : { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }
+      }
+      className={`drag-region flex flex-col justify-center h-full glass-surface px-4 py-2 gap-2 ${submitAnim.containerClassName}`}
     >
       {/* Target list selector */}
-      <div className="no-drag flex justify-center">
+      <div data-submit-fade className="no-drag flex justify-center">
         <div ref={dropdownRef} className="relative inline-block">
           <button
             className="flex items-center gap-1.5 text-[length:var(--font-size-md)] font-medium cursor-pointer transition-default hover:opacity-80"
@@ -119,7 +157,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       />
 
       {/* Help text */}
-      <div className="flex justify-center">
+      <div data-submit-fade className="flex justify-center">
         <span className="text-[length:10px] text-[color:var(--color-text-muted)]">
           ESC to exit | TAB to cycle target list
         </span>

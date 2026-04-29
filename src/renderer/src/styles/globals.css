@@ -299,6 +299,49 @@ html, body, #root {
   cursor: pointer;
 }
 
+/* ── Submit confirmation animations ───────────────────────────────
+   Visual confirmation when an entry is submitted (e.g. quick-add).
+   Each preset class is applied to the form container; descendant
+   selectors handle the rest — highlighting the input, fading any
+   sibling marked with data-submit-fade, and fading the container's
+   own background. The matching JS timing lives in
+   useSubmitAnimation's PRESETS map; keep them in sync when adding
+   new presets. */
+
+/* Base transitions on the elements that animate. Defined unconditionally
+   so the values interpolate when the active class is added (and again,
+   harmlessly, if it's ever removed). */
+[data-submit-fade] {
+  transition: opacity 120ms ease;
+}
+
+/* Preset: white-glow — input lights up with a soft white halo while
+   everything else in the form (marked siblings + container bg) fades
+   out, leaving the input and its text alone in the visible field. */
+.submit-confirming-white-glow {
+  transition: background 120ms ease;
+}
+.glass-surface.submit-confirming-white-glow {
+  background: transparent;
+}
+.submit-confirming-white-glow [data-submit-fade] {
+  opacity: 0;
+}
+.submit-confirming-white-glow input {
+  box-shadow:
+    /* Sharp border on top of the stack */
+    inset 0 0 0 0.25px rgba(255, 255, 255, 0.93),
+    /* Tight halo pair, hugging the border on both sides — extends
+       the bright edge outward without a visible step into the softer
+       glows below. */
+    inset 0 0 2px rgba(255, 255, 255, 0.8),
+    0 0 2px rgba(255, 255, 255, 0.8),
+    /* Softer glow pair, providing the gentle outer falloff. */
+    inset 0 0 8px rgba(255, 255, 255, 0.3),
+    0 0 4px 2px rgba(255, 255, 255, 0.3);
+  transition: box-shadow 120ms ease;
+}
+
 /* ── Copy confirmation animations ─────────────────────────────── */
 
 @keyframes fadeIn {
