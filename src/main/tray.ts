@@ -84,13 +84,18 @@ export function updateTrayMenu(): void {
         // Use a simple prompt to get the list name
         const defaultGroup = groups[0]
         if (!defaultGroup) return
-        // Create list with a default name, then open it for renaming
+        // Create list with a default name, then open it for renaming.
+        // Match the gap-aware sortOrder logic in createList — count can
+        // diverge from the actual max if any list in this group was
+        // previously deleted.
+        const inGroup = lists.filter((l) => l.groupId === defaultGroup.id)
         const newList = {
           id: uuid(),
           groupId: defaultGroup.id,
           name: 'New List',
           icon: '📋',
-          sortOrder: lists.filter((l) => l.groupId === defaultGroup.id).length
+          sortOrder:
+            inGroup.length > 0 ? Math.max(...inGroup.map((l) => l.sortOrder)) + 1 : 0
         }
         store.set('lists', [...lists, newList])
         const updatedGroups = store.get('groups')
