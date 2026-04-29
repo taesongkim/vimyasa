@@ -205,7 +205,7 @@ export function ItemRow({
           />
         ) : (
           <span
-            className={`flex-1 text-[length:var(--font-size-md)]`}
+            className={`flex-1 text-[length:var(--font-size-md)] [overflow-wrap:anywhere]`}
             style={{ opacity: statusOpacity[item.status], lineHeight: '1.5rem' }}
           >
             {item.text}
