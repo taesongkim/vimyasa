@@ -13,11 +13,18 @@ import {
 let tray: Tray | null = null
 
 export function createTray(): Tray {
-  // Load the V symbol PNG as tray icon
+  // Load the V symbol PNG as tray icon.
+  // In dev: __dirname is out/main/, so two levels up reaches the project root's resources/.
+  // In prod: extraResources copies the resources/ folder into Contents/Resources/, so the
+  // file lives at process.resourcesPath/resources/tray-icon.png (note the nested folder
+  // — the directory name is preserved, not flattened).
   const iconPath = is.dev
     ? join(__dirname, '../../resources/tray-icon.png')
-    : join(process.resourcesPath, 'tray-icon.png')
-  const icon = nativeImage.createFromPath(iconPath)
+    : join(process.resourcesPath, 'resources', 'tray-icon.png')
+  // Source assets are 22×22 / 44×44 (retina). Scale down ~15% so the V sits
+  // a bit smaller in the menu bar — feels less "shouty" next to system icons.
+  // Tweak this height to taste; both 1x and 2x representations scale proportionally.
+  const icon = nativeImage.createFromPath(iconPath).resize({ height: 19 })
   icon.setTemplateImage(true)
 
   tray = new Tray(icon)
