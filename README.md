@@ -1,12 +1,8 @@
-Vimyasa is a keyboard-first macOS menubar list manager built as an Electron app. 
-It lives in the system tray and lets you manage multiple custom lists (like Inbox, Work, Personal) through global keyboard shortcuts — you can open lists, quick-add items, and cycle between lists without touching the mouse.
+Vimyasa is a hyper-fast idea capture tool.
+It's a global keyboard shortcut-centered, macOS menubar app that allows for quick idea jotting and idea management.
 
-Core features: 
-- Multiple lists with items that have three statuses (active, done, hold)
-- Quick-add entry form summoned by global shortcut
-- Comments on items
-- Archiving/completions
-- Drag-to-reorder
-- Configurable keyboard shortcuts
-- Tab to cycle between lists
-
+- Manage multiple custom lists (like Inbox, Work, Personal), 
+- Take notes on ideas,
+- Quick copy to move to other platforms
+- All with vim-style keyboard flow
+- Launches with a tutorial to learn shortcuts
