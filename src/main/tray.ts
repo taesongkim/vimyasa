@@ -9,19 +9,38 @@ import {
   createSettingsWindow,
   createArchiveWindow
 } from './windows'
+import { orchestrator } from './onboarding'
 
 let tray: Tray | null = null
 
 export function createTray(): Tray {
-  // Load the V symbol PNG as tray icon
+  // Load the V symbol PNG as tray icon.
+  // In dev: __dirname is out/main/, so two levels up reaches the project root's resources/.
+  // In prod: extraResources copies the resources/ folder into Contents/Resources/, so the
+  // file lives at process.resourcesPath/resources/tray-icon.png (note the nested folder
+  // — the directory name is preserved, not flattened).
   const iconPath = is.dev
     ? join(__dirname, '../../resources/tray-icon.png')
-    : join(process.resourcesPath, 'tray-icon.png')
-  const icon = nativeImage.createFromPath(iconPath)
+    : join(process.resourcesPath, 'resources', 'tray-icon.png')
+  // Source assets are 22×22 / 44×44 (retina). Scale down ~15% so the V sits
+  // a bit smaller in the menu bar — feels less "shouty" next to system icons.
+  // Tweak this height to taste; both 1x and 2x representations scale proportionally.
+  const icon = nativeImage.createFromPath(iconPath).resize({ height: 19 })
   icon.setTemplateImage(true)
 
   tray = new Tray(icon)
   tray.setToolTip('Vimyasa')
+
+  // Report tray clicks to the onboarding orchestrator so its 'tray' step
+  // can match. macOS still opens the context menu via setContextMenu below;
+  // the click event fires alongside that. Cheap when no tour is active.
+  tray.on('click', () => {
+    orchestrator.report({ kind: 'tray-click' })
+  })
+
+  // Provide tray bounds + a re-position hook to the orchestrator so the
+  // 'below-tray' anchor lands correctly.
+  orchestrator.setTrayBoundsProvider(() => tray?.getBounds() ?? null)
 
   updateTrayMenu()
   return tray
@@ -77,13 +96,18 @@ export function updateTrayMenu(): void {
         // Use a simple prompt to get the list name
         const defaultGroup = groups[0]
         if (!defaultGroup) return
-        // Create list with a default name, then open it for renaming
+        // Create list with a default name, then open it for renaming.
+        // Match the gap-aware sortOrder logic in createList — count can
+        // diverge from the actual max if any list in this group was
+        // previously deleted.
+        const inGroup = lists.filter((l) => l.groupId === defaultGroup.id)
         const newList = {
           id: uuid(),
           groupId: defaultGroup.id,
           name: 'New List',
           icon: '📋',
-          sortOrder: lists.filter((l) => l.groupId === defaultGroup.id).length
+          sortOrder:
+            inGroup.length > 0 ? Math.max(...inGroup.map((l) => l.sortOrder)) + 1 : 0
         }
         store.set('lists', [...lists, newList])
         const updatedGroups = store.get('groups')
@@ -121,6 +145,11 @@ export function updateTrayMenu(): void {
     {
       label: 'Settings',
       click: () => createSettingsWindow()
+    },
+    { type: 'separator' },
+    {
+      label: 'Replay Onboarding Tour',
+      click: () => orchestrator.replay()
     },
     { type: 'separator' },
     {

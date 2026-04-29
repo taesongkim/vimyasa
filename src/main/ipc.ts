@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid'
 import { store } from './store'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
+import { orchestrator } from './onboarding'
 import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts } from '../shared/types'
 
 function now(): string {
@@ -81,12 +82,18 @@ export function registerIpcHandlers(): void {
   // ── Lists ───────────────────────────────────────────────────────
   ipcMain.handle('createList', (e, groupId: string, name: string, icon?: string): List => {
     const lists = store.get('lists')
+    // Lists don't archive but they can be deleted, which leaves gaps in
+    // sortOrder values. Use max + 1 over the group's lists to land at the
+    // bottom regardless of any holes.
+    const inGroup = lists.filter((l) => l.groupId === groupId)
+    const nextSortOrder =
+      inGroup.length > 0 ? Math.max(...inGroup.map((l) => l.sortOrder)) + 1 : 0
     const list: List = {
       id: uuid(),
       groupId,
       name,
       icon: icon || '📋',
-      sortOrder: lists.filter((l) => l.groupId === groupId).length
+      sortOrder: nextSortOrder
     }
     store.set('lists', [...lists, list])
 
@@ -144,13 +151,20 @@ export function registerIpcHandlers(): void {
   // ── Items ───────────────────────────────────────────────────────
   ipcMain.handle('createItem', (e, listId: string, text: string): Item => {
     const items = store.get('items')
-    const listItems = items.filter((i) => i.listId === listId && !i.archivedAt)
+    // Use max(sortOrder) + 1 over *all* items in the list (including
+    // archived) rather than the visible count. Archived items keep their
+    // sortOrder, so visible-count can be smaller than the max sortOrder
+    // and a new item assigned visible-count would land mid-list. Including
+    // archived items also keeps later restores collision-free.
+    const allInList = items.filter((i) => i.listId === listId)
+    const nextSortOrder =
+      allInList.length > 0 ? Math.max(...allInList.map((i) => i.sortOrder)) + 1 : 0
     const item: Item = {
       id: uuid(),
       listId,
       text,
       status: 'active',
-      sortOrder: listItems.length,
+      sortOrder: nextSortOrder,
       createdAt: now(),
       updatedAt: now(),
       archivedAt: null
@@ -158,6 +172,10 @@ export function registerIpcHandlers(): void {
     store.set('items', [...items, item])
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    // Notify the onboarding orchestrator — its 'capture-add' step counts
+    // up to 3 successful adds before auto-advancing. Cheap when no tour is
+    // active.
+    orchestrator.report({ kind: 'item-added' })
     return item
   })
 
@@ -200,11 +218,18 @@ export function registerIpcHandlers(): void {
     const items = store.get('items')
     const idx = items.findIndex((i) => i.id === id)
     if (idx === -1) throw new Error(`Item not found: ${id}`)
-    const targetItems = items.filter((i) => i.listId === targetListId && !i.archivedAt)
+    // Same gap-aware sortOrder logic as createItem — count of visible items
+    // in the target list isn't a reliable "next bottom" when archived items
+    // have left holes.
+    const allInTarget = items.filter((i) => i.listId === targetListId)
+    const nextSortOrder =
+      allInTarget.length > 0
+        ? Math.max(...allInTarget.map((i) => i.sortOrder)) + 1
+        : 0
     items[idx] = {
       ...items[idx],
       listId: targetListId,
-      sortOrder: targetItems.length,
+      sortOrder: nextSortOrder,
       updatedAt: now()
     }
     store.set('items', items)
@@ -348,4 +373,22 @@ export function registerIpcHandlers(): void {
     store.clear()
     broadcastDataChanged(e.sender.id)
   })
+
+  // ── Onboarding ──────────────────────────────────────────────────
+  // Callout renderer drives the tour through these.
+  ipcMain.handle('onboarding:advance', () => orchestrator.advance())
+  ipcMain.handle('onboarding:back', () => orchestrator.back())
+  ipcMain.handle('onboarding:close', () => orchestrator.close())
+  ipcMain.handle('onboarding:replay', () => orchestrator.replay())
+  // Pull-style fetch so a freshly-mounted callout renderer can populate
+  // immediately, in case it missed the push that fired when its window
+  // was created.
+  ipcMain.handle('onboarding:get-state', () =>
+    orchestrator.getCurrentCalloutPayload()
+  )
+  // Renderer reports its measured content height; we resize the
+  // BrowserWindow to match so longer steps don't clip vertically.
+  ipcMain.handle('onboarding:request-resize', (_e, height: number) =>
+    orchestrator.setCalloutHeight(height)
+  )
 }

@@ -45,14 +45,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const scrollbarRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Shadow state for content clipping indicators
-  const [showTopShadow, setShowTopShadow] = useState(false)
-  const [showBottomShadow, setShowBottomShadow] = useState(false)
 
   const list = lists.find((l) => l.id === activeListId)
   const listNumber = lists.findIndex((l) => l.id === activeListId) + 1
 
-  // Update custom scrollbar and shadow visibility
+  // Update custom scrollbar position and the scroll-edge fade strengths.
+  // Fade strength scales from 0 (edge item fully visible) to 1 (edge item
+  // fully clipped past the edge), with a quadratic ease-out so the fade
+  // ramps in quickly at first and plateaus near full strength. Written
+  // directly to CSS custom properties on the scroll container — no React
+  // state, no re-render on every scroll tick.
   const updateScrollbar = useCallback(() => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -62,9 +64,23 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
     setScrollbarVisible(hasOverflow)
 
-    // Update shadow visibility based on scroll position
-    setShowTopShadow(scrollTop > 0)
-    setShowBottomShadow(hasOverflow && scrollTop < scrollHeight - clientHeight)
+    // Measure first/last items to know how much "scroll budget" exists at
+    // each edge before the edge item is fully gone. Using getBoundingClientRect
+    // because items have variable heights (text wraps).
+    const firstItem = container.querySelector('[data-index="0"]') as HTMLElement | null
+    const firstHeight = firstItem ? firstItem.getBoundingClientRect().height : 0
+    const distanceFromBottom = scrollHeight - clientHeight - scrollTop
+    const lastItem = container.querySelector(
+      `[data-index="${(container.querySelectorAll('[data-index]').length || 1) - 1}"]`
+    ) as HTMLElement | null
+    const lastHeight = lastItem ? lastItem.getBoundingClientRect().height : 0
+
+    const easeOut = (t: number): number => 1 - Math.pow(1 - t, 2)
+    const topRaw = firstHeight > 0 ? Math.min(scrollTop / firstHeight, 1) : 0
+    const bottomRaw = lastHeight > 0 ? Math.min(distanceFromBottom / lastHeight, 1) : 0
+
+    container.style.setProperty('--top-fade-strength', String(easeOut(topRaw)))
+    container.style.setProperty('--bottom-fade-strength', String(easeOut(bottomRaw)))
 
     if (hasOverflow) {
       const scrollRatio = scrollTop / (scrollHeight - clientHeight)
@@ -96,6 +112,22 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   }, [items, activeListId])
 
   const focusedItem = listItems[focusIndex] || null
+
+  // After a destructive item action (archive, delete), do two things:
+  //   1. Slide the focus indicator to the next item (or clear if list is now empty).
+  //      Using listItems.length - 2 because listItems still has the pre-action length
+  //      at the time this runs — the React re-render that filters out the removed
+  //      item happens after the current event handler returns.
+  //   2. Force DOM focus back to body. When the focused row unmounts, Electron
+  //      sometimes hands DOM focus to the next focusable sibling (typically the
+  //      AddRow input) instead of falling back to body. If that happens, the
+  //      window-level keyboard handler bails out on every subsequent keypress
+  //      because it ignores keys when an input/textarea/contentEditable is focused
+  //      — meaning j/k/a appear to silently stop working.
+  const handlePostDestructive = useCallback(() => {
+    setFocusIndex((i) => Math.min(i, listItems.length - 2))
+    ;(document.activeElement as HTMLElement | null)?.blur?.()
+  }, [listItems.length])
 
   // Clear copy function when focus changes
   useEffect(() => {
@@ -167,9 +199,11 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           break
         case 'archive':
           archiveItem(data.itemId)
+          handlePostDestructive()
           break
         case 'delete':
           removeItem(data.itemId)
+          handlePostDestructive()
           break
       }
     }
@@ -187,7 +221,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         window.electron?.ipcRenderer?.removeListener('context-menu-action', handleContextAction)
       }
     }
-  }, [items, changeItemStatus, sendItemToList, archiveItem, removeItem])
+  }, [items, changeItemStatus, sendItemToList, archiveItem, removeItem, handlePostDestructive])
 
   // DnD sensors
   const sensors = useSensors(
@@ -236,6 +270,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onEnter: () => {
       if (focusedItem) {
         archiveItem(focusedItem.id)
+        handlePostDestructive()
       }
     },
     onSpace: () => {
@@ -253,7 +288,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         if (confirmDelete === focusedItem.id) {
           removeItem(focusedItem.id)
           setConfirmDelete(null)
-          setFocusIndex((i) => Math.min(i, listItems.length - 2))
+          handlePostDestructive()
         } else {
           setConfirmDelete(focusedItem.id)
           setTimeout(() => setConfirmDelete(null), 2000)
@@ -283,15 +318,34 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onA: () => {
       if (focusedItem) {
         archiveItem(focusedItem.id)
+        handlePostDestructive()
       }
     },
     onN: () => addRowRef.current?.focus(),
     onEscape: () => {
-      if (focusIndex === -1) {
-        window.api.closeWindow()
-      } else {
-        setFocusIndex(-1) // deselect if something is selected
+      // Hierarchical Escape — step back exactly one focus level per press:
+      //   input focus  → blur the input             (lands in item or window focus)
+      //   item focus   → clear focusIndex            (lands in window focus)
+      //   window focus → close the window           (top of the stack)
+      // The order matters: input check has to come first because focusIndex
+      // is -1 in *both* input focus and window focus, so we can't tell them
+      // apart without consulting document.activeElement.
+      const active = document.activeElement as HTMLElement | null
+      const isTypingInInput =
+        !!active &&
+        (active.tagName === 'INPUT' ||
+          active.tagName === 'TEXTAREA' ||
+          active.isContentEditable)
+
+      if (isTypingInInput) {
+        active?.blur?.()
+        return
       }
+      if (focusIndex !== -1) {
+        setFocusIndex(-1)
+        return
+      }
+      window.api.closeWindow()
     },
     onNumber1: () => switchToListByNumber(1),
     onNumber2: () => switchToListByNumber(2),
@@ -413,18 +467,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     >
       <TitleBar list={list} listNumber={listNumber} filter={filter} onFilterChange={setFilter} counts={counts} />
 
-      {/* Top shadow - indicates content is clipped above */}
-      {showTopShadow && (
-        <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
-             style={{
-               top: `${scrollContainerRef.current?.offsetTop || 0}px`,
-               background: `var(--shadow-content-clip)`
-             }}
-        />
-      )}
-
       {/* Item list */}
-      <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative">
+      <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
         <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
         <DndContext
           sensors={sensors}
@@ -457,16 +501,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         )}
 
       </div>
-
-      {/* Bottom shadow - indicates content is clipped below */}
-      {showBottomShadow && (
-        <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
-             style={{
-               bottom: `${scrollContainerRef.current ? (scrollContainerRef.current.parentElement?.clientHeight || 0) - (scrollContainerRef.current.offsetTop + scrollContainerRef.current.clientHeight) : 0}px`,
-               background: `var(--shadow-content-clip-up)`
-             }}
-        />
-      )}
 
       <AddRow ref={addRowRef} listId={activeListId} />
 

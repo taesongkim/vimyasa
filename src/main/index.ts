@@ -1,11 +1,15 @@
 import { app } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipc'
-import { registerWindowIpcHandlers, createListWindow } from './windows'
+import { registerWindowIpcHandlers, wireOnboardingHosts } from './windows'
 import { createTray } from './tray'
-import { registerGlobalShortcuts, unregisterAllShortcuts } from './shortcuts'
-import { store } from './store'
+import {
+  registerGlobalShortcuts,
+  unregisterAllShortcuts,
+  getCurrentBuiltinShortcuts
+} from './shortcuts'
 import { setupAutoUpdater } from './updater'
+import { orchestrator } from './onboarding'
 
 // Hide dock icon (menubar-only app)
 if (process.platform === 'darwin') {
@@ -20,6 +24,12 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   registerWindowIpcHandlers()
 
+  // Wire the onboarding orchestrator's data sources before maybeRun() —
+  // it needs to know which BrowserWindows are its hosts and which
+  // shortcuts to display in the callout copy.
+  wireOnboardingHosts()
+  orchestrator.setShortcutsProvider(getCurrentBuiltinShortcuts)
+
   // Create tray icon
   createTray()
 
@@ -31,11 +41,10 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // Auto-open the first list on launch
-  const lists = store.get('lists')
-  if (lists.length > 0) {
-    createListWindow(lists[0].id)
-  }
+  // Run the onboarding tour for first-time users (or anyone whose tour
+  // version is behind). Small delay so the app's launch settles before
+  // the welcome callout appears.
+  setTimeout(() => orchestrator.maybeRun(), 400)
 
   // Check for updates (skipped automatically in dev / unpackaged builds)
   setupAutoUpdater()

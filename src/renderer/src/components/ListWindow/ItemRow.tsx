@@ -194,12 +194,18 @@ export function ItemRow({
             onBlur={commitEdit}
             onKeyDown={(e) => {
               if (e.key === 'Enter') commitEdit()
-              if (e.key === 'Escape') setEditing(false)
+              if (e.key === 'Escape') {
+                // We've handled this level (cancel without committing); don't
+                // let the window-level Escape handler also run and step focus
+                // back another rung.
+                e.stopPropagation()
+                setEditing(false)
+              }
             }}
           />
         ) : (
           <span
-            className={`flex-1 text-[length:var(--font-size-md)]`}
+            className={`flex-1 text-[length:var(--font-size-md)] [overflow-wrap:anywhere]`}
             style={{ opacity: statusOpacity[item.status], lineHeight: '1.5rem' }}
           >
             {item.text}

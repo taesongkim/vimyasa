@@ -71,7 +71,33 @@ const api: VimyasaAPI = {
   getLoginItemSettings: () => ipcRenderer.invoke('getLoginItemSettings'),
   setLoginItemSettings: (openAtLogin) => ipcRenderer.invoke('setLoginItemSettings', openAtLogin),
   importData: (data) => ipcRenderer.invoke('importData', data),
-  resetData: () => ipcRenderer.invoke('resetData')
+  resetData: () => ipcRenderer.invoke('resetData'),
+
+  // Onboarding (used by the callout window renderer; main app renderers
+  // can also subscribe to onState to know when a tour is active).
+  onboarding: {
+    advance: () => ipcRenderer.invoke('onboarding:advance'),
+    back: () => ipcRenderer.invoke('onboarding:back'),
+    close: () => ipcRenderer.invoke('onboarding:close'),
+    replay: () => ipcRenderer.invoke('onboarding:replay'),
+    getState: () => ipcRenderer.invoke('onboarding:get-state'),
+    requestResize: (height) => ipcRenderer.invoke('onboarding:request-resize', height),
+    onShowStep: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => callback(payload as never)
+      ipcRenderer.on('onboarding:show-step', listener)
+      return () => ipcRenderer.removeListener('onboarding:show-step', listener)
+    },
+    onItemsProgress: (callback) => {
+      const listener = (_e: unknown, count: unknown): void => callback(count as number)
+      ipcRenderer.on('onboarding:items-progress', listener)
+      return () => ipcRenderer.removeListener('onboarding:items-progress', listener)
+    },
+    onState: (callback) => {
+      const listener = (_e: unknown, state: unknown): void => callback(state as never)
+      ipcRenderer.on('onboarding:state', listener)
+      return () => ipcRenderer.removeListener('onboarding:state', listener)
+    }
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)
