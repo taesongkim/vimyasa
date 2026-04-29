@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_ENV="/Users/taesongkim/DevProjects2/vimyasa support/notarize.env"
+DEFAULT_ENV="$HOME/DevProjects2/vimyasa support/notarize.env"
 ENV_FILE="${VIMYASA_NOTARIZE_ENV:-$DEFAULT_ENV}"
 
 if [ ! -f "$ENV_FILE" ]; then
