@@ -361,3 +361,263 @@ html, body, #root {
     opacity: 0;
   }
 }
+
+/* ── Onboarding callout ────────────────────────────────────────────
+   Visual contract per design/onboarding/Style Guide.html §06. The
+   callout is heavier than the rest of the app's surfaces (62% black
+   tint vs 10%) on purpose — it has to read against arbitrary
+   desktop content behind the window. */
+
+.onb-root {
+  /* Content-sized; the BrowserWindow is resized to match (see
+   * onboarding:request-resize). Don't fill — we want the natural height. */
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: stretch;
+}
+
+.onb-callout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 10, 10, 0.62);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-panel);
+  padding: 16px 18px;
+  gap: 12px;
+  color: var(--color-text);
+}
+
+/* Welcome screen — no progress chrome, slightly different header */
+.onb-welcome .onb-callout {
+  /* identical glass; differences are content-level */
+}
+
+/* Header: counter on left, dismiss X on right */
+.onb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 16px;
+}
+.onb-counter {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  color: var(--color-text-ghost);
+  text-transform: uppercase;
+}
+.onb-counter-num {
+  color: var(--color-text-secondary);
+}
+.onb-counter-sep {
+  margin: 0 4px;
+  color: var(--color-text-ghost);
+}
+.onb-counter-total {
+  color: var(--color-text-ghost);
+}
+.onb-counter-label {
+  color: var(--color-text-secondary);
+  letter-spacing: 0.08em;
+}
+.onb-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--color-text-ghost);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: var(--motion-hover);
+}
+.onb-dismiss:hover {
+  color: var(--color-text);
+}
+
+/* Title */
+.onb-title {
+  font-family: var(--font-tight);
+  font-weight: 500;
+  font-size: var(--font-size-md);
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+/* Body — Inter 13px, gray, line-height 1.6.
+ * No flex/overflow: the callout window resizes to its content via the
+ * onboarding:request-resize IPC, so we don't need to clip here. */
+.onb-body {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+.onb-body p + p {
+  margin-top: 8px;
+}
+.onb-emphasis {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+/* Action list (used by navigate-actions and lists) */
+.onb-actions-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.onb-actions-list li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.onb-actions-list li > .onb-key {
+  flex: none;
+  min-width: 64px;
+  text-align: center;
+}
+
+/* Mnemonic-letter highlight ("the A in Archive"). Pulses gray → white →
+ * gray on a 1.6s loop, matching the prototype. The four mnemonic-bearing
+ * rows are staggered 200ms apart so the pulses cascade down the list as
+ * a subtle wave instead of firing in unison. */
+.onb-mnem {
+  font-weight: 500;
+  animation: onb-mnem-pulse 1.6s ease-in-out infinite;
+}
+.onb-actions-list li:nth-child(3) .onb-mnem {
+  animation-delay: 0ms;
+}
+.onb-actions-list li:nth-child(4) .onb-mnem {
+  animation-delay: 200ms;
+}
+.onb-actions-list li:nth-child(5) .onb-mnem {
+  animation-delay: 400ms;
+}
+.onb-actions-list li:nth-child(6) .onb-mnem {
+  animation-delay: 600ms;
+}
+@keyframes onb-mnem-pulse {
+  0%,
+  100% {
+    color: var(--color-text-secondary);
+  }
+  50% {
+    color: #ffffff;
+  }
+}
+
+/* Keyboard chip */
+.onb-key {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  background: rgba(96, 165, 250, 0.08);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* Auto-advance hint with green pulse */
+.onb-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--color-green);
+}
+.onb-hint-pulse {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-green);
+  box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
+  animation: onb-pulse 1.6s ease-out infinite;
+}
+@keyframes onb-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
+}
+
+/* Footer: progress dots on left, buttons on right */
+.onb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.onb-progress {
+  display: flex;
+  gap: 4px;
+}
+.onb-dot {
+  display: block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: background 150ms ease;
+}
+.onb-dot-active {
+  background: var(--color-accent);
+}
+.onb-dot-done {
+  background: rgba(96, 165, 250, 0.4);
+}
+
+.onb-buttons {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.onb-btn {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--motion-hover);
+}
+.onb-btn-secondary {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-secondary);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.onb-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+}
+.onb-btn-primary {
+  background: var(--color-accent);
+  color: #0a0a0a;
+  border-color: var(--color-accent);
+}
+.onb-btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+.onb-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

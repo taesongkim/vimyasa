@@ -1,6 +1,23 @@
 import { BrowserWindow, screen, ipcMain, Menu, shell, app } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { orchestrator } from './onboarding'
+
+// Re-run onboarding callout positioning whenever a host window moves /
+// resizes / shows / hides / closes — keeps the callout glued to the host.
+function trackForOnboarding(win: BrowserWindow): void {
+  const refresh = (): void => orchestrator.refreshPosition()
+  win.on('move', refresh)
+  win.on('resize', refresh)
+  win.on('show', refresh)
+  win.on('hide', refresh)
+  win.on('close', () => {
+    // If the host the callout was anchored to is going away, re-position
+    // (the host provider will return null on the next call) so the callout
+    // falls back to its reserved screen position rather than stranding.
+    setTimeout(refresh, 0)
+  })
+}
 
 const LIST_WINDOW_WIDTH = 360
 const QUICKADD_WIDTH = 400
@@ -127,8 +144,10 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
     win.show()
     // Let the Framer Motion slide handle the visual entrance
     setTimeout(() => win.setOpacity(1), 10)
+    orchestrator.refreshPosition()
   })
   win.on('closed', () => listWindows.delete(listId))
+  trackForOnboarding(win)
   return win
 }
 
@@ -158,8 +177,14 @@ export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?:
   quickAddWindow = win
   const hash = `/quickadd/fixed/${targetListId || ''}`
   loadRoute(win, hash)
-  win.once('ready-to-show', () => win.show())
-  win.on('closed', () => { quickAddWindow = null })
+  win.once('ready-to-show', () => {
+    win.show()
+    orchestrator.refreshPosition()
+  })
+  win.on('closed', () => {
+    quickAddWindow = null
+  })
+  trackForOnboarding(win)
   return win
 }
 
@@ -269,6 +294,28 @@ export function createArchiveWindow(listId?: string): BrowserWindow {
 
 export function getOpenListWindowCount(): number {
   return listWindows.size
+}
+
+// First non-destroyed list window — used as the 'list' host for onboarding's
+// 'navigate-actions' step. We pick whichever list window the user opened
+// first; if multiple are open, the others ride along visually.
+function getFirstListWindow(): BrowserWindow | null {
+  for (const win of listWindows.values()) {
+    if (!win.isDestroyed()) return win
+  }
+  return null
+}
+
+/** Hook the onboarding orchestrator's host providers into the live window
+ *  registry. Call once at app.whenReady() time, after orchestrator is
+ *  imported. */
+export function wireOnboardingHosts(): void {
+  orchestrator.registerHostProvider('quickadd', () =>
+    quickAddWindow && !quickAddWindow.isDestroyed() ? quickAddWindow : null
+  )
+  orchestrator.registerHostProvider('list', () => getFirstListWindow())
+  orchestrator.registerHostProvider('tray', () => null) // anchored via trayBoundsProvider
+  orchestrator.registerHostProvider('none', () => null)
 }
 
 // ── IPC Handlers ────────────────────────────────────────────────

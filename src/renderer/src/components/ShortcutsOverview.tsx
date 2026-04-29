@@ -21,8 +21,7 @@ const listNavigationShortcuts = [
 // Entry form shortcuts
 const entryFormShortcuts = [
   { key: 'ESC', label: 'Exit', description: 'Close entry form' },
-  { key: 'TAB', label: 'Cycle Target', description: 'Switch between lists or focus areas' },
-  { key: '↑↓', label: 'Navigate Lists', description: 'Select target list (when applicable)' }
+  { key: 'TAB', label: 'Cycle Target', description: 'Switch between lists or focus areas' }
 ]
 
 function formatAccelerator(accel: string): string {

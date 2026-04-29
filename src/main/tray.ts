@@ -9,6 +9,7 @@ import {
   createSettingsWindow,
   createArchiveWindow
 } from './windows'
+import { orchestrator } from './onboarding'
 
 let tray: Tray | null = null
 
@@ -29,6 +30,17 @@ export function createTray(): Tray {
 
   tray = new Tray(icon)
   tray.setToolTip('Vimyasa')
+
+  // Report tray clicks to the onboarding orchestrator so its 'tray' step
+  // can match. macOS still opens the context menu via setContextMenu below;
+  // the click event fires alongside that. Cheap when no tour is active.
+  tray.on('click', () => {
+    orchestrator.report({ kind: 'tray-click' })
+  })
+
+  // Provide tray bounds + a re-position hook to the orchestrator so the
+  // 'below-tray' anchor lands correctly.
+  orchestrator.setTrayBoundsProvider(() => tray?.getBounds() ?? null)
 
   updateTrayMenu()
   return tray
@@ -133,6 +145,11 @@ export function updateTrayMenu(): void {
     {
       label: 'Settings',
       click: () => createSettingsWindow()
+    },
+    { type: 'separator' },
+    {
+      label: 'Replay Onboarding Tour',
+      click: () => orchestrator.replay()
     },
     { type: 'separator' },
     {

@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid'
 import { store } from './store'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
+import { orchestrator } from './onboarding'
 import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts } from '../shared/types'
 
 function now(): string {
@@ -171,6 +172,10 @@ export function registerIpcHandlers(): void {
     store.set('items', [...items, item])
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    // Notify the onboarding orchestrator — its 'capture-add' step counts
+    // up to 3 successful adds before auto-advancing. Cheap when no tour is
+    // active.
+    orchestrator.report({ kind: 'item-added' })
     return item
   })
 
@@ -368,4 +373,22 @@ export function registerIpcHandlers(): void {
     store.clear()
     broadcastDataChanged(e.sender.id)
   })
+
+  // ── Onboarding ──────────────────────────────────────────────────
+  // Callout renderer drives the tour through these.
+  ipcMain.handle('onboarding:advance', () => orchestrator.advance())
+  ipcMain.handle('onboarding:back', () => orchestrator.back())
+  ipcMain.handle('onboarding:close', () => orchestrator.close())
+  ipcMain.handle('onboarding:replay', () => orchestrator.replay())
+  // Pull-style fetch so a freshly-mounted callout renderer can populate
+  // immediately, in case it missed the push that fired when its window
+  // was created.
+  ipcMain.handle('onboarding:get-state', () =>
+    orchestrator.getCurrentCalloutPayload()
+  )
+  // Renderer reports its measured content height; we resize the
+  // BrowserWindow to match so longer steps don't clip vertically.
+  ipcMain.handle('onboarding:request-resize', (_e, height: number) =>
+    orchestrator.setCalloutHeight(height)
+  )
 }

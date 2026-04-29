@@ -6,6 +6,7 @@ import { CommentsWindow } from './components/Comments/CommentsWindow'
 import { SettingsWindow } from './components/Settings/SettingsWindow'
 import { ArchiveWindow } from './components/Archive/ArchiveWindow'
 import { ShortcutsOverview } from './components/ShortcutsOverview'
+import { CalloutWindow } from './components/Onboarding/CalloutWindow'
 
 interface RouteInfo {
   route: string
@@ -36,6 +37,9 @@ function parseHash(): RouteInfo {
   }
   if (parts[1] === 'shortcuts-overview') {
     return { route: 'shortcuts-overview', params: {} }
+  }
+  if (parts[1] === 'onboarding') {
+    return { route: 'onboarding', params: {} }
   }
   return { route: 'unknown', params: {} }
 }
@@ -75,6 +79,13 @@ export default function App() {
         <span className="text-[color:var(--color-text-ghost)] text-[length:var(--font-size-sm)] font-mono">{error}</span>
       </div>
     )
+  }
+
+  // Onboarding callout has no dependency on user data — it pulls its own
+  // step payload from the main-process orchestrator over IPC. Skip the
+  // hydration gate so it can render before the store finishes loading.
+  if (route.route === 'onboarding') {
+    return <CalloutWindow />
   }
 
   if (!hydrated) {

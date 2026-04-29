@@ -20,7 +20,7 @@ const defaults: DataStore = {
     {
       id: defaultListId,
       groupId: defaultGroupId,
-      name: 'Inbox',
+      name: 'Inbox (Rename-able)',
       icon: '📥',
       sortOrder: 0
     }

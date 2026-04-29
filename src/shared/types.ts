@@ -131,6 +131,41 @@ export interface VimyasaAPI {
   setLoginItemSettings: (openAtLogin: boolean) => Promise<void>
   importData: (data: DataStore) => Promise<void>
   resetData: () => Promise<void>
+
+  // Onboarding
+  onboarding: OnboardingAPI
+}
+
+export interface OnboardingCalloutPayload {
+  stepId: string
+  step: number
+  welcome: boolean
+  subStep: boolean
+  label: string
+  title: string
+  autoAdvanceHint: string | null
+  successAction: string | null
+  mainStepIndex: number
+  totalMain: number
+  itemsAddedCount: number
+  shortcuts: { quickAdd: string; openList: string; reference: string }
+}
+
+export interface OnboardingState {
+  active: boolean
+  stepId: string | null
+}
+
+export interface OnboardingAPI {
+  advance: () => Promise<void>
+  back: () => Promise<void>
+  close: () => Promise<void>
+  replay: () => Promise<void>
+  getState: () => Promise<OnboardingCalloutPayload | null>
+  requestResize: (height: number) => Promise<void>
+  onShowStep: (callback: (payload: OnboardingCalloutPayload) => void) => () => void
+  onItemsProgress: (callback: (count: number) => void) => () => void
+  onState: (callback: (state: OnboardingState) => void) => () => void
 }
 
 declare global {

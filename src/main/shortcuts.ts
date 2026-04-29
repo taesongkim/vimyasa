@@ -3,6 +3,7 @@ import { store } from './store'
 import { createListWindow, createQuickAddWindow, createShortcutsOverviewWindow } from './windows'
 import type { BuiltinShortcuts } from '../shared/types'
 import { DEFAULT_BUILTIN_SHORTCUTS } from '../shared/types'
+import { orchestrator } from './onboarding'
 
 let cycleIndex = 0
 
@@ -36,6 +37,9 @@ function registerBuiltinShortcuts(): void {
     if (lists.length > 0) {
       createListWindow(lists[0].id)
     }
+    // Notify the onboarding orchestrator so its 'navigate' step can match.
+    // Cheap when no tour is active.
+    orchestrator.report({ kind: 'shortcut', shortcutId: 'press-list' })
   })
 
   // Quick-add to first list (fixed)
@@ -44,6 +48,7 @@ function registerBuiltinShortcuts(): void {
     if (lists.length > 0) {
       createQuickAddWindow('fixed', lists[0].id)
     }
+    orchestrator.report({ kind: 'shortcut', shortcutId: 'press-summon' })
   })
 
   // Shortcuts overview
@@ -141,4 +146,24 @@ export function unregisterAllShortcuts(): void {
   globalShortcut.unregisterAll()
   registeredBuiltinAccelerators.length = 0
   registeredUserAccelerators.length = 0
+}
+
+/** Live snapshot of the configured builtin shortcuts for the onboarding
+ *  callouts to display. Reads through to the store on every call so replay
+ *  reflects any remapping the user has made. */
+export function getCurrentBuiltinShortcuts(): {
+  quickAdd: string
+  openList: string
+  reference: string
+} {
+  const raw = store.get('builtinShortcuts')
+  const config: BuiltinShortcuts =
+    raw && typeof raw === 'object'
+      ? { ...DEFAULT_BUILTIN_SHORTCUTS, ...raw }
+      : DEFAULT_BUILTIN_SHORTCUTS
+  return {
+    quickAdd: config.quickAddFirst,
+    openList: config.openFirstList,
+    reference: "CommandOrControl+Shift+'"
+  }
 }
