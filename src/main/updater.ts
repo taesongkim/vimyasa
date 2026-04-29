@@ -8,21 +8,13 @@ const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
 export function setupAutoUpdater(): void {
   if (!app.isPackaged) return
 
-  const token = process.env.VIMYASA_UPDATE_TOKEN
-  if (!token) {
-    console.warn('[updater] VIMYASA_UPDATE_TOKEN not set; auto-update disabled')
-    return
-  }
-
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = false
 
   autoUpdater.setFeedURL({
     provider: 'github',
     owner: 'taesongkim',
-    repo: 'vimyasa',
-    private: true,
-    token
+    repo: 'vimyasa'
   })
 
   autoUpdater.on('update-available', async (info) => {

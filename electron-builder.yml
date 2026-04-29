@@ -41,4 +41,3 @@ publish:
   provider: github
   owner: taesongkim
   repo: vimyasa
-  private: true
