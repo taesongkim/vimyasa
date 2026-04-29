@@ -323,11 +323,29 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     },
     onN: () => addRowRef.current?.focus(),
     onEscape: () => {
-      if (focusIndex === -1) {
-        window.api.closeWindow()
-      } else {
-        setFocusIndex(-1) // deselect if something is selected
+      // Hierarchical Escape — step back exactly one focus level per press:
+      //   input focus  → blur the input             (lands in item or window focus)
+      //   item focus   → clear focusIndex            (lands in window focus)
+      //   window focus → close the window           (top of the stack)
+      // The order matters: input check has to come first because focusIndex
+      // is -1 in *both* input focus and window focus, so we can't tell them
+      // apart without consulting document.activeElement.
+      const active = document.activeElement as HTMLElement | null
+      const isTypingInInput =
+        !!active &&
+        (active.tagName === 'INPUT' ||
+          active.tagName === 'TEXTAREA' ||
+          active.isContentEditable)
+
+      if (isTypingInInput) {
+        active?.blur?.()
+        return
       }
+      if (focusIndex !== -1) {
+        setFocusIndex(-1)
+        return
+      }
+      window.api.closeWindow()
     },
     onNumber1: () => switchToListByNumber(1),
     onNumber2: () => switchToListByNumber(2),

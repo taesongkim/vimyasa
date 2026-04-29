@@ -194,7 +194,13 @@ export function ItemRow({
             onBlur={commitEdit}
             onKeyDown={(e) => {
               if (e.key === 'Enter') commitEdit()
-              if (e.key === 'Escape') setEditing(false)
+              if (e.key === 'Escape') {
+                // We've handled this level (cancel without committing); don't
+                // let the window-level Escape handler also run and step focus
+                // back another rung.
+                e.stopPropagation()
+                setEditing(false)
+              }
             }}
           />
         ) : (
