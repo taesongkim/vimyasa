@@ -97,6 +97,22 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
   const focusedItem = listItems[focusIndex] || null
 
+  // After a destructive item action (archive, delete), do two things:
+  //   1. Slide the focus indicator to the next item (or clear if list is now empty).
+  //      Using listItems.length - 2 because listItems still has the pre-action length
+  //      at the time this runs — the React re-render that filters out the removed
+  //      item happens after the current event handler returns.
+  //   2. Force DOM focus back to body. When the focused row unmounts, Electron
+  //      sometimes hands DOM focus to the next focusable sibling (typically the
+  //      AddRow input) instead of falling back to body. If that happens, the
+  //      window-level keyboard handler bails out on every subsequent keypress
+  //      because it ignores keys when an input/textarea/contentEditable is focused
+  //      — meaning j/k/a appear to silently stop working.
+  const handlePostDestructive = useCallback(() => {
+    setFocusIndex((i) => Math.min(i, listItems.length - 2))
+    ;(document.activeElement as HTMLElement | null)?.blur?.()
+  }, [listItems.length])
+
   // Clear copy function when focus changes
   useEffect(() => {
     if (focusIndex === -1) {
@@ -167,9 +183,11 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           break
         case 'archive':
           archiveItem(data.itemId)
+          handlePostDestructive()
           break
         case 'delete':
           removeItem(data.itemId)
+          handlePostDestructive()
           break
       }
     }
@@ -187,7 +205,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         window.electron?.ipcRenderer?.removeListener('context-menu-action', handleContextAction)
       }
     }
-  }, [items, changeItemStatus, sendItemToList, archiveItem, removeItem])
+  }, [items, changeItemStatus, sendItemToList, archiveItem, removeItem, handlePostDestructive])
 
   // DnD sensors
   const sensors = useSensors(
@@ -236,6 +254,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onEnter: () => {
       if (focusedItem) {
         archiveItem(focusedItem.id)
+        handlePostDestructive()
       }
     },
     onSpace: () => {
@@ -253,7 +272,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         if (confirmDelete === focusedItem.id) {
           removeItem(focusedItem.id)
           setConfirmDelete(null)
-          setFocusIndex((i) => Math.min(i, listItems.length - 2))
+          handlePostDestructive()
         } else {
           setConfirmDelete(focusedItem.id)
           setTimeout(() => setConfirmDelete(null), 2000)
@@ -283,6 +302,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onA: () => {
       if (focusedItem) {
         archiveItem(focusedItem.id)
+        handlePostDestructive()
       }
     },
     onN: () => addRowRef.current?.focus(),
