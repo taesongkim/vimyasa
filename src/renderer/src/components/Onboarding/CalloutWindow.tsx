@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getStepBody } from './StepBodies'
+import { VimyasaMark } from './VimyasaMark'
 
 interface CalloutPayload {
   stepId: string
@@ -163,25 +164,12 @@ export function CalloutWindow(): JSX.Element | null {
             </div>
           )}
 
-          {/* Footer — buttons + progress dots */}
+          {/* Footer — for welcome: buttons left, V mark right.
+              For numbered callouts: progress dots left, buttons right. */}
           <div className="onb-footer">
-            {!isWelcome && (
-              <div className="onb-progress">
-                {Array.from({ length: payload.totalMain }).map((_, i) => {
-                  const stepNum = i + 1
-                  const state =
-                    stepNum < payload.mainStepIndex
-                      ? 'done'
-                      : stepNum === payload.mainStepIndex
-                        ? 'active'
-                        : 'pending'
-                  return <span key={i} className={`onb-dot onb-dot-${state}`} />
-                })}
-              </div>
-            )}
-            <div className="onb-buttons">
-              {isWelcome ? (
-                <>
+            {isWelcome ? (
+              <>
+                <div className="onb-buttons">
                   <button
                     type="button"
                     className="onb-btn onb-btn-secondary"
@@ -196,9 +184,26 @@ export function CalloutWindow(): JSX.Element | null {
                   >
                     Start Tour
                   </button>
-                </>
-              ) : (
-                <>
+                </div>
+                <div className="onb-mark">
+                  <VimyasaMark />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="onb-progress">
+                  {Array.from({ length: payload.totalMain }).map((_, i) => {
+                    const stepNum = i + 1
+                    const state =
+                      stepNum < payload.mainStepIndex
+                        ? 'done'
+                        : stepNum === payload.mainStepIndex
+                          ? 'active'
+                          : 'pending'
+                    return <span key={i} className={`onb-dot onb-dot-${state}`} />
+                  })}
+                </div>
+                <div className="onb-buttons">
                   <button
                     type="button"
                     className="onb-btn onb-btn-secondary"
@@ -214,9 +219,9 @@ export function CalloutWindow(): JSX.Element | null {
                   >
                     {isFinal ? "Let's go" : 'Next →'}
                   </button>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>

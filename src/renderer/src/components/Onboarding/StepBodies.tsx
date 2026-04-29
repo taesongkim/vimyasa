@@ -3,6 +3,7 @@
 // src/shared/onboarding-steps.ts stay JSX-free and importable from main.
 
 import type { ReactNode } from 'react'
+import { VimyasaMark } from './VimyasaMark'
 
 interface StepBodyProps {
   shortcuts: { quickAdd: string; openList: string; reference: string }
@@ -134,8 +135,11 @@ export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
     case 'tray':
       return (
         <p>
-          Click the <Key>Vimyasa</Key> icon in the menubar for everything else:
-          create new lists, change shortcuts, or replay this tour.
+          <span style={{ whiteSpace: 'nowrap' }}>
+            Click the <VimyasaMark size={21} /> icon
+          </span>{' '}
+          in the menubar for everything else: create new lists, change
+          shortcuts, or replay this tour.
         </p>
       )
 
@@ -143,21 +147,21 @@ export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
       return (
         <>
           <p>
-            Once you have more than one list, you can move between them
-            without leaving the keyboard:
+            Once you have more than one list, you can cycle between them in
+            different contexts with Tab:
           </p>
           <ul className="onb-actions-list">
             <li>
               <Key>Tab</Key>
-              <span>cycle the target list while in the Entry Form</span>
+              <span>While in Entry Form: Cycle target list</span>
             </li>
             <li>
               <Key>Tab</Key>
-              <span>cycle the visible list while in the list window</span>
+              <span>While in List Window: Cycle visible list</span>
             </li>
             <li>
               <Key>1–9</Key>
-              <span>jump straight to a list by number</span>
+              <span>While in List Window: jump straight to desired list</span>
             </li>
           </ul>
           <p>List numbers match the order in Settings → Lists.</p>
