@@ -45,14 +45,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const scrollbarRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Shadow state for content clipping indicators
-  const [showTopShadow, setShowTopShadow] = useState(false)
-  const [showBottomShadow, setShowBottomShadow] = useState(false)
 
   const list = lists.find((l) => l.id === activeListId)
   const listNumber = lists.findIndex((l) => l.id === activeListId) + 1
 
-  // Update custom scrollbar and shadow visibility
+  // Update custom scrollbar position and the scroll-edge fade strengths.
+  // Fade strength scales from 0 (edge item fully visible) to 1 (edge item
+  // fully clipped past the edge), with a quadratic ease-out so the fade
+  // ramps in quickly at first and plateaus near full strength. Written
+  // directly to CSS custom properties on the scroll container — no React
+  // state, no re-render on every scroll tick.
   const updateScrollbar = useCallback(() => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -62,9 +64,23 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
     setScrollbarVisible(hasOverflow)
 
-    // Update shadow visibility based on scroll position
-    setShowTopShadow(scrollTop > 0)
-    setShowBottomShadow(hasOverflow && scrollTop < scrollHeight - clientHeight)
+    // Measure first/last items to know how much "scroll budget" exists at
+    // each edge before the edge item is fully gone. Using getBoundingClientRect
+    // because items have variable heights (text wraps).
+    const firstItem = container.querySelector('[data-index="0"]') as HTMLElement | null
+    const firstHeight = firstItem ? firstItem.getBoundingClientRect().height : 0
+    const distanceFromBottom = scrollHeight - clientHeight - scrollTop
+    const lastItem = container.querySelector(
+      `[data-index="${(container.querySelectorAll('[data-index]').length || 1) - 1}"]`
+    ) as HTMLElement | null
+    const lastHeight = lastItem ? lastItem.getBoundingClientRect().height : 0
+
+    const easeOut = (t: number): number => 1 - Math.pow(1 - t, 2)
+    const topRaw = firstHeight > 0 ? Math.min(scrollTop / firstHeight, 1) : 0
+    const bottomRaw = lastHeight > 0 ? Math.min(distanceFromBottom / lastHeight, 1) : 0
+
+    container.style.setProperty('--top-fade-strength', String(easeOut(topRaw)))
+    container.style.setProperty('--bottom-fade-strength', String(easeOut(bottomRaw)))
 
     if (hasOverflow) {
       const scrollRatio = scrollTop / (scrollHeight - clientHeight)
@@ -433,18 +449,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     >
       <TitleBar list={list} listNumber={listNumber} filter={filter} onFilterChange={setFilter} counts={counts} />
 
-      {/* Top shadow - indicates content is clipped above */}
-      {showTopShadow && (
-        <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
-             style={{
-               top: `${scrollContainerRef.current?.offsetTop || 0}px`,
-               background: `var(--shadow-content-clip)`
-             }}
-        />
-      )}
-
       {/* Item list */}
-      <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative">
+      <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
         <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
         <DndContext
           sensors={sensors}
@@ -477,16 +483,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         )}
 
       </div>
-
-      {/* Bottom shadow - indicates content is clipped below */}
-      {showBottomShadow && (
-        <div className="absolute left-4 right-4 h-5 pointer-events-none z-10"
-             style={{
-               bottom: `${scrollContainerRef.current ? (scrollContainerRef.current.parentElement?.clientHeight || 0) - (scrollContainerRef.current.offsetTop + scrollContainerRef.current.clientHeight) : 0}px`,
-               background: `var(--shadow-content-clip-up)`
-             }}
-        />
-      )}
 
       <AddRow ref={addRowRef} listId={activeListId} />
 

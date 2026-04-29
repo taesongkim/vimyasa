@@ -102,9 +102,8 @@
   --icon-size-sm: 12px;               /* Small icons */
   --icon-size-md: 14px;               /* Medium icons */
 
-  /* Content shadows */
-  --shadow-content-clip: linear-gradient(to bottom, var(--white-priority-2), transparent);
-  --shadow-content-clip-up: linear-gradient(to top, var(--white-priority-2), transparent);
+  /* Scroll-edge fade region depth (used by .scroll-fade) */
+  --scroll-fade-depth: 12px;
 
   /* Animation tokens */
   --motion-item-entry: opacity 150ms ease, transform 150ms ease;
@@ -238,6 +237,38 @@ html, body, #root {
 
 .glass-surface {
   background: rgba(10, 10, 10, 0.1);
+}
+
+/* ── Scroll-edge fade ─────────────────────────────────────────────
+   Soft fade at the top and bottom edges of a scroll container that
+   indicates clipped content. Implemented as a mask so items literally
+   fade in alpha — whatever's behind the window (vibrancy, wallpaper,
+   any color) shows through cleanly, no overlay color mismatch.
+
+   Strength is driven by two CSS custom properties (0..1) that the
+   parent component writes on every scroll based on how much of the
+   first/last item is currently clipped past the viewport edge. At
+   strength 0 the edge alpha is 1 (no visible fade); at strength 1
+   the edge alpha is 0 (item fully fades out at the edge). The fade
+   region size itself stays fixed at --scroll-fade-depth. */
+.scroll-fade {
+  --top-fade-strength: 0;
+  --bottom-fade-strength: 0;
+
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, calc(1 - var(--top-fade-strength))) 0,
+    rgba(0, 0, 0, 1) var(--scroll-fade-depth),
+    rgba(0, 0, 0, 1) calc(100% - var(--scroll-fade-depth)),
+    rgba(0, 0, 0, calc(1 - var(--bottom-fade-strength))) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, calc(1 - var(--top-fade-strength))) 0,
+    rgba(0, 0, 0, 1) var(--scroll-fade-depth),
+    rgba(0, 0, 0, 1) calc(100% - var(--scroll-fade-depth)),
+    rgba(0, 0, 0, calc(1 - var(--bottom-fade-strength))) 100%
+  );
 }
 
 /* ── Focus / Item states ──────────────────────────────────────── */
