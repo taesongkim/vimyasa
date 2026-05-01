@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Surface failures clearly even when invoked through a pipe (e.g. `| tee`),
+# which would otherwise let the wrapper shell report exit 0 and mask a real
+# failure inside the script.
+trap 'rc=$?; if [ $rc -ne 0 ]; then
+  echo ""
+  echo "=== RELEASE FAILED (exit $rc) ==="
+  echo "If you piped this through tee/etc., the parent shell may report exit 0."
+  echo "Re-run without piping, or set -o pipefail in the parent, to surface the real code."
+fi' EXIT
+
 DEFAULT_ENV="$HOME/DevProjects2/vimyasa support/notarize.env"
 ENV_FILE="${VIMYASA_NOTARIZE_ENV:-$DEFAULT_ENV}"
 
