@@ -53,8 +53,32 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   }, [])
 
 
+  // Lists in canonical display order. `lists` from the store is in insertion
+  // order; the user-facing order is governed by `sortOrder`, which the
+  // Settings → Lists tab updates on drag-reorder. Every position-y display
+  // here (list number, number-key 1–9 switching, Tab cycling) reads from
+  // sortedLists so it stays in sync with what Settings shows.
+  const sortedLists = useMemo(
+    () => [...lists].sort((a, b) => a.sortOrder - b.sortOrder),
+    [lists]
+  )
+
   const list = lists.find((l) => l.id === activeListId)
-  const listNumber = lists.findIndex((l) => l.id === activeListId) + 1
+  const listNumber = sortedLists.findIndex((l) => l.id === activeListId) + 1
+
+  // Flash the title-bar number when it changes because of a reorder, but not
+  // when it changes because the user is actively switching lists. Bumping
+  // numberFlashKey re-keys the span in TitleBar, which restarts the CSS
+  // keyframe. Initial mount stays at 0 so the flash doesn't fire on launch.
+  const [numberFlashKey, setNumberFlashKey] = useState(0)
+  const prevNumberSnapshotRef = useRef({ activeListId, listNumber })
+  useEffect(() => {
+    const prev = prevNumberSnapshotRef.current
+    if (prev.activeListId === activeListId && prev.listNumber !== listNumber) {
+      setNumberFlashKey((k) => k + 1)
+    }
+    prevNumberSnapshotRef.current = { activeListId, listNumber }
+  }, [activeListId, listNumber])
 
   // Update custom scrollbar position and the scroll-edge fade strengths.
   // Fade strength scales from 0 (edge item fully visible) to 1 (edge item
@@ -145,12 +169,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
   // Switch to list by number (1-indexed)
   const switchToListByNumber = useCallback((listNumber: number) => {
-    const targetList = lists[listNumber - 1]
+    const targetList = sortedLists[listNumber - 1]
     if (targetList && targetList.id !== activeListId && cyclePhase === 'idle') {
       cycleTargetRef.current = targetList.id
       setCyclePhase('out')
     }
-  }, [lists, activeListId, cyclePhase])
+  }, [sortedLists, activeListId, cyclePhase])
 
   // Auto-scroll focused item into view
   useEffect(() => {
@@ -372,9 +396,9 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onNumber8: () => switchToListByNumber(8),
     onNumber9: () => switchToListByNumber(9),
     onTab: () => {
-      const idx = lists.findIndex((l) => l.id === activeListId)
-      if (lists.length > 1 && cyclePhase === 'idle') {
-        const nextList = lists[(idx + 1) % lists.length]
+      const idx = sortedLists.findIndex((l) => l.id === activeListId)
+      if (sortedLists.length > 1 && cyclePhase === 'idle') {
+        const nextList = sortedLists[(idx + 1) % sortedLists.length]
         cycleTargetRef.current = nextList.id
         setCyclePhase('out')
       }
@@ -480,7 +504,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       className="flex flex-col h-full glass-surface relative"
       style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}
     >
-      <TitleBar list={list} listNumber={listNumber} filter={filter} onFilterChange={setFilter} counts={counts} />
+      <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
