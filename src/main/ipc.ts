@@ -4,7 +4,7 @@ import { store } from './store'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
 import { orchestrator } from './onboarding'
-import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts } from '../shared/types'
+import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
 
 function now(): string {
   return new Date().toISOString()
@@ -32,7 +32,8 @@ export function registerIpcHandlers(): void {
       items: store.get('items'),
       comments: store.get('comments'),
       shortcuts: store.get('shortcuts'),
-      builtinShortcuts: store.get('builtinShortcuts')
+      builtinShortcuts: store.get('builtinShortcuts'),
+      jkMode: store.get('jkMode') ?? 'standard'
     }
   })
 
@@ -80,7 +81,7 @@ export function registerIpcHandlers(): void {
   })
 
   // ── Lists ───────────────────────────────────────────────────────
-  ipcMain.handle('createList', (e, groupId: string, name: string, icon?: string): List => {
+  ipcMain.handle('createList', (e, groupId: string, name: string): List => {
     const lists = store.get('lists')
     // Lists don't archive but they can be deleted, which leaves gaps in
     // sortOrder values. Use max + 1 over the group's lists to land at the
@@ -92,7 +93,6 @@ export function registerIpcHandlers(): void {
       id: uuid(),
       groupId,
       name,
-      icon: icon || '📋',
       sortOrder: nextSortOrder
     }
     store.set('lists', [...lists, list])
@@ -347,6 +347,13 @@ export function registerIpcHandlers(): void {
     refreshBuiltinShortcuts()
     broadcastDataChanged(e.sender.id)
     return updated
+  })
+
+  // ── J/K mapping mode ────────────────────────────────────────
+  ipcMain.handle('setJkMode', (e, mode: JkMode): JkMode => {
+    store.set('jkMode', mode)
+    broadcastDataChanged(e.sender.id)
+    return mode
   })
 
   // ── Shortcut capture (pause/resume) ─────────────────────────

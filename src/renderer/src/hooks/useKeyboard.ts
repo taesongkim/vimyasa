@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react'
+import { useStore } from '../store/useStore'
 
 interface KeyboardConfig {
   onArrowUp?: () => void
@@ -27,6 +28,10 @@ interface KeyboardConfig {
 }
 
 export function useKeyboard(config: KeyboardConfig) {
+  // jkMode is a user preference: 'standard' (vim: j down, k up) vs
+  // 'inverse' (j up, k down). Arrow keys are unaffected.
+  const jkMode = useStore((s) => s.jkMode)
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (config.enabled === false) return
@@ -46,16 +51,28 @@ export function useKeyboard(config: KeyboardConfig) {
         return
       }
 
+      // In standard mode, j fires onArrowDown and k fires onArrowUp.
+      // In inverse mode, the j/k assignment flips. Arrow keys are
+      // always literal.
+      const jHandler = jkMode === 'inverse' ? config.onArrowUp : config.onArrowDown
+      const kHandler = jkMode === 'inverse' ? config.onArrowDown : config.onArrowUp
+
       switch (e.key) {
         case 'ArrowUp':
-        case 'k':
           e.preventDefault()
           config.onArrowUp?.()
           break
         case 'ArrowDown':
-        case 'j':
           e.preventDefault()
           config.onArrowDown?.()
+          break
+        case 'j':
+          e.preventDefault()
+          jHandler?.()
+          break
+        case 'k':
+          e.preventDefault()
+          kHandler?.()
           break
         case 'Enter':
           e.preventDefault()
@@ -146,7 +163,7 @@ export function useKeyboard(config: KeyboardConfig) {
           break
       }
     },
-    [config]
+    [config, jkMode]
   )
 
   useEffect(() => {

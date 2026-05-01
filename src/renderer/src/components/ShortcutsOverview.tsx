@@ -1,14 +1,17 @@
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore'
+import { JkModeToggle } from './JkModeToggle'
 
 // Global shortcuts (configurable)
 const globalShortcuts = [
   { key: '⌘⇧\'', label: 'Show Shortcuts', description: 'Display this shortcuts overview' },
 ]
 
-// List navigation shortcuts (non-configurable)
+// List navigation shortcuts (non-configurable). j/k is special-cased
+// in the render: it has a toggle that flips the mapping and a dynamic
+// description that reflects the current mode.
 const listNavigationShortcuts = [
-  { key: 'j/k', label: 'Navigate Items', description: 'j = up, k = down (with wrapping)' },
+  { key: 'j/k', label: 'Navigate Items', description: '' },
   { key: 'Space', label: 'Cycle Status', description: 'active → done → hold → active' },
   { key: 'Enter or a', label: 'Archive Item', description: 'Archive selected item' },
   { key: 'c or ⌘C', label: 'Copy Text', description: 'Copy item text to clipboard' },
@@ -33,7 +36,7 @@ function formatAccelerator(accel: string): string {
 }
 
 export function ShortcutsOverview() {
-  const { shortcuts, lists, builtinShortcuts } = useStore()
+  const { shortcuts, lists, builtinShortcuts, jkMode } = useStore()
 
   // Global Escape handler to close window
   useEffect(() => {
@@ -97,7 +100,7 @@ export function ShortcutsOverview() {
                       </span>
                       {targetList && (
                         <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] ml-2">
-                          → {targetList.icon} {targetList.name}
+                          → {targetList.name}
                         </span>
                       )}
                     </div>
@@ -128,21 +131,34 @@ export function ShortcutsOverview() {
               List Navigation
             </h2>
             <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
-              {listNavigationShortcuts.map((shortcut) => (
-                <div key={shortcut.key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)] opacity-90">
-                  <div>
-                    <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
-                      {shortcut.label}
-                    </span>
-                    <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)]">
-                      {shortcut.description}
+              {listNavigationShortcuts.map((shortcut) => {
+                const isJk = shortcut.key === 'j/k'
+                const description = isJk
+                  ? jkMode === 'inverse' ? 'j = ↑, k = ↓' : 'j = ↓, k = ↑'
+                  : shortcut.description
+                return (
+                  <div key={shortcut.key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)] opacity-90">
+                    <div className="min-w-0">
+                      <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
+                        {shortcut.label}
+                      </span>
+                      {(description || isJk) && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {description && (
+                            <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)]">
+                              {description}
+                            </span>
+                          )}
+                          {isJk && <JkModeToggle />}
+                        </div>
+                      )}
                     </div>
+                    <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)] shrink-0">
+                      {shortcut.key}
+                    </span>
                   </div>
-                  <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)] shrink-0">
-                    {shortcut.key}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 

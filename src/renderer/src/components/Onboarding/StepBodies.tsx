@@ -4,6 +4,8 @@
 
 import type { ReactNode } from 'react'
 import { VimyasaMark } from './VimyasaMark'
+import { JkModeToggle } from '../JkModeToggle'
+import { useStore } from '../../store/useStore'
 
 interface StepBodyProps {
   shortcuts: { quickAdd: string; openList: string; reference: string }
@@ -26,6 +28,25 @@ function fmt(accel: string): string {
  *  (SF Mono on a faint blue tint). */
 function Key({ children }: { children: ReactNode }): ReactNode {
   return <span className="onb-key">{children}</span>
+}
+
+/** The j/k navigation row in the navigate-actions step. Pulled out so
+ *  it can subscribe to jkMode and render the live description + toggle.
+ *  Wrapped in its own component because getStepBody() is a regular
+ *  function, not a React component, so it can't call hooks directly. */
+function JkRow(): ReactNode {
+  const jkMode = useStore((s) => s.jkMode)
+  const direction = jkMode === 'inverse' ? 'j = ↑, k = ↓' : 'j = ↓, k = ↑'
+  return (
+    <li>
+      <Key>j / k</Key>
+      <span className="flex items-center gap-2 flex-wrap">
+        <span>Navigate items</span>
+        <span className="text-[color:var(--color-text-muted)]">({direction})</span>
+        <JkModeToggle size="xs" />
+      </span>
+    </li>
+  )
 }
 
 export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
@@ -92,10 +113,7 @@ export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
     case 'navigate-actions':
       return (
         <ul className="onb-actions-list">
-          <li>
-            <Key>j / k</Key>
-            <span>Navigate items</span>
-          </li>
+          <JkRow />
           <li>
             <Key>Space</Key>
             <span>Cycle status (active → wait → ignore)</span>

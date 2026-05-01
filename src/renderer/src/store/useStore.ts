@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DataStore, Group, List, Item, Comment, ItemStatus } from '@shared/types'
+import type { DataStore, Group, List, Item, Comment, ItemStatus, JkMode } from '@shared/types'
 import { DEFAULT_BUILTIN_SHORTCUTS } from '@shared/types'
 
 interface StoreState extends DataStore {
@@ -15,8 +15,8 @@ interface StoreState extends DataStore {
   removeGroup: (id: string) => Promise<void>
 
   // Lists
-  addList: (groupId: string, name: string, icon?: string) => Promise<List>
-  editList: (id: string, updates: Partial<Pick<List, 'name' | 'icon' | 'sortOrder'>>) => Promise<void>
+  addList: (groupId: string, name: string) => Promise<List>
+  editList: (id: string, updates: Partial<Pick<List, 'name' | 'sortOrder'>>) => Promise<void>
   removeList: (id: string) => Promise<void>
 
   // Items
@@ -33,6 +33,9 @@ interface StoreState extends DataStore {
   addComment: (itemId: string, text: string, parentId?: string | null) => Promise<Comment>
   editComment: (id: string, text: string) => Promise<void>
   removeComment: (id: string) => Promise<void>
+
+  // J/K mapping
+  setJkMode: (mode: JkMode) => Promise<void>
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -45,6 +48,7 @@ export const useStore = create<StoreState>((set, get) => ({
   comments: [],
   shortcuts: [],
   builtinShortcuts: DEFAULT_BUILTIN_SHORTCUTS,
+  jkMode: 'standard',
 
   hydrate: async () => {
     const data = await window.api.getAll()
@@ -76,8 +80,8 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   // ── Lists ─────────────────────────────────────────────────────
-  addList: async (groupId, name, icon) => {
-    const list = await window.api.createList(groupId, name, icon)
+  addList: async (groupId, name) => {
+    const list = await window.api.createList(groupId, name)
     set((s) => ({ lists: [...s.lists, list] }))
     return list
   },
@@ -177,5 +181,13 @@ export const useStore = create<StoreState>((set, get) => ({
     set((s) => ({
       comments: s.comments.filter((c) => c.id !== id && c.parentId !== id)
     }))
+  },
+
+  // ── J/K mapping ───────────────────────────────────────────────
+  setJkMode: async (mode) => {
+    // Optimistic update so the toggle's highlight flips immediately;
+    // the broadcast that follows would do the same anyway.
+    set({ jkMode: mode })
+    await window.api.setJkMode(mode)
   }
 }))
