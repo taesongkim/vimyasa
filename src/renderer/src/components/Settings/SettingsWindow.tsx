@@ -1,20 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { GeneralTab } from './GeneralTab'
 import { ListsTab } from './ListsTab'
 import { ShortcutsTab } from './ShortcutsTab'
 import { DataTab } from './DataTab'
 
-type Tab = 'general' | 'lists' | 'shortcuts' | 'data'
+export type SettingsTab = 'general' | 'lists' | 'shortcuts' | 'data'
 
-const tabs: { key: Tab; label: string }[] = [
+const tabs: { key: SettingsTab; label: string }[] = [
   { key: 'general', label: 'General' },
   { key: 'lists', label: 'Lists' },
   { key: 'shortcuts', label: 'Shortcuts' },
   { key: 'data', label: 'Data' }
 ]
 
-export function SettingsWindow() {
-  const [activeTab, setActiveTab] = useState<Tab>('general')
+export function SettingsWindow({ initialTab }: { initialTab?: SettingsTab }) {
+  // App routes #/settings/<tab> → initialTab. Tray's "Reorder Lists" entry
+  // can deep-link here. Prop changes propagate when the same window is
+  // already open and the user re-clicks the entry.
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? 'general')
+
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab)
+    }
+    // intentional: only react to incoming prop changes; user clicks on the
+    // tab strip update activeTab directly without going through the prop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab])
 
   return (
     <div className="flex flex-col h-full glass-surface" style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}>

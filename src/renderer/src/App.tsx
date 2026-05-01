@@ -3,7 +3,7 @@ import { useStore } from './store/useStore'
 import { ListWindow } from './components/ListWindow/ListWindow'
 import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
 import { CommentsWindow } from './components/Comments/CommentsWindow'
-import { SettingsWindow } from './components/Settings/SettingsWindow'
+import { SettingsWindow, type SettingsTab } from './components/Settings/SettingsWindow'
 import { ArchiveWindow } from './components/Archive/ArchiveWindow'
 import { ShortcutsOverview } from './components/ShortcutsOverview'
 import { CalloutWindow } from './components/Onboarding/CalloutWindow'
@@ -31,7 +31,7 @@ function parseHash(): RouteInfo {
     return { route: 'comments', params: { itemId: parts[2] } }
   }
   if (parts[1] === 'settings') {
-    return { route: 'settings', params: {} }
+    return { route: 'settings', params: { tab: parts[2] || '' } }
   }
   if (parts[1] === 'archive') {
     return { route: 'archive', params: { listId: parts[2] || '' } }
@@ -112,8 +112,14 @@ export default function App() {
     }
     case 'comments':
       return <CommentsWindow itemId={route.params.itemId} />
-    case 'settings':
-      return <SettingsWindow />
+    case 'settings': {
+      const tab = route.params.tab as SettingsTab
+      const initialTab: SettingsTab | undefined =
+        tab === 'general' || tab === 'lists' || tab === 'shortcuts' || tab === 'data'
+          ? tab
+          : undefined
+      return <SettingsWindow initialTab={initialTab} />
+    }
     case 'archive':
       return <ArchiveWindow listId={route.params.listId || undefined} />
     case 'shortcuts-overview':

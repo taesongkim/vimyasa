@@ -109,7 +109,6 @@ export function updateTrayMenu(): void {
           id: uuid(),
           groupId: defaultGroup.id,
           name: 'New List',
-          icon: '📋',
           sortOrder:
             inGroup.length > 0 ? Math.max(...inGroup.map((l) => l.sortOrder)) + 1 : 0
         }
@@ -131,9 +130,13 @@ export function updateTrayMenu(): void {
         updateTrayMenu()
       }
     },
+    {
+      label: 'Reorder Lists',
+      click: () => createSettingsWindow('lists')
+    },
     { type: 'separator' },
     {
-      label: 'Quick Add...',
+      label: 'Entry Form',
       accelerator: 'CommandOrControl+Shift+;',
       click: () => {
         if (lists.length > 0) {

@@ -213,9 +213,18 @@ export function createCommentsWindow(itemId: string): BrowserWindow {
 
 // ── Settings Window ─────────────────────────────────────────────
 
-export function createSettingsWindow(): BrowserWindow {
+type SettingsTab = 'general' | 'lists' | 'shortcuts' | 'data'
+
+export function createSettingsWindow(initialTab?: SettingsTab): BrowserWindow {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus()
+    if (initialTab) {
+      // App.tsx listens for hashchange, re-parses the route, and propagates
+      // the new tab to <SettingsWindow initialTab=...>.
+      settingsWindow.webContents.executeJavaScript(
+        `window.location.hash = ${JSON.stringify('/settings/' + initialTab)}`
+      )
+    }
     return settingsWindow
   }
 
@@ -229,7 +238,7 @@ export function createSettingsWindow(): BrowserWindow {
   })
 
   settingsWindow = win
-  loadRoute(win, '/settings')
+  loadRoute(win, initialTab ? `/settings/${initialTab}` : '/settings')
   win.once('ready-to-show', () => win.show())
   win.on('closed', () => { settingsWindow = null })
   return win
