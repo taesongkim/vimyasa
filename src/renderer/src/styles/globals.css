@@ -362,6 +362,27 @@ html, body, #root {
   }
 }
 
+/* ── List-number flash ─────────────────────────────────────────────
+   Visual cue when the position number in the list-window title bar
+   changes due to a reorder in Settings → Lists. Hold full-white +
+   soft glow for 300ms, then ease-out fade to the resting muted color
+   over 300ms. backwards fill mode pins the element to the from-state
+   during the delay so the hold is visible. */
+@keyframes list-number-flash {
+  from {
+    color: #ffffff;
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+  }
+  to {
+    color: var(--color-text-muted);
+    text-shadow: 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.animate-list-number-flash {
+  animation: list-number-flash 300ms 300ms ease-out backwards;
+}
+
 /* ── Onboarding dim overlay ────────────────────────────────────────
    Full-screen darkening layer rendered into the dim BrowserWindow
    while the onboarding tour is active. Sits in the window stack

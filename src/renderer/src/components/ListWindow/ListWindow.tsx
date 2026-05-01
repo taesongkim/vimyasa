@@ -66,6 +66,20 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const list = lists.find((l) => l.id === activeListId)
   const listNumber = sortedLists.findIndex((l) => l.id === activeListId) + 1
 
+  // Flash the title-bar number when it changes because of a reorder, but not
+  // when it changes because the user is actively switching lists. Bumping
+  // numberFlashKey re-keys the span in TitleBar, which restarts the CSS
+  // keyframe. Initial mount stays at 0 so the flash doesn't fire on launch.
+  const [numberFlashKey, setNumberFlashKey] = useState(0)
+  const prevNumberSnapshotRef = useRef({ activeListId, listNumber })
+  useEffect(() => {
+    const prev = prevNumberSnapshotRef.current
+    if (prev.activeListId === activeListId && prev.listNumber !== listNumber) {
+      setNumberFlashKey((k) => k + 1)
+    }
+    prevNumberSnapshotRef.current = { activeListId, listNumber }
+  }, [activeListId, listNumber])
+
   // Update custom scrollbar position and the scroll-edge fade strengths.
   // Fade strength scales from 0 (edge item fully visible) to 1 (edge item
   // fully clipped past the edge), with a quadratic ease-out so the fade
@@ -490,7 +504,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       className="flex flex-col h-full glass-surface relative"
       style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}
     >
-      <TitleBar list={list} listNumber={listNumber} filter={filter} onFilterChange={setFilter} counts={counts} />
+      <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
