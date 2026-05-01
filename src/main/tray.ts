@@ -73,9 +73,13 @@ export function updateTrayMenu(): void {
         enabled: false
       })
     }
-    for (const listId of group.listIds) {
-      const list = lists.find((l) => l.id === listId)
-      if (!list) continue
+    // Iterate by list.sortOrder, not group.listIds — listIds is a stale
+    // create-order denormalization that doesn't reflect drag-reorders done
+    // in Settings → Lists. sortOrder is the canonical user-facing order.
+    const groupLists = lists
+      .filter((l) => l.groupId === group.id)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+    for (const list of groupLists) {
       const count = activeCountByList.get(list.id) || 0
       groupMenuItems.push({
         label: `${listNumber}. ${list.name}${count > 0 ? ` (${count})` : ''}`,
