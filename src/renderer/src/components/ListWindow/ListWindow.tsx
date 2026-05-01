@@ -45,6 +45,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const scrollbarRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Track whether the onboarding tour is running, so Escape can exit it
+  // directly from this window. Subscribed to the broadcast in main.
+  const [tourActive, setTourActive] = useState(false)
+  useEffect(() => {
+    return window.api.onboarding.onState((s) => setTourActive(s.active))
+  }, [])
+
 
   const list = lists.find((l) => l.id === activeListId)
   const listNumber = lists.findIndex((l) => l.id === activeListId) + 1
@@ -323,6 +330,14 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     },
     onN: () => addRowRef.current?.focus(),
     onEscape: () => {
+      // While the onboarding tour is running, Escape is a one-shot exit
+      // for the tour itself — easier than hunting for the dismiss X on
+      // whichever step is active. Wins over the normal hierarchical
+      // logic because the tour wraps the whole experience.
+      if (tourActive) {
+        void window.api.onboarding.close()
+        return
+      }
       // Hierarchical Escape — step back exactly one focus level per press:
       //   input focus  → blur the input             (lands in item or window focus)
       //   item focus   → clear focusIndex            (lands in window focus)

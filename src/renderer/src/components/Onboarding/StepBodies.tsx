@@ -138,7 +138,7 @@ export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
           <span style={{ whiteSpace: 'nowrap' }}>
             Click the <VimyasaMark size={21} /> icon
           </span>{' '}
-          in the menubar for everything else: create new lists, change
+          in the menubar above for everything else: create new lists, change
           shortcuts, or replay this tour.
         </p>
       )

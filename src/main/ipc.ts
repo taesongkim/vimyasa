@@ -391,4 +391,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('onboarding:request-resize', (_e, height: number) =>
     orchestrator.setCalloutHeight(height)
   )
+  // Dim overlay's dismiss button — tears down the dim only, not the tour.
+  ipcMain.handle('onboarding:dismiss-dim', () => orchestrator.dismissDim())
 }

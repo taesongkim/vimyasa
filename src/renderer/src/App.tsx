@@ -7,6 +7,7 @@ import { SettingsWindow } from './components/Settings/SettingsWindow'
 import { ArchiveWindow } from './components/Archive/ArchiveWindow'
 import { ShortcutsOverview } from './components/ShortcutsOverview'
 import { CalloutWindow } from './components/Onboarding/CalloutWindow'
+import { DimOverlay } from './components/Onboarding/DimOverlay'
 
 interface RouteInfo {
   route: string
@@ -40,6 +41,9 @@ function parseHash(): RouteInfo {
   }
   if (parts[1] === 'onboarding') {
     return { route: 'onboarding', params: {} }
+  }
+  if (parts[1] === 'onboarding-dim') {
+    return { route: 'onboarding-dim', params: {} }
   }
   return { route: 'unknown', params: {} }
 }
@@ -81,11 +85,14 @@ export default function App() {
     )
   }
 
-  // Onboarding callout has no dependency on user data — it pulls its own
-  // step payload from the main-process orchestrator over IPC. Skip the
-  // hydration gate so it can render before the store finishes loading.
+  // Onboarding callout + dim overlay have no dependency on user data —
+  // they're driven entirely by the main-process orchestrator over IPC.
+  // Skip the hydration gate so they can render before the store loads.
   if (route.route === 'onboarding') {
     return <CalloutWindow />
+  }
+  if (route.route === 'onboarding-dim') {
+    return <DimOverlay />
   }
 
   if (!hydrated) {
