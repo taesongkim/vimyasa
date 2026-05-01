@@ -287,15 +287,15 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onArrowUp: () => {
       setFocusIndex((i) => {
         if (listItems.length === 0) return -1
-        if (i === -1) return 0 // k when nothing selected = first item
-        return i === listItems.length - 1 ? 0 : i + 1 // wrap from bottom to top
+        if (i === -1) return listItems.length - 1 // nothing selected → focus last
+        return i === 0 ? listItems.length - 1 : i - 1 // up = previous, wrap to bottom
       })
     },
     onArrowDown: () => {
       setFocusIndex((i) => {
         if (listItems.length === 0) return -1
-        if (i === -1) return listItems.length - 1 // j when nothing selected = last item
-        return i === 0 ? listItems.length - 1 : i - 1 // wrap from top to bottom
+        if (i === -1) return 0 // nothing selected → focus first
+        return i === listItems.length - 1 ? 0 : i + 1 // down = next, wrap to top
       })
     },
     onEnter: () => {
