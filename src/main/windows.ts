@@ -94,7 +94,7 @@ function calculateStackedPosition(): { x: number; y: number } {
 }
 
 function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWindow {
-  return new BrowserWindow({
+  const win = new BrowserWindow({
     frame: false,
     transparent: true,
     vibrancy: 'under-window',
@@ -108,6 +108,20 @@ function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWind
     },
     ...opts
   })
+  // Vimyasa is a menu-bar utility — every user-facing window is summoned
+  // by a global shortcut or a tray click and must appear on whichever
+  // macOS Space the user is currently working in. Without this, a
+  // BrowserWindow gets bound to the Space it was created on; calling
+  // .focus() from a different Space causes macOS to swipe the user back
+  // to the original Space, yanking them out of their current context.
+  // The flag must be applied post-construction (the property isn't on
+  // BrowserWindowConstructorOptions). Do not remove without changing
+  // the product model. The onboarding callout and dim-overlay windows
+  // build their own BrowserWindows directly (not via makeWindow) and
+  // call setVisibleOnAllWorkspaces themselves — keep that in sync if
+  // the invariant ever changes here.
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  return win
 }
 
 // ── List Window ─────────────────────────────────────────────────
