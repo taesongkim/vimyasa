@@ -47,7 +47,7 @@
   /* Text (brightest → dimmest) */
   --color-text: #e0e0e0;
   --color-text-secondary: #888888;
-  --color-text-muted: #666666;
+  --color-text-muted: #909090;
   --color-text-ghost: rgba(212, 212, 212, 0.4);
 
   /* Accents (semantic only — never decorative) */

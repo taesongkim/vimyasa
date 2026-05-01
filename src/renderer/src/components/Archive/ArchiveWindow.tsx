@@ -62,7 +62,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
             }`}
             onClick={() => setSelectedListId(list.id)}
           >
-            {list.icon} {list.name}
+            {list.name}
           </button>
         ))}
       </div>
@@ -88,7 +88,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
                 </span>
                 {selectedListId === 'all' && list && (
                   <span className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] shrink-0">
-                    {list.icon}
+                    {list.name}
                   </span>
                 )}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-default shrink-0">

@@ -54,11 +54,6 @@ function SortableListItem({ list, index, onEdit, onDelete }: SortableListItemPro
         {index + 1}
       </span>
 
-      {/* Icon */}
-      <span className="text-[length:var(--font-size-md)] shrink-0">
-        {list.icon}
-      </span>
-
       {/* List name */}
       <span className="flex-1 text-[length:var(--font-size-md)] text-[color:var(--color-text)] truncate">
         {list.name}
@@ -169,7 +164,7 @@ export function ListsTab() {
   }, [removeList])
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-[length:var(--font-size-base)] font-medium text-[color:var(--color-text)] mb-1">
@@ -181,13 +176,13 @@ export function ListsTab() {
       </div>
 
       {/* Lists */}
-      <div className="space-y-2">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={sortedLists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={sortedLists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-2">
             {sortedLists.map((list, index) => (
               <SortableListItem
                 key={list.id}
@@ -197,9 +192,9 @@ export function ListsTab() {
                 onDelete={handleDelete}
               />
             ))}
-          </SortableContext>
-        </DndContext>
-      </div>
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Edit dialog */}
       {editingList && (

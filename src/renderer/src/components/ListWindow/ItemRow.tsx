@@ -134,7 +134,7 @@ export function ItemRow({
       const sendToSubmenu = lists
         .filter((l) => l.id !== item.listId)
         .map((l) => ({
-          label: `${l.icon} ${l.name}`,
+          label: l.name,
           ipcEvent: 'context-menu-action',
           ipcData: { action: 'sendTo', itemId: item.id, listId: l.id }
         }))
