@@ -21,14 +21,14 @@ const defaults: DataStore = {
       id: defaultListId,
       groupId: defaultGroupId,
       name: 'Inbox (Rename-able)',
-      icon: '📥',
       sortOrder: 0
     }
   ],
   items: [],
   comments: [],
   shortcuts: [],
-  builtinShortcuts: DEFAULT_BUILTIN_SHORTCUTS
+  builtinShortcuts: DEFAULT_BUILTIN_SHORTCUTS,
+  jkMode: 'standard'
 }
 
 export const store = new Store<DataStore>({
@@ -44,6 +44,11 @@ export const store = new Store<DataStore>({
       // Ensure builtinShortcuts exists for existing installs
       if (!s.get('builtinShortcuts')) {
         s.set('builtinShortcuts', DEFAULT_BUILTIN_SHORTCUTS)
+      }
+      // Default jkMode to vim-standard for existing installs that predate
+      // the toggle. New installs already get this from `defaults` above.
+      if (!s.get('jkMode')) {
+        s.set('jkMode', 'standard')
       }
     }
   }

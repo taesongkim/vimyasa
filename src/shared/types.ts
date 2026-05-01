@@ -15,7 +15,6 @@ export interface List {
   id: string
   groupId: string
   name: string
-  icon: string
   sortOrder: number
 }
 
@@ -56,6 +55,8 @@ export const DEFAULT_BUILTIN_SHORTCUTS: BuiltinShortcuts = {
   quickAddFirst: 'CommandOrControl+Shift+;'
 }
 
+export type JkMode = 'standard' | 'inverse'
+
 export interface DataStore {
   schemaVersion: number
   groups: Group[]
@@ -64,6 +65,9 @@ export interface DataStore {
   comments: Comment[]
   shortcuts: Shortcut[]
   builtinShortcuts: BuiltinShortcuts
+  // 'standard' = j down, k up (vim convention).
+  // 'inverse'  = j up, k down.
+  jkMode: JkMode
 }
 
 // ── IPC API Types ─────────────────────────────────────────────────
@@ -81,8 +85,8 @@ export interface VimyasaAPI {
   deleteGroup: (id: string) => Promise<void>
 
   // Lists
-  createList: (groupId: string, name: string, icon?: string) => Promise<List>
-  updateList: (id: string, updates: Partial<Pick<List, 'name' | 'icon' | 'sortOrder'>>) => Promise<List>
+  createList: (groupId: string, name: string) => Promise<List>
+  updateList: (id: string, updates: Partial<Pick<List, 'name' | 'sortOrder'>>) => Promise<List>
   deleteList: (id: string) => Promise<void>
 
   // Items
@@ -107,6 +111,9 @@ export interface VimyasaAPI {
   // Built-in Shortcuts
   getBuiltinShortcuts: () => Promise<BuiltinShortcuts>
   updateBuiltinShortcuts: (updates: Partial<BuiltinShortcuts>) => Promise<BuiltinShortcuts>
+
+  // J/K mapping mode
+  setJkMode: (mode: JkMode) => Promise<JkMode>
 
   // Shortcut capture
   pauseGlobalShortcuts: () => Promise<void>

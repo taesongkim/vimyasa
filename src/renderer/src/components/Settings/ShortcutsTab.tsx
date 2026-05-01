@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { KeyCapture } from './KeyCapture'
+import { JkModeToggle } from '../JkModeToggle'
 import type { ShortcutAction, BuiltinShortcuts } from '../../../../../shared/types'
 
 const actionLabels: Record<ShortcutAction, string> = {
@@ -17,9 +18,11 @@ const builtinShortcutDefs: { key: keyof BuiltinShortcuts; label: string }[] = [
   { key: 'quickAddFirst', label: 'Quick Add (First List)' }
 ]
 
-// List navigation shortcuts (non-configurable)
+// List navigation shortcuts (non-configurable). j/k is special-cased
+// in the render: it has a toggle that flips the mapping and a dynamic
+// description that reflects the current mode.
 const listNavigationShortcuts: { key: string; label: string; description?: string }[] = [
-  { key: 'j/k', label: 'Navigate Items', description: 'j = up, k = down (with wrapping)' },
+  { key: 'j/k', label: 'Navigate Items' },
   { key: 'Space', label: 'Cycle Status', description: 'active → done → hold → active' },
   { key: 'Enter or a', label: 'Archive Item', description: 'Archive selected item' },
   { key: 'c or ⌘C', label: 'Copy Text', description: 'Copy item text to clipboard' },
@@ -38,7 +41,7 @@ function formatAccelerator(accel: string): string {
 }
 
 export function ShortcutsTab() {
-  const { shortcuts, lists, builtinShortcuts } = useStore()
+  const { shortcuts, lists, builtinShortcuts, jkMode } = useStore()
   const [newAction, setNewAction] = useState<ShortcutAction>('openList')
   const [newTarget, setNewTarget] = useState<string>(lists[0]?.id || '')
   const [editingBuiltin, setEditingBuiltin] = useState<keyof BuiltinShortcuts | null>(null)
@@ -145,26 +148,34 @@ export function ShortcutsTab() {
         <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] mb-2">
           Available when viewing a list (non-configurable)
         </div>
-        {listNavigationShortcuts.map((shortcut) => (
-          <div
-            key={shortcut.key}
-            className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] opacity-80"
-          >
-            <div className="flex-1">
-              <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
-                {shortcut.label}
+        {listNavigationShortcuts.map((shortcut) => {
+          const isJk = shortcut.key === 'j/k'
+          const jkDescription =
+            jkMode === 'inverse' ? 'j = ↑, k = ↓' : 'j = ↓, k = ↑'
+          return (
+            <div
+              key={shortcut.key}
+              className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] opacity-80"
+            >
+              <div className="flex-1 min-w-0">
+                <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
+                  {shortcut.label}
+                </span>
+                {(isJk || shortcut.description) && (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)]">
+                      {isJk ? jkDescription : shortcut.description}
+                    </span>
+                    {isJk && <JkModeToggle />}
+                  </div>
+                )}
+              </div>
+              <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)] shrink-0">
+                {shortcut.key}
               </span>
-              {shortcut.description && (
-                <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] mt-0.5">
-                  {shortcut.description}
-                </div>
-              )}
             </div>
-            <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)] shrink-0">
-              {shortcut.key}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Custom shortcuts */}
@@ -188,7 +199,7 @@ export function ShortcutsTab() {
                 </span>
                 {targetList && (
                   <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
-                    → {targetList.icon} {targetList.name}
+                    → {targetList.name}
                   </span>
                 )}
               </div>
@@ -241,7 +252,7 @@ export function ShortcutsTab() {
               >
                 {lists.map((l) => (
                   <option key={l.id} value={l.id}>
-                    {l.icon} {l.name}
+                    {l.name}
                   </option>
                 ))}
               </select>

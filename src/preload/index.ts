@@ -14,7 +14,7 @@ const api: VimyasaAPI = {
   deleteGroup: (id) => ipcRenderer.invoke('deleteGroup', id),
 
   // Lists
-  createList: (groupId, name, icon) => ipcRenderer.invoke('createList', groupId, name, icon),
+  createList: (groupId, name) => ipcRenderer.invoke('createList', groupId, name),
   updateList: (id, updates) => ipcRenderer.invoke('updateList', id, updates),
   deleteList: (id) => ipcRenderer.invoke('deleteList', id),
 
@@ -42,6 +42,9 @@ const api: VimyasaAPI = {
   // Built-in Shortcuts
   getBuiltinShortcuts: () => ipcRenderer.invoke('getBuiltinShortcuts'),
   updateBuiltinShortcuts: (updates) => ipcRenderer.invoke('updateBuiltinShortcuts', updates),
+
+  // J/K mapping mode
+  setJkMode: (mode) => ipcRenderer.invoke('setJkMode', mode),
 
   // Shortcut capture
   pauseGlobalShortcuts: () => ipcRenderer.invoke('pauseGlobalShortcuts'),
