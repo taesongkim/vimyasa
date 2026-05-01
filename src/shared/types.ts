@@ -163,9 +163,15 @@ export interface OnboardingAPI {
   replay: () => Promise<void>
   getState: () => Promise<OnboardingCalloutPayload | null>
   requestResize: (height: number) => Promise<void>
+  dismissDim: () => Promise<void>
   onShowStep: (callback: (payload: OnboardingCalloutPayload) => void) => () => void
   onItemsProgress: (callback: (count: number) => void) => () => void
   onState: (callback: (state: OnboardingState) => void) => () => void
+  /** Fires every time the dim window is shown (initial tour or replay).
+   *  Used by the dim renderer to defer mounting heavy DOM (the dot grid)
+   *  until the window is actually visible, so CSS animations start fresh
+   *  in a visible context. */
+  onDimShown: (callback: () => void) => () => void
 }
 
 declare global {

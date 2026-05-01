@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, nativeTheme } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipc'
 import { registerWindowIpcHandlers, wireOnboardingHosts } from './windows'
@@ -10,6 +10,16 @@ import {
 } from './shortcuts'
 import { setupAutoUpdater } from './updater'
 import { orchestrator } from './onboarding'
+
+// Lock the app to dark mode regardless of the system's appearance
+// setting. macOS vibrancy ('under-window') tracks the system theme by
+// default, which renders the entire window with a *light* frosted blur
+// when the user is in light mode — and our CSS palette is dark-on-dark,
+// so the result is washed-out and barely legible. Forcing themeSource =
+// 'dark' makes vibrancy, native dialogs, and the OS chrome all render
+// dark, matching what the CSS expects. TODO: revisit once we ship a
+// designed light-mode palette behind a Settings → Appearance toggle.
+nativeTheme.themeSource = 'dark'
 
 // Hide dock icon (menubar-only app)
 if (process.platform === 'darwin') {
@@ -40,6 +50,12 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  // Pre-warm the dim window in the background so it can be shown
+  // near-instantly when the tour starts. Without this, the full-screen
+  // transparent dim takes ~470ms to ready-to-show on first launch and
+  // the welcome callout appears before it.
+  void orchestrator.preloadDim()
 
   // Run the onboarding tour for first-time users (or anyone whose tour
   // version is behind). Small delay so the app's launch settles before

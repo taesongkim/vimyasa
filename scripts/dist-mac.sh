@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Surface failures clearly even when invoked through a pipe (e.g. `| tee`),
+# which would otherwise let the wrapper shell report exit 0 and mask a real
+# failure inside the script.
+trap 'rc=$?; if [ $rc -ne 0 ]; then
+  echo ""
+  echo "=== RELEASE FAILED (exit $rc) ==="
+  echo "If you piped this through tee/etc., the parent shell may report exit 0."
+  echo "Re-run without piping, or set -o pipefail in the parent, to surface the real code."
+fi' EXIT
+
 DEFAULT_ENV="$HOME/DevProjects2/vimyasa support/notarize.env"
 ENV_FILE="${VIMYASA_NOTARIZE_ENV:-$DEFAULT_ENV}"
 
@@ -26,10 +36,19 @@ npm run build
 # ourselves, regenerate the manifest with correct hashes, then publish via gh.
 npx electron-builder --mac --publish never
 
-# Sign + notarize + staple every DMG produced. electron-builder only handles
-# the .app inside; the DMG itself comes out unsigned.
+# Sign + notarize + staple every DMG produced for the current version.
+# electron-builder only handles the .app inside; the DMG itself comes out
+# unsigned. Glob is version-scoped so leftover artifacts from prior runs
+# (e.g. release/Vimyasa-0.1.1-*.dmg from a previous release) don't get
+# re-processed and trip codesign with "is already signed".
 shopt -s nullglob
-for dmg in release/*.dmg; do
+DMGS=(release/Vimyasa-${VERSION}-*.dmg)
+if [ ${#DMGS[@]} -eq 0 ]; then
+  echo "Error: no DMGs found matching release/Vimyasa-${VERSION}-*.dmg"
+  echo "(Did the electron-builder step above fail or produce a different name?)"
+  exit 1
+fi
+for dmg in "${DMGS[@]}"; do
   echo ""
   echo "=== Post-processing $dmg ==="
   echo "Signing DMG..."
@@ -75,10 +94,10 @@ gh release create "$TAG" \
 echo ""
 echo "=== Uploading artifacts ==="
 gh release upload "$TAG" --repo "$REPO" \
-  release/Vimyasa-*.dmg \
-  release/Vimyasa-*.dmg.blockmap \
-  release/Vimyasa-*-mac.zip \
-  release/Vimyasa-*-mac.zip.blockmap \
+  release/Vimyasa-${VERSION}-*.dmg \
+  release/Vimyasa-${VERSION}-*.dmg.blockmap \
+  release/Vimyasa-${VERSION}-*-mac.zip \
+  release/Vimyasa-${VERSION}-*-mac.zip.blockmap \
   release/latest-mac.yml
 
 echo ""

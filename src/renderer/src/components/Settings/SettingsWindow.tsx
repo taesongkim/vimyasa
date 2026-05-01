@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { GeneralTab } from './GeneralTab'
+import { ListsTab } from './ListsTab'
 import { ShortcutsTab } from './ShortcutsTab'
 import { DataTab } from './DataTab'
 
-type Tab = 'general' | 'shortcuts' | 'data'
+type Tab = 'general' | 'lists' | 'shortcuts' | 'data'
 
 const tabs: { key: Tab; label: string }[] = [
   { key: 'general', label: 'General' },
+  { key: 'lists', label: 'Lists' },
   { key: 'shortcuts', label: 'Shortcuts' },
   { key: 'data', label: 'Data' }
 ]
@@ -49,6 +51,7 @@ export function SettingsWindow() {
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'general' && <GeneralTab />}
+        {activeTab === 'lists' && <ListsTab />}
         {activeTab === 'shortcuts' && <ShortcutsTab />}
         {activeTab === 'data' && <DataTab />}
       </div>

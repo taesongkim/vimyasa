@@ -82,6 +82,7 @@ const api: VimyasaAPI = {
     replay: () => ipcRenderer.invoke('onboarding:replay'),
     getState: () => ipcRenderer.invoke('onboarding:get-state'),
     requestResize: (height) => ipcRenderer.invoke('onboarding:request-resize', height),
+    dismissDim: () => ipcRenderer.invoke('onboarding:dismiss-dim'),
     onShowStep: (callback) => {
       const listener = (_e: unknown, payload: unknown): void => callback(payload as never)
       ipcRenderer.on('onboarding:show-step', listener)
@@ -96,6 +97,11 @@ const api: VimyasaAPI = {
       const listener = (_e: unknown, state: unknown): void => callback(state as never)
       ipcRenderer.on('onboarding:state', listener)
       return () => ipcRenderer.removeListener('onboarding:state', listener)
+    },
+    onDimShown: (callback) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('onboarding:dim-shown', listener)
+      return () => ipcRenderer.removeListener('onboarding:dim-shown', listener)
     }
   }
 }

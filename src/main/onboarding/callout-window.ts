@@ -51,7 +51,27 @@ export class CalloutWindow {
   // setContentHeight() when the renderer's ResizeObserver reports a change.
   private contentHeight: number | null = null
 
-  create(): BrowserWindow {
+  /** Create the BrowserWindow and start loading its renderer, but don't
+   *  show it yet. Resolves when the renderer's first frame is ready. The
+   *  caller decides when to call showNow(). Lets the orchestrator stage
+   *  the show order between the dim and the callout deliberately. */
+  createAndPreload(): Promise<void> {
+    if (this.win && !this.win.isDestroyed()) return Promise.resolve()
+    this.createInternal()
+    return new Promise<void>((resolve) => {
+      this.win!.once('ready-to-show', () => resolve())
+    })
+  }
+
+  /** Display the window. Idempotent. Should only be called after the
+   *  promise from createAndPreload() has resolved. */
+  showNow(): void {
+    if (this.win && !this.win.isDestroyed()) {
+      this.win.show()
+    }
+  }
+
+  private createInternal(): BrowserWindow {
     if (this.win && !this.win.isDestroyed()) return this.win
 
     this.win = new BrowserWindow({
@@ -98,7 +118,9 @@ export class CalloutWindow {
       })
     }
 
-    this.win.once('ready-to-show', () => this.win?.show())
+    // No auto-show on ready-to-show — createAndPreload listens for that
+    // event itself and resolves a Promise; the orchestrator decides when
+    // to call showNow().
     this.win.on('closed', () => {
       this.win = null
     })

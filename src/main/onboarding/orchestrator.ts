@@ -8,6 +8,7 @@ import {
   type OnboardingStep
 } from '../../shared/onboarding-steps'
 import { CalloutWindow } from './callout-window'
+import { DimOverlay } from './dim-overlay'
 import { persistence } from './persistence'
 
 // Pause between detecting a success action and advancing the callout.
@@ -45,6 +46,7 @@ export interface CalloutPayload {
 
 class Orchestrator {
   private callout = new CalloutWindow()
+  private dim = new DimOverlay()
   private currentStepId: string | null = null
   private active = false
   private itemsAddedCount = 0
@@ -115,13 +117,50 @@ class Orchestrator {
     }
   }
 
+  /** Kicks off the tour. Pre-loads both the dim window and the callout
+   *  window in parallel, then shows them in deliberate order: dim first,
+   *  callout 100ms later. The async work happens in preloadAndShow();
+   *  this method stays sync so callers (tray menu, maybeRun) don't need
+   *  to await it. */
   start(): void {
     if (this.active) return
     this.active = true
     this.itemsAddedCount = 0
-    this.callout.create()
-    this.showStep('welcome')
+    void this.preloadAndShow()
     this.broadcastState()
+  }
+
+  private async preloadAndShow(): Promise<void> {
+    try {
+      await Promise.all([
+        this.dim.createAndPreload(),
+        this.callout.createAndPreload()
+      ])
+    } catch (e) {
+      console.error('[onboarding] failed to preload tour windows:', e)
+      this.stop(false)
+      return
+    }
+
+    // User may have dismissed during the preload (e.g. rapid Replay).
+    if (!this.active) return
+
+    // Set up the welcome step content while both windows are still hidden
+    // — the callout's renderer receives the payload and renders the
+    // welcome content, so by the time we show the window it has its
+    // first frame already painted with the right step.
+    this.showStep('welcome')
+
+    // Show the dim first — its 250ms CSS fade-in starts immediately.
+    this.dim.showNow()
+
+    // Brief pause so the dim is partway through its fade-in by the time
+    // the welcome callout appears on top of it. Deterministic ordering;
+    // no race against macOS's window-allocation timing.
+    setTimeout(() => {
+      if (!this.active) return
+      this.callout.showNow()
+    }, 100)
   }
 
   /** Wipe persistence and re-run from welcome. Triggered by the tray menu's
@@ -141,11 +180,29 @@ class Orchestrator {
     this.active = false
     this.currentStepId = null
     this.itemsAddedCount = 0
+    // Hide the dim instead of destroying it — kept warm for the next
+    // tour start so the next show() is near-instant. The callout still
+    // gets destroyed because its lighter content reloads quickly.
+    this.dim.hide()
     this.callout.destroy()
     if (markComplete) {
       persistence.markComplete()
     }
     this.broadcastState()
+  }
+
+  /** Tear down the dim overlay only — leaves the tour running. Triggered
+   *  by the dim window's dismiss button when the user wants their full
+   *  desktop visible while still being walked through the tour. */
+  dismissDim(): void {
+    this.dim.hide()
+  }
+
+  /** Pre-warm the dim window at app start. After this resolves, future
+   *  start() calls can show the dim near-instantly without waiting for
+   *  ~470ms of cold-load. Call once during app.whenReady. */
+  preloadDim(): Promise<void> {
+    return this.dim.createAndPreload()
   }
 
   /** Move forward one step. Used by Next / Start Tour / Let's go and by
