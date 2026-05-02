@@ -1,3 +1,5 @@
+import type { ThemesAPI, ThemeDevAPI } from './themes'
+
 // ── Data Model Types ──────────────────────────────────────────────
 
 export type ItemStatus = 'active' | 'done' | 'hold'
@@ -141,6 +143,12 @@ export interface VimyasaAPI {
 
   // Onboarding
   onboarding: OnboardingAPI
+
+  // Themes (production settings, exposed in Settings → Themes)
+  themes: ThemesAPI
+
+  // Theme dev panel (gated by is.dev — never call from production builds)
+  themeDev: ThemeDevAPI
 }
 
 export interface OnboardingCalloutPayload {

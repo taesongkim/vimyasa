@@ -106,6 +106,34 @@ const api: VimyasaAPI = {
       ipcRenderer.on('onboarding:dim-shown', listener)
       return () => ipcRenderer.removeListener('onboarding:dim-shown', listener)
     }
+  },
+
+  // Themes (production)
+  themes: {
+    get: () => ipcRenderer.invoke('themes:get'),
+    setMasterEnabled: (enabled) => ipcRenderer.invoke('themes:setMasterEnabled', enabled),
+    setSurfaceEnabled: (surfaceId, enabled) =>
+      ipcRenderer.invoke('themes:setSurfaceEnabled', surfaceId, enabled),
+    setSurfaceConfig: (surfaceId, config) =>
+      ipcRenderer.invoke('themes:setSurfaceConfig', surfaceId, config),
+    reset: () => ipcRenderer.invoke('themes:reset'),
+    onChanged: (callback) => {
+      const listener = (_e: unknown, state: unknown): void => callback(state as never)
+      ipcRenderer.on('themes:changed', listener)
+      return () => ipcRenderer.removeListener('themes:changed', listener)
+    }
+  },
+
+  // Theme dev panel (gated by is.dev — never call from production builds)
+  themeDev: {
+    openPanel: () => ipcRenderer.invoke('themeDev:openPanel'),
+    closePanel: () => ipcRenderer.invoke('themeDev:closePanel'),
+    isPanelOpen: () => ipcRenderer.invoke('themeDev:isPanelOpen'),
+    listPresets: () => ipcRenderer.invoke('themeDev:listPresets'),
+    savePreset: (surfaceId, label, config) =>
+      ipcRenderer.invoke('themeDev:savePreset', surfaceId, label, config),
+    updatePreset: (id, updates) => ipcRenderer.invoke('themeDev:updatePreset', id, updates),
+    deletePreset: (id) => ipcRenderer.invoke('themeDev:deletePreset', id)
   }
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from './store/useStore'
+import { useThemesStore } from './store/themesStore'
 import { ListWindow } from './components/ListWindow/ListWindow'
 import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
 import { CommentsWindow } from './components/Comments/CommentsWindow'
@@ -60,6 +61,12 @@ export default function App() {
       console.error('Failed to hydrate store:', err)
       setError(String(err))
     })
+    // Themes hydration runs in parallel — failures are non-fatal (UI just
+    // renders without glow effects rather than blocking the whole window).
+    useThemesStore
+      .getState()
+      .hydrate()
+      .catch((err) => console.error('Failed to hydrate themes store:', err))
   }, [hydrate])
 
   // Listen for cross-window data changes
