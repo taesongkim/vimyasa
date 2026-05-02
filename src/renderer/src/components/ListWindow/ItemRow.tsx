@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -16,6 +16,16 @@ const statusOpacity: Record<ItemStatus, number> = {
   active: 1,
   done: 0.6,
   hold: 0.35
+}
+
+// Resize a textarea to match its content height. The reset-then-measure
+// pattern is required because scrollHeight reflects the larger of content
+// and current height — without the reset to 'auto' first, the textarea
+// can only grow, not shrink.
+function autoResizeTextarea(el: HTMLTextAreaElement | null): void {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
 }
 
 export function ItemRow({
@@ -40,7 +50,7 @@ export function ItemRow({
   const [text, setText] = useState(item.text)
   const [hovered, setHovered] = useState(false)
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const copyFunctionRef = useRef<() => void>()
 
@@ -58,12 +68,27 @@ export function ItemRow({
     transition
   }
 
+  // Focus + select on edit-mode entry. After-paint timing is fine here —
+  // focus is a user-perceptible action that doesn't need to be pre-paint.
   useEffect(() => {
     if (editing) {
       inputRef.current?.focus()
       inputRef.current?.select()
     }
   }, [editing])
+
+  // Resize the textarea to match its content. Must be useLayoutEffect, not
+  // useEffect: the resize has to happen between React's commit and the
+  // browser's paint, so the height update lands in the same frame as the
+  // text update. With a regular useEffect, the browser paints once with
+  // the new text in the old (smaller or larger) box — visible squish on
+  // line growth, visible stretch on line shrink. useLayoutEffect runs
+  // synchronously after commit before paint, eliminating that mid-state.
+  useLayoutEffect(() => {
+    if (editing) {
+      autoResizeTextarea(inputRef.current)
+    }
+  }, [text, editing])
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -161,11 +186,22 @@ export function ItemRow({
     <motion.div
       ref={setNodeRef}
       style={style}
+      // Keep layout=true so reorder/archive/delete still animate smoothly.
+      // While editing, override the layout-transition duration to 0 — the
+      // textarea grows/shrinks with content via useLayoutEffect, and we
+      // don't want Framer's 150ms spring on the row to lag behind the
+      // textarea (which produced the visible squish on growth and stretch
+      // on shrink). layout="position" alone wasn't enough; some height
+      // animation slipped through. Explicit duration:0 on layout closes it.
       layout
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
-      transition={{ duration: 0.15, delay: index * 0.02 }}
+      transition={{
+        duration: 0.15,
+        delay: index * 0.02,
+        layout: editing ? { duration: 0 } : undefined
+      }}
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
@@ -186,14 +222,32 @@ export function ItemRow({
 
         {/* Text */}
         {editing ? (
-          <input
+          // Textarea (not input) so multi-line items keep their visual
+          // height and wrapping during edit instead of collapsing to a
+          // single horizontal line. Width/font/line-height/padding match
+          // the display span so the box is byte-identical to what the
+          // user sees post-edit. Auto-resizes height to content via the
+          // useEffect on `text`. resize-none kills the corner handle.
+          // overflow-hidden prevents an inner scrollbar (auto-resize
+          // makes one unnecessary). Newlines are stripped on input so
+          // an item never ends up with \n characters even via paste —
+          // items are single logical lines that may visually wrap.
+          <textarea
             ref={inputRef}
-            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)]"
+            rows={1}
+            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)] resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
+            style={{ lineHeight: '1.5rem' }}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => setText(e.target.value.replace(/\n/g, ' '))}
             onBlur={commitEdit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitEdit()
+              if (e.key === 'Enter') {
+                // Block the textarea's default newline insertion and
+                // treat Enter as save. Shift+Enter falls into the same
+                // branch — we don't allow newlines either way.
+                e.preventDefault()
+                commitEdit()
+              }
               if (e.key === 'Escape') {
                 // We've handled this level (cancel without committing); don't
                 // let the window-level Escape handler also run and step focus
