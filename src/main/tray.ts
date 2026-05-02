@@ -1,8 +1,8 @@
-import { Tray, Menu, nativeImage, app, dialog } from 'electron'
+import { Tray, Menu, BrowserWindow, nativeImage, app, dialog } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
-import { v4 as uuid } from 'uuid'
 import { store } from './store'
+import { createListInStore } from './lists'
 import {
   createListWindow,
   createQuickAddWindow,
@@ -97,30 +97,15 @@ export function updateTrayMenu(): void {
     {
       label: 'New List...',
       click: () => {
-        // Use a simple prompt to get the list name
         const defaultGroup = groups[0]
         if (!defaultGroup) return
-        // Create list with a default name, then open it for renaming.
-        // Match the gap-aware sortOrder logic in createList — count can
-        // diverge from the actual max if any list in this group was
-        // previously deleted.
-        const inGroup = lists.filter((l) => l.groupId === defaultGroup.id)
-        const newList = {
-          id: uuid(),
-          groupId: defaultGroup.id,
-          name: 'New List',
-          sortOrder:
-            inGroup.length > 0 ? Math.max(...inGroup.map((l) => l.sortOrder)) + 1 : 0
-        }
-        store.set('lists', [...lists, newList])
-        const updatedGroups = store.get('groups')
-        const gIdx = updatedGroups.findIndex((g) => g.id === defaultGroup.id)
-        if (gIdx !== -1) {
-          updatedGroups[gIdx].listIds.push(newList.id)
-          store.set('groups', updatedGroups)
-        }
-        // Broadcast change and open the new list
-        const { BrowserWindow } = require('electron')
+        // Route through the same helper the renderer's createList IPC
+        // handler uses, so persistence + group.listIds bookkeeping stays
+        // in one place.
+        const newList = createListInStore(defaultGroup.id, 'New List')
+        // Tray clicks have no IPC sender to exclude — broadcast to all
+        // windows so anything currently rendering lists picks up the new
+        // entry on next render.
         for (const win of BrowserWindow.getAllWindows()) {
           if (!win.isDestroyed()) {
             win.webContents.send('data-changed')

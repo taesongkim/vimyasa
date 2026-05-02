@@ -28,6 +28,16 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     inputRef.current?.focus()
   }, [])
 
+  // If the targeted list is deleted while this form is open, the dropdown
+  // can no longer point at anything sensible. Close the window so the user
+  // is dropped back into their previous context. Skip during initial
+  // hydration so we don't close on first mount before the store populates.
+  useEffect(() => {
+    if (lists.length > 0 && !lists.some((l) => l.id === selectedListId)) {
+      window.api.closeWindow()
+    }
+  }, [lists, selectedListId])
+
   // Track whether the onboarding tour is running, so Escape can exit it
   // directly from QuickAdd (which is the focused window during step 01).
   const [tourActive, setTourActive] = useState(false)
