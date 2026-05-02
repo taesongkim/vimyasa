@@ -14,13 +14,27 @@ import {
   type ThemeDevPreset
 } from '@shared/themes'
 
-const SIZE_OPTIONS: SurfaceConfig['borderBeam']['size'][] = ['sm', 'md', 'line']
 const COLOR_OPTIONS: SurfaceConfig['borderBeam']['colorVariant'][] = [
   'colorful',
   'mono',
   'ocean',
   'sunset'
 ]
+
+// border-beam ships only three size enums (sm + md = full perimeter at
+// different scales, line = bottom-only travelling beam). We expose a
+// slider over those three stops so the dev panel feels gestural even
+// though the underlying value is discrete. If we need genuinely
+// continuous size we'll need to fork the package or layer custom CSS.
+const SIZE_STOPS: SurfaceConfig['borderBeam']['size'][] = ['sm', 'md', 'line']
+const SIZE_LABELS: Record<SurfaceConfig['borderBeam']['size'], string> = {
+  sm: 'sm · small full perimeter',
+  md: 'md · large full perimeter',
+  line: 'line · bottom only'
+}
+function sizeToIndex(size: SurfaceConfig['borderBeam']['size']): number {
+  return Math.max(0, SIZE_STOPS.indexOf(size))
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -259,11 +273,25 @@ export function ThemeDevPanel() {
         {/* Knobs */}
         <Section title="Border beam">
           <div className="flex flex-col gap-1.5">
+            {/* Size — discrete slider over border-beam's 3 enum values. */}
             <div className="flex flex-col gap-0.5">
-              <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
-                Size
-              </span>
-              <Segmented value={c.size} options={SIZE_OPTIONS} onChange={(v) => update({ size: v })} />
+              <div className="flex items-center justify-between">
+                <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
+                  Size
+                </span>
+                <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] font-mono tabular-nums">
+                  {SIZE_LABELS[c.size]}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={SIZE_STOPS.length - 1}
+                step={1}
+                value={sizeToIndex(c.size)}
+                onChange={(e) => update({ size: SIZE_STOPS[Number(e.target.value)] })}
+                className="w-full accent-[var(--color-accent)]"
+              />
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
@@ -295,7 +323,7 @@ export function ThemeDevPanel() {
               label="Brightness"
               value={c.brightness}
               min={0.3}
-              max={3}
+              max={5}
               step={0.05}
               onChange={(v) => update({ brightness: v })}
             />
@@ -303,7 +331,7 @@ export function ThemeDevPanel() {
               label="Saturation"
               value={c.saturation}
               min={0}
-              max={3}
+              max={5}
               step={0.05}
               onChange={(v) => update({ saturation: v })}
             />
@@ -327,7 +355,7 @@ export function ThemeDevPanel() {
               <input
                 type="number"
                 min={0}
-                max={64}
+                max={200}
                 step={1}
                 value={c.borderRadius ?? ''}
                 placeholder="auto"

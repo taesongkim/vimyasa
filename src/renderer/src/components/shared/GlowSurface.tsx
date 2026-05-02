@@ -1,36 +1,28 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { BorderBeam } from 'border-beam'
 import { useThemesStore } from '../../store/themesStore'
-import type { SurfaceId } from '@shared/themes'
+import type { SurfaceId, SurfaceConfig } from '@shared/themes'
 
 interface GlowSurfaceProps {
   surface: SurfaceId
-  children: ReactNode
-  /** Forwarded to the BorderBeam wrapper div when the effect is active.
-   *  Pass `display: 'inline-block'` (or similar) when wrapping inline elements
-   *  like input fields so the host's layout flow is preserved. */
+  /** 'wrap' (default): renders <BorderBeam>{children}</BorderBeam>. The
+   *  BorderBeam wrapper div is layout-affecting — pass `style` to control
+   *  its display/sizing.
+   *
+   *  'overlay': renders ONLY a positioned overlay containing the beam,
+   *  no children pass-through. Drop the GlowSurface alongside the host's
+   *  existing children so it sits as a sibling. The host must have
+   *  `position: relative` and a defined `border-radius` so the overlay
+   *  inherits both. Use this for surfaces where the glow should match an
+   *  outer container without disturbing structural refs (e.g. dnd-kit
+   *  setNodeRef on motion.div) or AnimatePresence exit transitions. */
+  mode?: 'wrap' | 'overlay'
+  children?: ReactNode
   style?: CSSProperties
   className?: string
 }
 
-/** Wraps a target surface with the active theme's effect. When the master
- *  switch is off OR the per-surface toggle is off, renders children with no
- *  wrapper so the production DOM stays clean. Layout *can* shift when
- *  toggling on/off — this is intentional and visible only on deliberate
- *  user action via Settings → Themes. */
-export function GlowSurface({ surface, children, style, className }: GlowSurfaceProps) {
-  const masterEnabled = useThemesStore((s) => s.masterEnabled)
-  const surfaceConfig = useThemesStore((s) => s.surfaces[surface])
-  const hydrated = useThemesStore((s) => s.hydrated)
-
-  // Until hydrated, behave as if disabled (avoids a flash of glow on cold
-  // load if the persisted state happens to be on but hasn't arrived yet).
-  if (!hydrated || !masterEnabled || !surfaceConfig?.enabled) {
-    return <>{children}</>
-  }
-
-  const c = surfaceConfig.borderBeam
-
+function renderBeam(c: SurfaceConfig['borderBeam'], children: ReactNode, style?: CSSProperties, className?: string) {
   return (
     <BorderBeam
       size={c.size}
@@ -49,4 +41,47 @@ export function GlowSurface({ surface, children, style, className }: GlowSurface
       {children}
     </BorderBeam>
   )
+}
+
+/** Wraps (or overlays) a target surface with the active theme's effect.
+ *  When the master switch is off OR the per-surface toggle is off, renders
+ *  nothing (overlay mode) or just children unwrapped (wrap mode). */
+export function GlowSurface({
+  surface,
+  children,
+  mode = 'wrap',
+  style,
+  className
+}: GlowSurfaceProps) {
+  const masterEnabled = useThemesStore((s) => s.masterEnabled)
+  const surfaceConfig = useThemesStore((s) => s.surfaces[surface])
+  const hydrated = useThemesStore((s) => s.hydrated)
+
+  const inactive = !hydrated || !masterEnabled || !surfaceConfig?.enabled
+
+  if (mode === 'overlay') {
+    if (inactive) return null
+    const c = surfaceConfig!.borderBeam
+    // The outer absolute div positions the beam relative to the host. Inner
+    // empty div gives BorderBeam a sized box (it sizes to its child by default).
+    // pointer-events: none so the overlay never intercepts clicks/hovers
+    // on the host's actual interactive children.
+    return (
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ borderRadius: 'inherit', ...style }}
+      >
+        {renderBeam(
+          c,
+          <div style={{ width: '100%', height: '100%' }} />,
+          { width: '100%', height: '100%' },
+          className
+        )}
+      </div>
+    )
+  }
+
+  // wrap mode
+  if (inactive) return <>{children}</>
+  return renderBeam(surfaceConfig!.borderBeam, children, style, className)
 }
