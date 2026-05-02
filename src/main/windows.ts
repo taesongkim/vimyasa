@@ -159,6 +159,12 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
     // Let the Framer Motion slide handle the visual entrance
     setTimeout(() => win.setOpacity(1), 10)
     orchestrator.refreshPosition()
+    // Auto-open DevTools on the list window in dev so visual debugging
+    // doesn't require knowing the keyboard shortcut. Detached mode keeps
+    // it in a separate window so it doesn't crowd the small list pane.
+    if (is.dev) {
+      win.webContents.openDevTools({ mode: 'detach' })
+    }
   })
   win.on('closed', () => listWindows.delete(listId))
   trackForOnboarding(win)
