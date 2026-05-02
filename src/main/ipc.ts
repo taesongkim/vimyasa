@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { v4 as uuid } from 'uuid'
 import { store } from './store'
+import { createListInStore } from './lists'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
 import { orchestrator } from './onboarding'
@@ -82,29 +83,7 @@ export function registerIpcHandlers(): void {
 
   // ── Lists ───────────────────────────────────────────────────────
   ipcMain.handle('createList', (e, groupId: string, name: string): List => {
-    const lists = store.get('lists')
-    // Lists don't archive but they can be deleted, which leaves gaps in
-    // sortOrder values. Use max + 1 over the group's lists to land at the
-    // bottom regardless of any holes.
-    const inGroup = lists.filter((l) => l.groupId === groupId)
-    const nextSortOrder =
-      inGroup.length > 0 ? Math.max(...inGroup.map((l) => l.sortOrder)) + 1 : 0
-    const list: List = {
-      id: uuid(),
-      groupId,
-      name,
-      sortOrder: nextSortOrder
-    }
-    store.set('lists', [...lists, list])
-
-    // Add list ID to group
-    const groups = store.get('groups')
-    const gIdx = groups.findIndex((g) => g.id === groupId)
-    if (gIdx !== -1) {
-      groups[gIdx].listIds.push(list.id)
-      store.set('groups', groups)
-    }
-
+    const list = createListInStore(groupId, name)
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     return list
