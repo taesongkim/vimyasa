@@ -12,16 +12,18 @@ interface StepBodyProps {
 }
 
 /** Convert an Electron accelerator string ("CommandOrControl+Shift+;") into
- *  a compact macOS display form ("⌘⇧;"). The renderer is mac-only for now,
- *  so we always use macOS glyphs. */
+ *  the human-readable display form ("⌘ SHIFT ;"). Modifier keys are spelled
+ *  out (SHIFT, OPTION) so non-power-users aren't guessing at glyph meaning;
+ *  Command stays as ⌘ since it's universally recognized on macOS. The
+ *  renderer is mac-only for now. */
 function fmt(accel: string): string {
   return accel
     .replace(/CommandOrControl/g, '⌘')
     .replace(/Command/g, '⌘')
     .replace(/Control/g, 'Ctrl')
-    .replace(/Shift/g, '⇧')
-    .replace(/Alt|Option/g, '⌥')
-    .replace(/\+/g, '')
+    .replace(/Shift/g, 'SHIFT')
+    .replace(/Alt|Option/g, 'OPTION')
+    .replace(/\+/g, ' ')
 }
 
 /** A keyboard-shortcut chip — matches the prototype's `.key` styling
