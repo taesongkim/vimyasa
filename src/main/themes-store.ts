@@ -148,3 +148,15 @@ export function listDevPresets(): ThemeDevPreset[] {
 export function setDevPresets(presets: ThemeDevPreset[]): void {
   devPresetsStore.set('presets', presets)
 }
+
+/** A snapshot of the current themes state encoded as a single argv flag,
+ *  to be passed via `webPreferences.additionalArguments` when creating
+ *  any BrowserWindow that mounts the renderer. The preload script picks
+ *  it up from process.argv and exposes it as `window.themesInitial`, so
+ *  the renderer's themes store can initialize SYNCHRONOUSLY on first
+ *  render — no async hydration roundtrip, no first-render-without-glow
+ *  followed by remount. Keeps fade-up animations from being interrupted
+ *  by hydration completing mid-flight. */
+export function getThemesPreloadArg(): string {
+  return `--themes-initial=${JSON.stringify(getThemesState())}`
+}

@@ -1,7 +1,7 @@
 import { app, nativeTheme } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipc'
-import { registerWindowIpcHandlers, wireOnboardingHosts } from './windows'
+import { registerWindowIpcHandlers, wireOnboardingHosts, ensureQuickAddPrewarmed } from './windows'
 import { createTray } from './tray'
 import { registerThemeDevPanelHandlers } from './theme-dev-panel'
 import {
@@ -64,6 +64,13 @@ app.whenReady().then(() => {
   // transparent dim takes ~470ms to ready-to-show on first launch and
   // the welcome callout appears before it.
   void orchestrator.preloadDim()
+
+  // Pre-warm the QuickAdd window. Stays alive (hidden) for the app's
+  // lifetime; every user summon is a win.show() + state-reset IPC, no
+  // cold renderer spawn. ~30-80MB additional memory; ParticleLayer
+  // pauses its RAF loop on document.hidden so idle CPU stays at zero.
+  // See windows.ts:ensureQuickAddPrewarmed.
+  ensureQuickAddPrewarmed()
 
   // Run the onboarding tour for first-time users (or anyone whose tour
   // version is behind). Small delay so the app's launch settles before

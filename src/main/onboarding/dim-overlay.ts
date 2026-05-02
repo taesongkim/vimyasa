@@ -1,6 +1,7 @@
 import { BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { getThemesPreloadArg } from '../themes-store'
 
 // Full-screen dimming overlay shown during the onboarding tour. Sits in
 // the window stack ABOVE other apps' normal-level windows but BELOW
@@ -59,7 +60,8 @@ export class DimOverlay {
         preload: join(__dirname, '../preload/index.mjs'),
         sandbox: false,
         contextIsolation: true,
-        nodeIntegration: false
+        nodeIntegration: false,
+        additionalArguments: [getThemesPreloadArg()]
       }
     })
 

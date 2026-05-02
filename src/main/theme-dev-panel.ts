@@ -9,6 +9,7 @@
 import { BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { getThemesPreloadArg } from './themes-store'
 
 const PANEL_WIDTH = 380
 const PANEL_HEIGHT = 640
@@ -69,7 +70,8 @@ export function openThemeDevPanel(): void {
       preload: getPreloadPath(),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      additionalArguments: [getThemesPreloadArg()]
     }
   })
 

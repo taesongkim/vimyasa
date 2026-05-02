@@ -356,9 +356,44 @@ export function ParticleLayer({
       raf = requestAnimationFrame(tick)
     }
 
-    raf = requestAnimationFrame(tick)
+    // Pause the RAF loop whenever the document is hidden (window minimized,
+    // pre-warmed background window, Space switched, etc.). Critical for
+    // pre-warmed windows: without this, ~146 particles × 3 layers would
+    // burn ~5-15% CPU continuously even while the user can't see them.
+    // Resume when visible — reset `last` so the dt jump is clamped (the
+    // tick already caps dt at 64ms but reseting is cleaner).
+    let visibilityHandler: (() => void) | null = null
+    const start = (): void => {
+      if (raf) return
+      last = performance.now()
+      raf = requestAnimationFrame(tick)
+    }
+    const stop = (): void => {
+      if (raf) {
+        cancelAnimationFrame(raf)
+        raf = 0
+      }
+    }
+    if (typeof document !== 'undefined') {
+      if (document.hidden) {
+        // Don't start; will start on visibilitychange.
+      } else {
+        start()
+      }
+      visibilityHandler = (): void => {
+        if (document.hidden) stop()
+        else start()
+      }
+      document.addEventListener('visibilitychange', visibilityHandler)
+    } else {
+      start()
+    }
+
     return () => {
-      cancelAnimationFrame(raf)
+      stop()
+      if (visibilityHandler) {
+        document.removeEventListener('visibilitychange', visibilityHandler)
+      }
       particlesRef.current = []
       const c = canvas.getContext('2d')
       if (c) c.clearRect(0, 0, canvas.width, canvas.height)

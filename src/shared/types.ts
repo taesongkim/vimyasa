@@ -1,4 +1,4 @@
-import type { ThemesAPI, ThemeDevAPI, ThemeEventsAPI } from './themes'
+import type { ThemesAPI, ThemeDevAPI, ThemeEventsAPI, ThemesState, QuickAddAPI } from './themes'
 
 // ── Data Model Types ──────────────────────────────────────────────
 
@@ -153,6 +153,9 @@ export interface VimyasaAPI {
 
   // Theme event triggers — IPC-broadcast events fire surface pulses
   themeEvents: ThemeEventsAPI
+
+  // Pre-warmed QuickAdd window — show/hide replaces the destroy/recreate path
+  quickAdd: QuickAddAPI
 }
 
 export interface OnboardingCalloutPayload {
@@ -196,5 +199,10 @@ export interface OnboardingAPI {
 declare global {
   interface Window {
     api: VimyasaAPI
+    /** Snapshot of the persisted themes state injected by the preload
+     *  script via `additionalArguments`. Available synchronously on first
+     *  render. Null only if main's argv flag was missing or malformed
+     *  (shouldn't happen in normal operation; see preload/index.ts). */
+    themesInitial: ThemesState | null
   }
 }

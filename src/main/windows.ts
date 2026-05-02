@@ -2,6 +2,7 @@ import { BrowserWindow, screen, ipcMain, Menu, shell, app } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { orchestrator } from './onboarding'
+import { getThemesPreloadArg } from './themes-store'
 
 // Re-run onboarding callout positioning whenever a host window moves /
 // resizes / shows / hides / closes — keeps the callout glued to the host.
@@ -94,6 +95,12 @@ function calculateStackedPosition(): { x: number; y: number } {
 }
 
 function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWindow {
+  // Snapshot the themes state into an argv flag so the preload script can
+  // expose it synchronously to the renderer. This lets the themes store
+  // initialize on first render with the user's actual config — no async
+  // hydration roundtrip, no GlowSurface flip-and-remount that would
+  // restart the fade-up animation. See themes-store.ts:getThemesPreloadArg.
+  const themesArg = getThemesPreloadArg()
   const win = new BrowserWindow({
     frame: false,
     transparent: true,
@@ -104,7 +111,8 @@ function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWind
       preload: getPreloadPath(),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      additionalArguments: [themesArg]
     },
     ...opts
   })
@@ -167,38 +175,77 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
 
 // ── Quick-Add Window ────────────────────────────────────────────
 
-export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?: string): BrowserWindow {
-  if (quickAddWindow && !quickAddWindow.isDestroyed()) {
-    if (quickAddWindow.isFocused()) {
-      quickAddWindow.close()
-      return quickAddWindow
-    }
-    quickAddWindow.focus()
-    return quickAddWindow
-  }
+/** Pre-warm the QuickAdd window at app startup. Creates the BrowserWindow
+ *  once with show:false, loads the renderer route, and parks it hidden so
+ *  every user summon is just a `win.show()` + IPC state-reset — no cold
+ *  renderer process spawn, no JS bundle parse, no React mount, no theme
+ *  hydration. The window stays alive for the app's lifetime; on user
+ *  close it `hide()`s instead of `close()`-ing.
+ *
+ *  Idempotent: if already pre-warmed, no-op. Called from main/index.ts on
+ *  app ready and re-callable defensively if the window gets destroyed
+ *  unexpectedly. */
+export function ensureQuickAddPrewarmed(): void {
+  if (quickAddWindow && !quickAddWindow.isDestroyed()) return
 
-  const height = QUICKADD_HEIGHT
-  const { x, y } = getCenteredPosition(QUICKADD_WIDTH, height)
+  const { x, y } = getCenteredPosition(QUICKADD_WIDTH, QUICKADD_HEIGHT)
   const win = makeWindow({
     width: QUICKADD_WIDTH,
-    height,
+    height: QUICKADD_HEIGHT,
     x,
     y,
     resizable: false,
     alwaysOnTop: true
   })
-
   quickAddWindow = win
-  const hash = `/quickadd/fixed/${targetListId || ''}`
-  loadRoute(win, hash)
+
+  // Load with empty listId — actual target is supplied via the
+  // 'quickadd:show' IPC on each summon, so we don't need to recreate the
+  // window when the target list changes.
+  loadRoute(win, '/quickadd/fixed/')
+
   win.once('ready-to-show', () => {
-    win.show()
+    // DO NOT call win.show() here — that's the whole point. We're warming
+    // the renderer, not displaying it.
     orchestrator.refreshPosition()
   })
+
   win.on('closed', () => {
     quickAddWindow = null
   })
+
   trackForOnboarding(win)
+}
+
+/** Show the (pre-warmed or freshly-created) QuickAdd window with the
+ *  given target listId. Sends a 'quickadd:show' IPC ahead of the show
+ *  call so the renderer can reset its state and trigger the fade-up
+ *  remount before the window paints. */
+export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?: string): BrowserWindow {
+  // If the QuickAdd window is currently visible AND focused, treat the
+  // shortcut as a toggle and hide it. Send 'quickadd:hidden' first so
+  // the renderer unmounts the form before the next show, otherwise stale
+  // content can flash visible during the brief gap between win.show()
+  // and the 'quickadd:show' IPC arriving.
+  if (quickAddWindow && !quickAddWindow.isDestroyed() && quickAddWindow.isVisible() && quickAddWindow.isFocused()) {
+    quickAddWindow.webContents.send('quickadd:hidden')
+    quickAddWindow.hide()
+    return quickAddWindow
+  }
+
+  // Defensive: if the prewarmed window got destroyed (e.g., GC under
+  // memory pressure or a never-prewarmed startup race), recreate.
+  if (!quickAddWindow || quickAddWindow.isDestroyed()) {
+    ensureQuickAddPrewarmed()
+  }
+
+  const win = quickAddWindow!
+  // Send the show event with target listId BEFORE win.show() so the
+  // renderer's state is reset (text cleared, listId set, motion.div
+  // re-keyed for fade-up) before the user sees a frame paint.
+  win.webContents.send('quickadd:show', { listId: targetListId ?? '' })
+  win.show()
+  orchestrator.refreshPosition()
   return win
 }
 
@@ -347,6 +394,22 @@ export function registerWindowIpcHandlers(): void {
   ipcMain.handle('closeWindow', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (win) win.close()
+  })
+
+  // QuickAdd is pre-warmed and stays alive — its "close" is really a hide
+  // so the renderer process doesn't have to cold-start on the next summon.
+  // We send 'quickadd:hidden' to the renderer BEFORE hiding the window so
+  // the form's motion.div unmounts synchronously — that prevents a flash
+  // of stale content on the next summon (window paints faster than the
+  // 'quickadd:show' IPC arrives, so any content still in the DOM at
+  // hide time would be visible briefly until the show event remounts it).
+  // document.visibilitychange in the renderer is also wired but can fire
+  // late; this IPC is authoritative.
+  ipcMain.handle('quickAddHide', () => {
+    if (quickAddWindow && !quickAddWindow.isDestroyed()) {
+      quickAddWindow.webContents.send('quickadd:hidden')
+      quickAddWindow.hide()
+    }
   })
 
   ipcMain.handle('openListWindow', (_e, listId: string, position?: { x: number; y: number }) => {

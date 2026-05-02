@@ -25,6 +25,61 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const EXIT_DURATION_MS = 150
   const EXIT_OFFSET_PX = 4
 
+  // Pre-warmed window: the renderer stays alive across summons. We
+  // *unmount* the form contents whenever the window is hidden — that way
+  // there's nothing in the DOM to flicker visible during the brief gap
+  // between win.show() and the 'quickadd:show' IPC arriving. On show,
+  // motion.div mounts fresh and the fade-up animation plays cleanly.
+  //
+  // hiddenState starts true so the pre-warmed window has no content
+  // rendered. visibilitychange flips it to true on every hide; the show
+  // event flips it to false. showCount is still useful for forcing a
+  // distinct mount per summon (resets useSubmitAnimation and other
+  // in-component state).
+  const [showCount, setShowCount] = useState(0)
+  const [hiddenState, setHiddenState] = useState(true)
+  // Mirror of `exiting` for the post-submit hide path. After the
+  // await-setTimeout returns, the closure can't read live state — we read
+  // this ref to detect whether a 'quickadd:show' event cancelled the
+  // pending hide (by setting exiting back to false).
+  const exitingRef = useRef(false)
+
+  useEffect(() => {
+    const onHidden = (): void => {
+      // Window is hiding — drop content from DOM so the next show starts
+      // clean. Authoritative path is the IPC from main (sent BEFORE
+      // win.hide()). The visibilitychange fallback below catches any
+      // edge case where main forgets / a different code path hides.
+      setHiddenState(true)
+      setExiting(false)
+      exitingRef.current = false
+    }
+    const offIpc = window.api.quickAdd.onHidden(onHidden)
+    const onVis = (): void => {
+      if (document.hidden) onHidden()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      offIpc()
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [])
+
+  useEffect(() => {
+    return window.api.quickAdd.onShow((payload) => {
+      // Reset form state. Runs synchronously before the next paint, so
+      // when motion.div mounts (next render) it has the right listId and
+      // no stale text.
+      setText('')
+      setSelectedListId(payload.listId || lists[0]?.id || initialListId)
+      setDropdownOpen(false)
+      setExiting(false)
+      exitingRef.current = false
+      setShowCount((c) => c + 1)
+      setHiddenState(false) // re-mounts motion.div, fade-up plays
+    })
+  }, [lists, initialListId])
+
   // Focus on every mount via a ref callback rather than a one-shot
   // useEffect. Reason: when the user has the quickadd-input GlowSurface
   // enabled, themes hydration flips us from "children rendered bare" to
@@ -65,7 +120,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
         if (dropdownOpen) {
           setDropdownOpen(false)
         } else {
-          window.api.closeWindow()
+          void window.api.quickAdd.hide()
         }
       }
     }
@@ -95,14 +150,25 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     const animationPromise = submitAnim.play()
     await addItem(selectedListId, trimmed)
     await animationPromise
-    // Phase 2: form slides up + fades, then we actually close the window.
+    // Phase 2: form slides up + fades, then we hide the (pre-warmed)
+    // window. We mirror `exiting` into a ref so the closure can detect
+    // a re-summon mid-exit (the show handler resets exitingRef.current
+    // to false) and bail without hiding.
     setExiting(true)
+    exitingRef.current = true
     await new Promise<void>((resolve) => setTimeout(resolve, EXIT_DURATION_MS))
-    window.api.closeWindow()
+    if (!exitingRef.current) return // user re-summoned during the exit fade
+    void window.api.quickAdd.hide()
   }
+
+  // While hidden, render nothing — keeps the pre-warmed window's vibrancy
+  // visible without any content that could flicker on summon before the
+  // show IPC arrives and remounts motion.div for the fade-up.
+  if (hiddenState) return null
 
   return (
     <motion.div
+      key={showCount}
       initial={{ opacity: 0, scale: 1, y: 8 }}
       animate={
         exiting

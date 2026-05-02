@@ -376,6 +376,23 @@ export interface ThemesAPI {
   onChanged: (callback: (state: ThemesState) => void) => () => void
 }
 
+/** API for the pre-warmed QuickAdd window — replaces the closeWindow path
+ *  and adds show/hidden events the renderer can listen to for state-reset. */
+export interface QuickAddAPI {
+  /** Subscribe to show events from main. Fires each time the user summons
+   *  the QuickAdd window. The handler should reset the form state (clear
+   *  text, set selectedListId from the payload, clear dropdown, increment
+   *  the motion.div key for fade-up replay). Returns an unsubscribe fn. */
+  onShow: (callback: (payload: { listId: string }) => void) => () => void
+  /** Subscribe to hidden events from main. Fires when main is about to
+   *  hide the window (via Esc/submit hide path or shortcut-toggle). The
+   *  handler should unmount the form contents synchronously so a
+   *  subsequent show doesn't briefly flash stale content. */
+  onHidden: (callback: () => void) => () => void
+  /** Hide the pre-warmed QuickAdd window. Renderer stays alive. */
+  hide: () => Promise<void>
+}
+
 export interface ThemeEventsAPI {
   /** Subscribe to broadcasted theme events from the main process. Receives
    *  the full payload (name + optional metadata like itemId). Returns

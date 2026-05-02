@@ -1,6 +1,26 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { VimyasaAPI } from '../shared/types'
 
+// Sync hand-off of the persisted themes state from main → renderer. Main
+// passes a `--themes-initial=<json>` argv flag when creating each
+// BrowserWindow; we parse it here (preload runs before the renderer's JS)
+// and expose the parsed snapshot so the themes store can initialize on
+// first render without an async IPC roundtrip. See themes-store.ts:
+// getThemesPreloadArg.
+function readThemesInitial(): unknown {
+  const flag = process.argv.find((a) => a.startsWith('--themes-initial='))
+  if (!flag) return null
+  try {
+    return JSON.parse(flag.slice('--themes-initial='.length))
+  } catch {
+    // Malformed JSON — fall back to null. The renderer will use its
+    // built-in defaults and the existing onChanged subscription will
+    // catch up once main re-broadcasts.
+    return null
+  }
+}
+contextBridge.exposeInMainWorld('themesInitial', readThemesInitial())
+
 const api: VimyasaAPI = {
   // Lifecycle
   ping: () => ipcRenderer.invoke('ping'),
@@ -125,6 +145,24 @@ const api: VimyasaAPI = {
       ipcRenderer.on('themes:changed', listener)
       return () => ipcRenderer.removeListener('themes:changed', listener)
     }
+  },
+
+  // Pre-warmed QuickAdd window
+  quickAdd: {
+    onShow: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as { listId?: string } | null
+        callback({ listId: p?.listId ?? '' })
+      }
+      ipcRenderer.on('quickadd:show', listener)
+      return () => ipcRenderer.removeListener('quickadd:show', listener)
+    },
+    onHidden: (callback) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('quickadd:hidden', listener)
+      return () => ipcRenderer.removeListener('quickadd:hidden', listener)
+    },
+    hide: () => ipcRenderer.invoke('quickAddHide')
   },
 
   // Theme event triggers

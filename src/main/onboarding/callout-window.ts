@@ -2,6 +2,7 @@ import { BrowserWindow, screen, type Rectangle } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import type { Anchor } from '../../shared/onboarding-steps'
+import { getThemesPreloadArg } from '../themes-store'
 
 const CALLOUT_DEFAULT_WIDTH = 380
 const CALLOUT_HEIGHT = 240
@@ -100,7 +101,11 @@ export class CalloutWindow {
         preload: join(__dirname, '../preload/index.mjs'),
         sandbox: false,
         contextIsolation: true,
-        nodeIntegration: false
+        nodeIntegration: false,
+        // Sync theme hydration: the renderer's themes store reads this on
+        // first render, so the welcome callout's GlowSurface wrappers know
+        // their config without an async IPC roundtrip.
+        additionalArguments: [getThemesPreloadArg()]
       }
     })
 
