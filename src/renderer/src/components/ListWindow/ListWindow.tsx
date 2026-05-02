@@ -76,18 +76,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [lists, activeListId])
 
-  // Flash the title-bar number when it changes because of a reorder, but not
-  // when it changes because the user is actively switching lists. Bumping
-  // numberFlashKey re-keys the span in TitleBar, which restarts the CSS
-  // keyframe. Initial mount stays at 0 so the flash doesn't fire on launch.
+  // Flash the title-bar number any time it could feel "fresh" to the user:
+  // initial window mount, reorder while the same list stays active, Tab
+  // cycle, number-key jump. Bumping numberFlashKey re-keys the span in
+  // TitleBar, which restarts the CSS keyframe. Same animation code as
+  // before — just a broader trigger condition. The first useEffect run
+  // after mount handles the launch flash naturally; subsequent runs
+  // handle every (activeListId, listNumber) change.
   const [numberFlashKey, setNumberFlashKey] = useState(0)
-  const prevNumberSnapshotRef = useRef({ activeListId, listNumber })
   useEffect(() => {
-    const prev = prevNumberSnapshotRef.current
-    if (prev.activeListId === activeListId && prev.listNumber !== listNumber) {
-      setNumberFlashKey((k) => k + 1)
-    }
-    prevNumberSnapshotRef.current = { activeListId, listNumber }
+    setNumberFlashKey((k) => k + 1)
   }, [activeListId, listNumber])
 
   // Update custom scrollbar position and the scroll-edge fade strengths.

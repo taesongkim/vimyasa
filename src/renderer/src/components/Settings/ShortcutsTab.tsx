@@ -34,10 +34,11 @@ const listNavigationShortcuts: { key: string; label: string; description?: strin
 
 function formatAccelerator(accel: string): string {
   return accel
-    .replace('CommandOrControl', '⌘')
-    .replace('Alt', '⌥')
-    .replace('Shift', '⇧')
-    .replace(/\+/g, '')
+    .replace(/CommandOrControl/g, '⌘')
+    .replace(/Command/g, '⌘')
+    .replace(/Shift/g, 'SHIFT')
+    .replace(/Alt|Option/g, 'OPTION')
+    .replace(/\+/g, ' ')
 }
 
 export function ShortcutsTab() {

@@ -4,7 +4,7 @@ import { JkModeToggle } from './JkModeToggle'
 
 // Global shortcuts (configurable)
 const globalShortcuts = [
-  { key: '⌘⇧\'', label: 'Show Shortcuts', description: 'Display this shortcuts overview' },
+  { key: '⌘ SHIFT \'', label: 'Show Shortcuts', description: 'Display this shortcuts overview' },
 ]
 
 // List navigation shortcuts (non-configurable). j/k is special-cased
@@ -29,10 +29,11 @@ const entryFormShortcuts = [
 
 function formatAccelerator(accel: string): string {
   return accel
-    .replace('CommandOrControl', '⌘')
-    .replace('Alt', '⌥')
-    .replace('Shift', '⇧')
-    .replace(/\+/g, '')
+    .replace(/CommandOrControl/g, '⌘')
+    .replace(/Command/g, '⌘')
+    .replace(/Shift/g, 'SHIFT')
+    .replace(/Alt|Option/g, 'OPTION')
+    .replace(/\+/g, ' ')
 }
 
 export function ShortcutsOverview() {
@@ -58,7 +59,7 @@ export function ShortcutsOverview() {
             Keyboard Shortcuts
           </h1>
           <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)]">
-            Press ESC or ⌘⇧' to close
+            Press ESC or ⌘ SHIFT ' to close
           </span>
         </div>
 
