@@ -5,6 +5,7 @@
 import Store from 'electron-store'
 import {
   DEFAULT_BORDER_BEAM_CONFIG,
+  DEFAULT_PARTICLE_CONFIG,
   defaultThemesState,
   defaultThemeDevPresetsState,
   defaultSurfaceConfig,
@@ -43,20 +44,34 @@ export function getThemesState(): ThemesState {
       mutated = true
       continue
     }
-    // Backfill any missing borderBeam fields with the md/dark preset
-    // defaults so the renderer always sees a fully-typed config.
+    // Backfill any missing borderBeam / particles fields so the renderer
+    // always sees a fully-typed config (covers users whose persisted state
+    // predates a schema addition).
     const cur = surfaces[id]
-    const backfilled: SurfaceConfig['borderBeam'] = {
+    const backfilledBeam: SurfaceConfig['borderBeam'] = {
       ...DEFAULT_BORDER_BEAM_CONFIG,
       ...(cur.borderBeam ?? {})
     }
-    if (
+    const backfilledParticles: SurfaceConfig['particles'] = {
+      ...DEFAULT_PARTICLE_CONFIG,
+      ...(cur.particles ?? {})
+    }
+    const beamMissing =
       cur.borderBeam == null ||
-      Object.keys(backfilled).some(
+      Object.keys(backfilledBeam).some(
         (k) => (cur.borderBeam as Record<string, unknown>)?.[k] === undefined
       )
-    ) {
-      surfaces[id] = { ...cur, borderBeam: backfilled }
+    const particlesMissing =
+      cur.particles == null ||
+      Object.keys(backfilledParticles).some(
+        (k) => (cur.particles as Record<string, unknown> | undefined)?.[k] === undefined
+      )
+    if (beamMissing || particlesMissing) {
+      surfaces[id] = {
+        ...cur,
+        borderBeam: backfilledBeam,
+        particles: backfilledParticles
+      }
       mutated = true
     }
   }

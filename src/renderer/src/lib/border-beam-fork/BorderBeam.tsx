@@ -116,6 +116,11 @@ export interface BorderBeamProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
   /** Per-blob color override. Up to 9 entries; null/undefined preserves
    *  the variant's default for that blob. Forwarded into the CSS generator. */
   paletteOverride?: (string | null)[]
+  /** Extra content rendered as a sibling of children inside the BorderBeam
+   *  wrapper (which has position:relative). Used by GlowSurface to mount
+   *  the ParticleLayer canvas overlay so it inherits the wrapper's
+   *  border-radius and clipping. */
+  overlay?: React.ReactNode
   onActivate?: () => void
   onDeactivate?: () => void
 }
@@ -159,6 +164,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
       innerShadow,
       beamLength = 28,
       paletteOverride,
+      overlay,
       className,
       style,
       onActivate,
@@ -303,6 +309,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
         >
           {children}
           <div data-beam-bloom />
+          {overlay}
         </div>
       </>
     )

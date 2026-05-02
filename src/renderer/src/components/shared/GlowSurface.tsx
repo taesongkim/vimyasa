@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { BorderBeam } from '../../lib/border-beam-fork/BorderBeam'
+import { defaultPaletteHex } from '../../lib/border-beam-fork/palettes'
+import { ParticleLayer } from './ParticleLayer'
 import { useThemesStore } from '../../store/themesStore'
 import { DEFAULT_BORDER_BEAM_CONFIG, type SurfaceId, type SurfaceConfig } from '@shared/themes'
 
@@ -22,10 +24,26 @@ interface GlowSurfaceProps {
   className?: string
 }
 
+function resolveVariantColors(
+  variant: SurfaceConfig['borderBeam']['colorVariant'],
+  override: SurfaceConfig['borderBeam']['paletteOverride']
+): string[] {
+  // Particles default to picking from the variant's palette so they tint
+  // alongside the beam. Per-blob overrides (when set) take priority so a
+  // user's custom palette feeds particles too.
+  const defaults = defaultPaletteHex(variant)
+  if (!override) return defaults
+  return defaults.map((d, i) => {
+    const o = override[i]
+    return typeof o === 'string' && o.length > 0 ? o : d
+  })
+}
+
 function renderBeam(
   c: SurfaceConfig['borderBeam'],
   active: boolean,
   children: ReactNode,
+  overlay: ReactNode,
   style?: CSSProperties,
   className?: string
 ) {
@@ -49,6 +67,7 @@ function renderBeam(
       innerShadow={c.innerShadow}
       beamLength={c.beamLength}
       paletteOverride={c.paletteOverride}
+      overlay={overlay}
       style={style}
       className={className}
     >
@@ -66,7 +85,11 @@ function renderBeam(
  *
  *  Overlay mode keeps conditional rendering — the overlay is a sibling
  *  (pointer-events:none) so it can come and go without affecting the
- *  host's children. */
+ *  host's children.
+ *
+ *  Particle layer (when enabled) composes alongside the beam — inside the
+ *  BorderBeam wrapper for wrap mode, inside the overlay div for overlay
+ *  mode. Either way it inherits border-radius and clipping from its parent. */
 export function GlowSurface({
   surface,
   children,
@@ -79,6 +102,19 @@ export function GlowSurface({
   const hydrated = useThemesStore((s) => s.hydrated)
 
   const active = hydrated && masterEnabled && (surfaceConfig?.enabled ?? false)
+  const particles = surfaceConfig?.particles
+  const showParticles = active && (particles?.enabled ?? false)
+  const variantColors = surfaceConfig
+    ? resolveVariantColors(
+        surfaceConfig.borderBeam.colorVariant,
+        surfaceConfig.borderBeam.paletteOverride
+      )
+    : []
+
+  const particleLayer =
+    showParticles && particles ? (
+      <ParticleLayer config={particles} variantColors={variantColors} />
+    ) : null
 
   if (mode === 'overlay') {
     if (!active) return null
@@ -92,9 +128,11 @@ export function GlowSurface({
           c,
           true,
           <div style={{ width: '100%', height: '100%' }} />,
+          null,
           { width: '100%', height: '100%' },
           className
         )}
+        {particleLayer}
       </div>
     )
   }
@@ -103,5 +141,5 @@ export function GlowSurface({
   // Use the persisted config when available, otherwise fall back to defaults
   // (which only matters during the brief pre-hydration window).
   const c = surfaceConfig?.borderBeam ?? DEFAULT_BORDER_BEAM_CONFIG
-  return renderBeam(c, active, children, style, className)
+  return renderBeam(c, active, children, particleLayer, style, className)
 }

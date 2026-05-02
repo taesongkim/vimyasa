@@ -76,12 +76,39 @@ export interface BorderBeamConfig {
   paletteOverride?: (string | null)[]
 }
 
-// One configured effect stack per surface. Future effect layers (particles,
-// perimeter-rotate, burst) get added as optional fields here.
+// One configured effect stack per surface. The border beam is the primary
+// visual; the particle layer is an optional companion that composes on top.
 export interface SurfaceConfig {
   enabled: boolean
   effect: 'border-beam'
   borderBeam: BorderBeamConfig
+  particles: ParticleConfig
+}
+
+/** Drifting particle effect — a canvas painted alongside the beam. Each
+ *  particle is a soft radial gradient that fades in and out over its
+ *  lifetime. Tuned to run continuously at sub-200 counts. */
+export interface ParticleConfig {
+  enabled: boolean
+  /** Particles in flight at any moment. Hard cap 300 to keep canvas work bounded. */
+  count: number
+  /** 'auto' picks colors from the active variant's 9-blob palette (rotated
+   *  through). Any CSS color string also accepted for a single-color look. */
+  color: 'auto' | string
+  /** Particle radius range in px. */
+  minSize: number
+  maxSize: number
+  /** Lifetime range in ms — each particle fades in over the first 20% of its
+   *  lifetime, holds, then fades out over the last 30%. */
+  minLifetimeMs: number
+  maxLifetimeMs: number
+  /** Max drift speed in px/sec (each axis independently random in [-speed, +speed]). */
+  speed: number
+  /** Where new particles appear. 'inside' = anywhere in the host's box;
+   *  'edges' = only along the perimeter. */
+  spawn: 'inside' | 'edges'
+  /** 0 = hard core, 1 = very soft halo. Controls the radial gradient stop. */
+  glowSoftness: number
 }
 
 export type ThemeId = 'border-beam'
@@ -115,11 +142,25 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   beamLength: 28
 }
 
+export const DEFAULT_PARTICLE_CONFIG: ParticleConfig = {
+  enabled: false,
+  count: 30,
+  color: 'auto',
+  minSize: 6,
+  maxSize: 20,
+  minLifetimeMs: 1500,
+  maxLifetimeMs: 4000,
+  speed: 30,
+  spawn: 'inside',
+  glowSoftness: 0.5
+}
+
 export function defaultSurfaceConfig(): SurfaceConfig {
   return {
     enabled: false,
     effect: 'border-beam',
-    borderBeam: { ...DEFAULT_BORDER_BEAM_CONFIG }
+    borderBeam: { ...DEFAULT_BORDER_BEAM_CONFIG },
+    particles: { ...DEFAULT_PARTICLE_CONFIG }
   }
 }
 

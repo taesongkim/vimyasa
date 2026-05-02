@@ -166,11 +166,18 @@ export function ThemeDevPanel() {
 
   const config = surfaces[selectedSurface] ?? defaultSurfaceConfig()
   const c = config.borderBeam
+  const p = config.particles
 
   const update = (patch: Partial<SurfaceConfig['borderBeam']>) => {
     void setSurfaceConfig(selectedSurface, {
       ...config,
       borderBeam: { ...c, ...patch }
+    })
+  }
+  const updateParticles = (patch: Partial<SurfaceConfig['particles']>) => {
+    void setSurfaceConfig(selectedSurface, {
+      ...config,
+      particles: { ...p, ...patch }
     })
   }
 
@@ -481,6 +488,94 @@ export function ThemeDevPanel() {
               onChange={(e) => update({ innerShadow: e.target.value })}
               placeholder="rgba(255, 255, 255, 0.27)"
               className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none font-mono"
+            />
+          </div>
+        </Section>
+
+        {/* Particle layer — composed on top of the beam, runs continuously
+            on a canvas. Tinted from the variant palette by default. */}
+        <Section title="Particles">
+          <ToggleRow
+            label="Enable particle layer"
+            on={p.enabled}
+            onToggle={() => updateParticles({ enabled: !p.enabled })}
+          />
+          <Slider
+            label="Count"
+            value={p.count}
+            min={0}
+            max={200}
+            step={1}
+            onChange={(v) => updateParticles({ count: v })}
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
+              Color (CSS color, or 'auto' for variant palette)
+            </span>
+            <input
+              type="text"
+              value={p.color}
+              onChange={(e) => updateParticles({ color: e.target.value })}
+              placeholder="auto"
+              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none font-mono"
+            />
+          </div>
+          <Slider
+            label="Min size (px)"
+            value={p.minSize}
+            min={1}
+            max={80}
+            step={1}
+            onChange={(v) => updateParticles({ minSize: v })}
+          />
+          <Slider
+            label="Max size (px)"
+            value={p.maxSize}
+            min={1}
+            max={80}
+            step={1}
+            onChange={(v) => updateParticles({ maxSize: v })}
+          />
+          <Slider
+            label="Min lifetime (ms)"
+            value={p.minLifetimeMs}
+            min={200}
+            max={10000}
+            step={50}
+            onChange={(v) => updateParticles({ minLifetimeMs: v })}
+          />
+          <Slider
+            label="Max lifetime (ms)"
+            value={p.maxLifetimeMs}
+            min={200}
+            max={10000}
+            step={50}
+            onChange={(v) => updateParticles({ maxLifetimeMs: v })}
+          />
+          <Slider
+            label="Drift speed (px/sec, ± per axis)"
+            value={p.speed}
+            min={0}
+            max={300}
+            step={1}
+            onChange={(v) => updateParticles({ speed: v })}
+          />
+          <Slider
+            label="Glow softness (0 = sharp, 1 = soft halo)"
+            value={p.glowSoftness}
+            min={0}
+            max={1}
+            step={0.02}
+            onChange={(v) => updateParticles({ glowSoftness: v })}
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
+              Spawn from
+            </span>
+            <Segmented
+              value={p.spawn}
+              options={['inside', 'edges'] as const}
+              onChange={(v) => updateParticles({ spawn: v })}
             />
           </div>
         </Section>
