@@ -112,13 +112,46 @@ export interface ExtraBeam {
 
 // One configured effect stack per surface. The border beam is the primary
 // visual; the particle layer is an optional companion that composes on top.
-// Burst is an optional timing mode that drives both layers in pulses.
+// Burst is an optional auto-pulse timing mode; triggers fire on app events.
 export interface SurfaceConfig {
   enabled: boolean
   effect: 'border-beam'
   borderBeam: BorderBeamConfig
   particles: ParticleConfig
   burst: BurstConfig
+  triggers: TriggerConfig
+}
+
+/** Names of app events that can fire a surface's trigger. Broadcast over
+ *  IPC from the main process so the event hits every renderer window —
+ *  e.g., adding an item in QuickAdd can pulse the list window's beam. */
+export type ThemeEventName =
+  | 'item-added'
+  | 'item-status-changed'
+  | 'item-edit-committed'
+  | 'manual-test'
+
+export const THEME_EVENT_NAMES: readonly ThemeEventName[] = [
+  'item-added',
+  'item-status-changed',
+  'item-edit-committed',
+  'manual-test'
+] as const
+
+/** When `enabled`, the surface becomes active only when one of `events`
+ *  fires, and stays active for `durationMs` before fading out (the beam's
+ *  own fade-in/out animations carry the visual smoothing). When `enabled`
+ *  is false, the surface follows its normal continuous + burst behavior. */
+export interface TriggerConfig {
+  enabled: boolean
+  events: ThemeEventName[]
+  durationMs: number
+}
+
+export const DEFAULT_TRIGGER_CONFIG: TriggerConfig = {
+  enabled: false,
+  events: [],
+  durationMs: 1500
 }
 
 /** Periodic on/off cycle for the surface's active state. When enabled, the
@@ -255,7 +288,8 @@ export function defaultSurfaceConfig(): SurfaceConfig {
     effect: 'border-beam',
     borderBeam: { ...DEFAULT_BORDER_BEAM_CONFIG },
     particles: { ...DEFAULT_PARTICLE_CONFIG },
-    burst: { ...DEFAULT_BURST_CONFIG }
+    burst: { ...DEFAULT_BURST_CONFIG },
+    triggers: { ...DEFAULT_TRIGGER_CONFIG, events: [] }
   }
 }
 
@@ -330,6 +364,15 @@ export interface ThemesAPI {
   reset: () => Promise<ThemesState>
   /** Fired whenever any window mutates the themes state. Receives the full new state. */
   onChanged: (callback: (state: ThemesState) => void) => () => void
+}
+
+export interface ThemeEventsAPI {
+  /** Subscribe to broadcasted theme events from the main process. Returns
+   *  an unsubscribe function. */
+  onEvent: (callback: (name: ThemeEventName) => void) => () => void
+  /** Ask main to broadcast a named theme event — used by the dev panel's
+   *  "Test fire" button. */
+  fire: (name: ThemeEventName) => Promise<void>
 }
 
 export interface ThemeDevAPI {

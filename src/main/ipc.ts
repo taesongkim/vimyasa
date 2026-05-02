@@ -17,7 +17,8 @@ import type {
   SurfaceConfig,
   SurfaceId,
   ThemesState,
-  ThemeDevPreset
+  ThemeDevPreset,
+  ThemeEventName
 } from '../shared/themes'
 
 function now(): string {
@@ -40,6 +41,18 @@ function broadcastDataChanged(senderWebContentsId?: number): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed() && win.webContents.id !== senderWebContentsId) {
       win.webContents.send('data-changed')
+    }
+  }
+}
+
+/** Fan a theme trigger event out to every renderer (including the sender) so
+ *  GlowSurface instances on any window can pulse in response — e.g.,
+ *  QuickAdd submitting fires on the list window too. Sender included so a
+ *  surface in the SAME window as the action can also respond. */
+function broadcastThemeEvent(name: ThemeEventName): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('theme:event', { name })
     }
   }
 }
@@ -193,6 +206,7 @@ export function registerIpcHandlers(): void {
     store.set('items', [...items, item])
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    broadcastThemeEvent('item-added')
     // Notify the onboarding orchestrator — its 'capture-add' step counts
     // up to 3 successful adds before auto-advancing. Cheap when no tour is
     // active.
@@ -204,10 +218,17 @@ export function registerIpcHandlers(): void {
     const items = store.get('items')
     const idx = items.findIndex((i) => i.id === id)
     if (idx === -1) throw new Error(`Item not found: ${id}`)
-    items[idx] = { ...items[idx], ...updates, updatedAt: now() }
+    const prev = items[idx]
+    items[idx] = { ...prev, ...updates, updatedAt: now() }
     store.set('items', items)
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    // Distinguish edits-of-text from other updates so the trigger config
+    // can target text edits specifically. Status changes flow through
+    // setItemStatus and emit their own event there.
+    if (typeof updates.text === 'string' && updates.text !== prev.text) {
+      broadcastThemeEvent('item-edit-committed')
+    }
     return items[idx]
   })
 
@@ -232,6 +253,7 @@ export function registerIpcHandlers(): void {
     store.set('items', items)
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    broadcastThemeEvent('item-status-changed')
     return items[idx]
   })
 
@@ -527,6 +549,15 @@ export function registerIpcHandlers(): void {
     throw new Error('Theme dev panel is not available in this build.')
   })
   ipcMain.handle('themeDev:isPanelOpen', (): boolean => false)
+
+  // ── Theme events: manual fire from dev panel ────────────────────
+  // Renderer can ask main to broadcast a named theme event to all
+  // windows. Used by the dev panel's "Test fire" button so the user
+  // can verify trigger config without performing the underlying app
+  // action (e.g., adding an item).
+  ipcMain.handle('themeEvent:fire', (_e, name: ThemeEventName): void => {
+    broadcastThemeEvent(name)
+  })
 
   // ── System: external links ──────────────────────────────────────
   // Used by attribution links in the Themes tab. Validates the URL

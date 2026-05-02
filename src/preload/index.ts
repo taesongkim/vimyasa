@@ -127,6 +127,19 @@ const api: VimyasaAPI = {
     }
   },
 
+  // Theme event triggers
+  themeEvents: {
+    onEvent: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as { name?: string } | null
+        if (p && typeof p.name === 'string') callback(p.name as never)
+      }
+      ipcRenderer.on('theme:event', listener)
+      return () => ipcRenderer.removeListener('theme:event', listener)
+    },
+    fire: (name) => ipcRenderer.invoke('themeEvent:fire', name)
+  },
+
   // Theme dev panel (gated by is.dev — never call from production builds)
   themeDev: {
     openPanel: () => ipcRenderer.invoke('themeDev:openPanel'),

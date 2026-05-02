@@ -1,13 +1,15 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { BorderBeam } from '../../lib/border-beam-fork/BorderBeam'
 import { paletteBlobsWithOverride } from '../../lib/border-beam-fork/palettes'
 import { ParticleLayer } from './ParticleLayer'
 import { useThemesStore } from '../../store/themesStore'
+import { themeEvents } from '../../lib/theme-events'
 import {
   DEFAULT_BORDER_BEAM_CONFIG,
   type SurfaceId,
   type SurfaceConfig,
-  type ExtraBeam
+  type ExtraBeam,
+  type ThemeEventName
 } from '@shared/themes'
 
 interface GlowSurfaceProps {
@@ -122,7 +124,54 @@ export function GlowSurface({
     }
   }, [burstEnabled, burst?.onMs, burst?.offMs])
 
-  const active = baseActive && (!burstEnabled || burstPulse)
+  // Triggered state: when triggers are enabled, the surface is only
+  // visually active during a brief window after a matching event fires.
+  // The pulse follows BorderBeam's own fade-in/out (~0.6s in, ~0.5s out)
+  // around the held duration. Stale timers cleared on each new event so
+  // rapid-fire events don't queue up.
+  const triggers = surfaceConfig?.triggers
+  const triggersEnabled = baseActive && (triggers?.enabled ?? false)
+  const triggerEvents = triggersEnabled ? (triggers?.events ?? []) : []
+  const triggerDurationMs = triggers?.durationMs ?? 1500
+  const [triggered, setTriggered] = useState(false)
+  const triggerTimeoutRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    if (!triggersEnabled || triggerEvents.length === 0) return
+    const matchSet = new Set<ThemeEventName>(triggerEvents)
+    const onEvent = (name: ThemeEventName): void => {
+      if (!matchSet.has(name)) return
+      setTriggered(true)
+      if (triggerTimeoutRef.current != null) {
+        window.clearTimeout(triggerTimeoutRef.current)
+      }
+      triggerTimeoutRef.current = window.setTimeout(() => {
+        setTriggered(false)
+        triggerTimeoutRef.current = undefined
+      }, triggerDurationMs)
+    }
+    const off = themeEvents.on(onEvent)
+    return () => {
+      off()
+      if (triggerTimeoutRef.current != null) {
+        window.clearTimeout(triggerTimeoutRef.current)
+        triggerTimeoutRef.current = undefined
+      }
+      // Clear stale triggered state so a re-mount with new config doesn't
+      // come in already-on for the wrong reason.
+      setTriggered(false)
+    }
+    // Stringify events array so identity changes when the user edits it.
+  }, [triggersEnabled, triggerEvents.join('|'), triggerDurationMs])
+
+  // Effective active state combines all the gates:
+  //  - baseActive must be true (master + per-surface enabled, hydrated)
+  //  - if triggers enabled: only active while triggered
+  //  - else if burst enabled: pulses on/off via timer
+  //  - else: continuously active
+  const active =
+    baseActive &&
+    (triggersEnabled ? triggered : !burstEnabled || burstPulse)
   const particles = surfaceConfig?.particles
   const showParticles = active && (particles?.enabled ?? false)
   // Pass the live palette blobs (with per-blob color overrides applied) to

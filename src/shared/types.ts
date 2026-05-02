@@ -1,4 +1,4 @@
-import type { ThemesAPI, ThemeDevAPI } from './themes'
+import type { ThemesAPI, ThemeDevAPI, ThemeEventsAPI } from './themes'
 
 // ── Data Model Types ──────────────────────────────────────────────
 
@@ -150,6 +150,9 @@ export interface VimyasaAPI {
 
   // Theme dev panel (gated by is.dev — never call from production builds)
   themeDev: ThemeDevAPI
+
+  // Theme event triggers — IPC-broadcast events fire surface pulses
+  themeEvents: ThemeEventsAPI
 }
 
 export interface OnboardingCalloutPayload {

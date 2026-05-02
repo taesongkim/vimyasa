@@ -7,6 +7,7 @@ import {
   DEFAULT_BORDER_BEAM_CONFIG,
   DEFAULT_PARTICLE_CONFIG,
   DEFAULT_BURST_CONFIG,
+  DEFAULT_TRIGGER_CONFIG,
   defaultThemesState,
   defaultThemeDevPresetsState,
   defaultSurfaceConfig,
@@ -74,6 +75,15 @@ export function getThemesState(): ThemesState {
       ...DEFAULT_BURST_CONFIG,
       ...(cur.burst ?? {})
     }
+    const backfilledTriggers: SurfaceConfig['triggers'] = {
+      ...DEFAULT_TRIGGER_CONFIG,
+      ...(cur.triggers ?? {}),
+      // events is an array — preserve user's saved list when present.
+      events:
+        (cur.triggers as Record<string, unknown> | undefined)?.events !== undefined
+          ? (cur.triggers as SurfaceConfig['triggers']).events
+          : DEFAULT_TRIGGER_CONFIG.events
+    }
     const beamMissing =
       cur.borderBeam == null ||
       Object.keys(backfilledBeam).some(
@@ -89,12 +99,18 @@ export function getThemesState(): ThemesState {
       Object.keys(backfilledBurst).some(
         (k) => (cur.burst as Record<string, unknown> | undefined)?.[k] === undefined
       )
-    if (beamMissing || particlesMissing || burstMissing) {
+    const triggersMissing =
+      cur.triggers == null ||
+      Object.keys(backfilledTriggers).some(
+        (k) => (cur.triggers as Record<string, unknown> | undefined)?.[k] === undefined
+      )
+    if (beamMissing || particlesMissing || burstMissing || triggersMissing) {
       surfaces[id] = {
         ...cur,
         borderBeam: backfilledBeam,
         particles: backfilledParticles,
-        burst: backfilledBurst
+        burst: backfilledBurst,
+        triggers: backfilledTriggers
       }
       mutated = true
     }

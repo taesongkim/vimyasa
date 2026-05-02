@@ -8,10 +8,12 @@ import { useThemesStore } from '../../store/themesStore'
 import {
   SURFACE_IDS,
   SURFACE_LABELS,
+  THEME_EVENT_NAMES,
   defaultSurfaceConfig,
   type SurfaceId,
   type SurfaceConfig,
-  type ThemeDevPreset
+  type ThemeDevPreset,
+  type ThemeEventName
 } from '@shared/themes'
 import { defaultPaletteHex } from '../../lib/border-beam-fork/palettes'
 
@@ -168,6 +170,7 @@ export function ThemeDevPanel() {
   const c = config.borderBeam
   const p = config.particles
   const b = config.burst
+  const tr = config.triggers
 
   const update = (patch: Partial<SurfaceConfig['borderBeam']>) => {
     void setSurfaceConfig(selectedSurface, {
@@ -185,6 +188,12 @@ export function ThemeDevPanel() {
     void setSurfaceConfig(selectedSurface, {
       ...config,
       burst: { ...b, ...patch }
+    })
+  }
+  const updateTriggers = (patch: Partial<SurfaceConfig['triggers']>) => {
+    void setSurfaceConfig(selectedSurface, {
+      ...config,
+      triggers: { ...tr, ...patch }
     })
   }
 
@@ -793,6 +802,70 @@ export function ThemeDevPanel() {
           <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] mt-1">
             Cycle drives the surface's active state — beam fade and particle
             mount/unmount both follow.
+          </div>
+        </Section>
+
+        {/* Triggers: app events fire surface pulses. When enabled, the
+            surface is dormant until a matching event broadcasts; on a hit
+            it stays active for `durationMs` then fades out. Overrides
+            burst-mode and continuous behavior. */}
+        <Section title="Triggers (fire on event)">
+          <ToggleRow
+            label="Enable event triggers"
+            on={tr.enabled}
+            onToggle={() => updateTriggers({ enabled: !tr.enabled })}
+          />
+          <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)]">
+            When on, the surface only lights up briefly when a matching app
+            event fires. Suppresses burst-mode and continuous animation while
+            triggered.
+          </div>
+          <div className="flex flex-col gap-1 mt-1">
+            <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
+              Subscribe to events
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {THEME_EVENT_NAMES.map((name) => {
+                const on = tr.events.includes(name)
+                return (
+                  <button
+                    key={name}
+                    className={`px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium transition-default ${
+                      on
+                        ? 'bg-[var(--color-accent)] text-[color:var(--color-text)]'
+                        : 'bg-[var(--color-surface)] text-[color:var(--color-text-muted)] border border-[var(--color-border)] hover:text-[color:var(--color-text-secondary)]'
+                    }`}
+                    onClick={() => {
+                      const next = on
+                        ? tr.events.filter((e) => e !== name)
+                        : [...tr.events, name]
+                      updateTriggers({ events: next as ThemeEventName[] })
+                    }}
+                  >
+                    {name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <Slider
+            label="Active duration (ms) — held visible after each event"
+            value={tr.durationMs}
+            min={100}
+            max={6000}
+            step={50}
+            onChange={(v) => updateTriggers({ durationMs: v })}
+          />
+          <div className="flex gap-1 mt-1">
+            <button
+              className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+              onClick={() => void window.api.themeEvents.fire('manual-test')}
+            >
+              Test fire (manual-test)
+            </button>
+            <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] self-center">
+              Make sure 'manual-test' is selected above.
+            </span>
           </div>
         </Section>
 
