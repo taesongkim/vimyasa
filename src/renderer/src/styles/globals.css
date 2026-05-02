@@ -364,10 +364,10 @@ html, body, #root {
 
 /* ── List-number flash ─────────────────────────────────────────────
    Visual cue when the position number in the list-window title bar
-   changes due to a reorder in Settings → Lists. Hold full-white +
-   soft glow for 300ms, then ease-out fade to the resting muted color
-   over 300ms. backwards fill mode pins the element to the from-state
-   during the delay so the hold is visible. */
+   changes (reorder, Tab cycle, number-key jump, initial mount). Hold
+   full-white + soft glow for 200ms, then ease-out fade to the resting
+   muted color over 200ms. backwards fill mode pins the element to the
+   from-state during the delay so the hold is visible. */
 @keyframes list-number-flash {
   from {
     color: #ffffff;
@@ -380,7 +380,7 @@ html, body, #root {
 }
 
 .animate-list-number-flash {
-  animation: list-number-flash 300ms 300ms ease-out backwards;
+  animation: list-number-flash 200ms 200ms ease-out backwards;
 }
 
 /* ── Onboarding dim overlay ────────────────────────────────────────

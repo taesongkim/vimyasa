@@ -183,12 +183,13 @@ export function ListsTab() {
       >
         <SortableContext items={sortedLists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           {/*
-            mt-3 (12px) here — explicit because the parent's space-y-6
-            isn't reaching this wrapper through DndContext / SortableContext.
-            Keeps the first row from running visually into the description
-            text above it.
+            12px breathing room above the first row. Inline style instead
+            of a Tailwind class — earlier attempts with mt-3 weren't
+            propagating, possibly because of dnd-kit context wrappers or
+            v4 class-extraction edge cases. Inline is the deterministic
+            fallback that doesn't depend on either.
           */}
-          <div className="flex flex-col gap-2 mt-3">
+          <div className="flex flex-col gap-2" style={{ marginTop: '12px' }}>
             {sortedLists.map((list, index) => (
               <SortableListItem
                 key={list.id}
