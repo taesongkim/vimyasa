@@ -52,6 +52,7 @@ function renderBeam(
       bloomOpacity={c.bloomOpacity}
       innerShadow={c.innerShadow}
       beamLength={c.beamLength}
+      glowDepth={c.glowDepth}
       paletteOverride={c.paletteOverride}
       overlay={overlay}
       style={style}

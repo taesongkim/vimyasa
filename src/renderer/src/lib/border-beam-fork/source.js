@@ -274,32 +274,48 @@ function __palette(defaults, override) {
     return typeof c === 'string' && c.length > 0 ? { ...blob, color: c } : blob
   })
 }
-function pe(r, override) {
-  return __palette(A[r].border, override).map((a) => `radial-gradient(ellipse ${a.size} at ${a.pos}, ${a.color}, transparent)`).join(`,
+// Fork addition: `glowDepth` multiplies the radial-gradient blob sizes
+// that compose the inner glow layer (::before / ::after's color stack).
+// Lower = glow tighter to the perimeter; higher = glow extends further
+// toward the center. The blob *positions* are unchanged so the beam
+// stays anchored to the edge. Default 1.0 = upstream behavior.
+function __scaleBlobSize(sizeStr, scale) {
+  if (typeof scale !== 'number' || scale === 1 || !Number.isFinite(scale) || scale < 0) {
+    return sizeStr
+  }
+  return sizeStr.split(' ').map((m) => {
+    const s = parseInt(m)
+    if (Number.isNaN(s)) return m
+    return `${Math.max(1, Math.round(s * scale))}px`
+  }).join(' ')
+}
+function pe(r, override, glowDepth) {
+  return __palette(A[r].border, override).map((a) => `radial-gradient(ellipse ${__scaleBlobSize(a.size, glowDepth)} at ${a.pos}, ${a.color}, transparent)`).join(`,
     `);
 }
-function le(r, override) {
+function le(r, override, glowDepth) {
   // Inner palette has its own colors. We also apply override here so a
   // per-blob color change is reflected in both stroke and inner glow at
   // sm size. Inner blob count (8) differs from border (9), so any extra
   // override slot is silently ignored.
-  return __palette(A[r].inner, override).map((a) => `radial-gradient(ellipse ${a.size} at ${a.pos}, ${a.color}, transparent)`).join(`,
+  return __palette(A[r].inner, override).map((a) => `radial-gradient(ellipse ${__scaleBlobSize(a.size, glowDepth)} at ${a.pos}, ${a.color}, transparent)`).join(`,
     `);
 }
 function be(r, override) {
   return __palette(B[r].border, override).map((a) => `radial-gradient(ellipse ${a.size} at ${a.pos}, ${a.color}, transparent)`).join(`,
     `);
 }
-function fe(r, override) {
+function fe(r, override, glowDepth) {
   const a = r === "mono" ? 0.225 : 0.45;
   return __palette(B[r].border, override).map((t) => {
     // fe() softens each blob's color with alpha and shrinks the size by 10%
-    // to render the inner glow layer; here we re-derive the alpha form from
-    // the (possibly overridden) base color via the helper below.
+    // to render the inner glow layer. glowDepth further scales the blob
+    // size — combined factor is 0.9 * glowDepth.
     const o = __toRgba(t.color, a);
+    const scale = (typeof glowDepth === 'number' && Number.isFinite(glowDepth) && glowDepth >= 0) ? glowDepth : 1;
     return `radial-gradient(ellipse ${t.size.split(" ").map((m) => {
       const s = parseInt(m);
-      return `${Math.round(s * 0.9)}px`;
+      return `${Math.max(1, Math.round(s * 0.9 * scale))}px`;
     }).join(" ")} at ${t.pos}, ${o}, transparent)`;
   }).join(`,
     `);
@@ -650,7 +666,8 @@ function ve(r) {
     hueRange: l,
     theme: Y,
     beamLength,
-    paletteOverride
+    paletteOverride,
+    glowDepth
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
@@ -678,7 +695,7 @@ function ve(r) {
         rgba(0, 0, 0, 0.2) 72%,
         rgba(0, 0, 0, 0.08) 75%,
         transparent 78%, transparent 100%
-      )`, h = pe(c, paletteOverride), X = le(c, paletteOverride), x = y ? `conic-gradient(
+      )`, h = pe(c, paletteOverride, glowDepth), X = le(c, paletteOverride, glowDepth), x = y ? `conic-gradient(
         from var(--beam-angle-${e}),
         transparent 0%, transparent 58%,
         rgba(255, 255, 255, 0.03) 62%,
@@ -838,7 +855,8 @@ function ye(r) {
     hueRange: l,
     theme: Y,
     beamLength,
-    paletteOverride
+    paletteOverride,
+    glowDepth
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
@@ -866,7 +884,7 @@ function ye(r) {
         rgba(0, 0, 0, 0.2) 72%,
         rgba(0, 0, 0, 0.08) 75%,
         transparent 78%, transparent 100%
-      )`, h = be(c, paletteOverride), X = fe(c, paletteOverride), x = y ? `conic-gradient(
+      )`, h = be(c, paletteOverride), X = fe(c, paletteOverride, glowDepth), x = y ? `conic-gradient(
         from var(--beam-angle-${e}),
         transparent 0%, transparent 58%,
         rgba(255, 255, 255, 0.03) 62%,

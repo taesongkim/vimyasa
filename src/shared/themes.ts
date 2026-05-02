@@ -68,11 +68,17 @@ export interface BorderBeamConfig {
    *  28 ≈ upstream default; 100 = full uniform perimeter glow. Line mode
    *  ignores this — its travel + breathe animations dictate streak length. */
   beamLength: number
-  /** Inset in CSS px from the BorderBeam wrapper's edge — how far inward
-   *  the beam (and inner glow + bloom) sits. 0 = at the very edge (default,
-   *  matches upstream); higher values pull the beam inward and tighten its
-   *  rounded corners proportionally so it stays concentric. */
+  /** Inset in CSS px from the BorderBeam wrapper's edge — currently a
+   *  no-op kept for back-compat with old saved presets. The "tighten the
+   *  glow toward the edge" intent is now served by `glowDepth` below. */
   beamInset: number
+  /** Inner-glow size multiplier (≈0.1–3, default 1). Scales the radial-
+   *  gradient blob sizes that compose the inner glow layer. Lower =
+   *  glow gradient tighter to the perimeter (less reaches inward toward
+   *  the center); higher = glow extends further inward. The beam's
+   *  perimeter position is unchanged — the streak still anchors at the
+   *  edge, only the soft falloff is reshaped. */
+  glowDepth: number
   /** Per-blob color override (advanced). Length up to 9 (md size has 9
    *  border blobs; sm has 8). Each slot replaces the matching blob's
    *  color in the rotating beam; null preserves the variant default for
@@ -183,7 +189,8 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   bloomOpacity: 0.8,
   innerShadow: 'rgba(255, 255, 255, 0.27)',
   beamLength: 28,
-  beamInset: 0
+  beamInset: 0,
+  glowDepth: 1
 }
 
 // Defaults tuned for fine pixel-dust: minSize 0.5 ≈ one device pixel on a

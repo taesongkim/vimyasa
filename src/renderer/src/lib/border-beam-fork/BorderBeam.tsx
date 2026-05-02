@@ -62,6 +62,9 @@ interface BeamCSSOptions {
   /** Optional per-blob color override. Up to 9 entries; null/undefined
    *  preserves the variant default for that blob. */
   paletteOverride?: (string | null)[]
+  /** Inner-glow blob size multiplier (default 1). Tightens / loosens the
+   *  inward gradient depth without moving the beam. */
+  glowDepth: number
 }
 
 interface SizeThemePreset {
@@ -121,6 +124,11 @@ export interface BorderBeamProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
   /** Per-blob color override. Up to 9 entries; null/undefined preserves
    *  the variant's default for that blob. Forwarded into the CSS generator. */
   paletteOverride?: (string | null)[]
+  /** Inner-glow size multiplier (≈0.1–3, default 1). Scales the inner
+   *  glow's radial-gradient blob sizes — lower tightens the glow toward
+   *  the edge, higher lets it bleed further inward. Beam perimeter
+   *  position is unchanged. */
+  glowDepth?: number
   /** Extra content rendered as a sibling of children inside the BorderBeam
    *  wrapper (which has position:relative). Used by GlowSurface to mount
    *  the ParticleLayer canvas overlay so it inherits the wrapper's
@@ -170,6 +178,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
       beamLength = 28,
       beamInset = 0,
       paletteOverride,
+      glowDepth = 1,
       overlay,
       className,
       style,
@@ -259,7 +268,8 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
           hueRange: finalHueRange,
           theme: resolvedTheme,
           beamLength,
-          paletteOverride
+          paletteOverride,
+          glowDepth
         }),
       [
         id,
@@ -278,6 +288,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
         finalHueRange,
         resolvedTheme,
         beamLength,
+        glowDepth,
         // useMemo deps must be primitives or stable references. Stringify the
         // override so identity changes when the user tweaks any blob color.
         paletteOverride ? paletteOverride.join('|') : ''

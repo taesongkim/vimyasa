@@ -333,6 +333,14 @@ export function ThemeDevPanel() {
               onChange={(v) => update({ beamLength: v })}
             />
             <Slider
+              label="Glow depth inward (1 = upstream, lower = tighter to edge)"
+              value={c.glowDepth}
+              min={0.1}
+              max={3}
+              step={0.05}
+              onChange={(v) => update({ glowDepth: v })}
+            />
+            <Slider
               label="Strength (opacity multiplier)"
               value={c.strength}
               min={0}
