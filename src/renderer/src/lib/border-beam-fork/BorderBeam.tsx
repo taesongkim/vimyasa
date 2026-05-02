@@ -113,6 +113,11 @@ export interface BorderBeamProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
    *  Defaults to 28 (≈ upstream behavior); set to 100 for a uniform
    *  full-perimeter glow with no rotating streak. */
   beamLength?: number
+  /** Inset in CSS px from the wrapper edge — pulls the beam (and inner
+   *  glow + bloom) inward by this amount. The wrapper itself stays full
+   *  size; only the pseudo-element layers shrink. Default 0 = beam at the
+   *  wrapper's edge. */
+  beamInset?: number
   /** Per-blob color override. Up to 9 entries; null/undefined preserves
    *  the variant's default for that blob. Forwarded into the CSS generator. */
   paletteOverride?: (string | null)[]
@@ -163,6 +168,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
       bloomOpacity,
       innerShadow,
       beamLength = 28,
+      beamInset = 0,
       paletteOverride,
       overlay,
       className,
@@ -291,7 +297,11 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
     // — we leave the upper end open so the dev panel can over-drive.
     const mergedStyle: CSSProperties = {
       ...(style ?? {}),
-      ['--beam-strength' as string]: Math.max(0, strength)
+      ['--beam-strength' as string]: Math.max(0, strength),
+      // beam-inset CSS variable consumed by source.js's pseudo-element
+      // rules (inset, border-radius, clip-path) so we can tighten/loosen
+      // the beam without regenerating all the CSS templates.
+      ['--beam-inset' as string]: `${Math.max(0, beamInset)}px`
     }
 
     return (

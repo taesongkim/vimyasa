@@ -333,6 +333,14 @@ export function ThemeDevPanel() {
               onChange={(v) => update({ beamLength: v })}
             />
             <Slider
+              label="Beam edge inset (px) — 0 = at the edge, higher pulls inward"
+              value={c.beamInset}
+              min={0}
+              max={40}
+              step={0.5}
+              onChange={(v) => update({ beamInset: v })}
+            />
+            <Slider
               label="Strength (opacity multiplier)"
               value={c.strength}
               min={0}
@@ -575,6 +583,14 @@ export function ThemeDevPanel() {
             step={0.02}
             onChange={(v) => updateParticles({ glowSoftness: v })}
           />
+          <Slider
+            label="Color variation (0 = exact blob color, 1 = wide HSL jitter)"
+            value={p.colorJitter}
+            min={0}
+            max={1}
+            step={0.02}
+            onChange={(v) => updateParticles({ colorJitter: v })}
+          />
           <div className="flex flex-col gap-0.5">
             <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
               Spawn from
@@ -588,6 +604,63 @@ export function ThemeDevPanel() {
               palette: cluster near wave blobs · inside / edges: random,
               colored from nearest blob (when color = auto)
             </span>
+          </div>
+
+          {/* 3-layer split: each enabled sublayer renders count/N particles
+              with its own blur + opacity. Cheap depth-of-field. */}
+          <div className="border-t border-[var(--color-border)] pt-2 mt-1 flex flex-col gap-1">
+            <ToggleRow
+              label="Split into 3 layers (independent blur + opacity)"
+              on={p.threeLayers}
+              onToggle={() => updateParticles({ threeLayers: !p.threeLayers })}
+            />
+            {p.threeLayers && (
+              <div className="flex flex-col gap-2 mt-1">
+                {p.layers.map((layer, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col gap-0.5 p-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
+                  >
+                    <ToggleRow
+                      label={`Layer ${i + 1}`}
+                      on={layer.enabled}
+                      onToggle={() => {
+                        const layers = [...p.layers] as typeof p.layers
+                        layers[i] = { ...layer, enabled: !layer.enabled }
+                        updateParticles({ layers })
+                      }}
+                    />
+                    <Slider
+                      label="Blur (px)"
+                      value={layer.blur}
+                      min={0}
+                      max={20}
+                      step={0.5}
+                      onChange={(v) => {
+                        const layers = [...p.layers] as typeof p.layers
+                        layers[i] = { ...layer, blur: v }
+                        updateParticles({ layers })
+                      }}
+                    />
+                    <Slider
+                      label="Opacity"
+                      value={layer.opacity}
+                      min={0}
+                      max={1}
+                      step={0.02}
+                      onChange={(v) => {
+                        const layers = [...p.layers] as typeof p.layers
+                        layers[i] = { ...layer, opacity: v }
+                        updateParticles({ layers })
+                      }}
+                    />
+                  </div>
+                ))}
+                <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)]">
+                  Each enabled layer renders count/N particles independently.
+                </span>
+              </div>
+            )}
           </div>
         </Section>
 

@@ -55,7 +55,14 @@ export function getThemesState(): ThemesState {
     }
     const backfilledParticles: SurfaceConfig['particles'] = {
       ...DEFAULT_PARTICLE_CONFIG,
-      ...(cur.particles ?? {})
+      ...(cur.particles ?? {}),
+      // Nested array fields don't merge cleanly via spread — explicitly
+      // backfill `layers` only when missing, so user's saved layer
+      // configs (when present) survive a schema additions later.
+      layers:
+        (cur.particles as Record<string, unknown> | undefined)?.layers !== undefined
+          ? (cur.particles as SurfaceConfig['particles']).layers
+          : DEFAULT_PARTICLE_CONFIG.layers
     }
     const backfilledBurst: SurfaceConfig['burst'] = {
       ...DEFAULT_BURST_CONFIG,

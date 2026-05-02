@@ -23,6 +23,13 @@ interface ParticleLayerProps {
    *  config.color === 'auto'. Match what the BorderBeam is rendering so
    *  the dust echoes the beam visually. */
   paletteBlobs: PaletteBlob[]
+  /** When threeLayers is on, GlowSurface renders this component three
+   *  times with different blur/opacity/countOverride values. Defaults
+   *  produce the original single-layer behavior. */
+  blur?: number
+  opacity?: number
+  /** When set, overrides config.count — used for the 3-layer split. */
+  countOverride?: number
 }
 
 interface Particle {
@@ -136,7 +143,64 @@ function spawnParticle(
   const speed = config.speed
   const vx = rand(-speed, speed)
   const vy = rand(-speed, speed)
-  return { x, y, vx, vy, age: 0, lifetime, size, color }
+
+  // Apply HSL jitter to break up the obvious tinting when many particles
+  // share a blob's color. Done once at spawn, not per frame, so each
+  // particle holds a stable hue throughout its lifetime.
+  let finalColor = color
+  if (config.colorJitter > 0) {
+    const rgb = parseColor(color)
+    const [r, g, b] = jitterColor(rgb, Math.max(0, Math.min(1, config.colorJitter)))
+    finalColor = `rgb(${r}, ${g}, ${b})`
+  }
+  return { x, y, vx, vy, age: 0, lifetime, size, color: finalColor }
+}
+
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  const rn = r / 255, gn = g / 255, bn = b / 255
+  const max = Math.max(rn, gn, bn)
+  const min = Math.min(rn, gn, bn)
+  const l = (max + min) / 2
+  if (max === min) return [0, 0, l]
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h = 0
+  if (max === rn) h = (gn - bn) / d + (gn < bn ? 6 : 0)
+  else if (max === gn) h = (bn - rn) / d + 2
+  else h = (rn - gn) / d + 4
+  return [h * 60, s, l]
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  if (s === 0) return [Math.round(l * 255), Math.round(l * 255), Math.round(l * 255)]
+  const hue = ((h % 360) + 360) % 360 / 360
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+  const p = 2 * l - q
+  const conv = (t: number): number => {
+    if (t < 0) t += 1
+    if (t > 1) t -= 1
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+    return p
+  }
+  return [
+    Math.round(conv(hue + 1 / 3) * 255),
+    Math.round(conv(hue) * 255),
+    Math.round(conv(hue - 1 / 3) * 255)
+  ]
+}
+
+/** Apply HSL jitter to a color. amount=0 returns the input unchanged. */
+function jitterColor(rgb: [number, number, number], amount: number): [number, number, number] {
+  if (amount <= 0) return rgb
+  const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2])
+  // Jitter ranges scale with amount. Picked to give a noticeable but still
+  // family-coherent shift at amount=1: ±60° hue, ±30% sat, ±40% light.
+  const newH = h + (Math.random() - 0.5) * 120 * amount
+  const newS = Math.max(0, Math.min(1, s + (Math.random() - 0.5) * 0.6 * amount))
+  const newL = Math.max(0, Math.min(1, l + (Math.random() - 0.5) * 0.8 * amount))
+  return hslToRgb(newH, newS, newL)
 }
 
 /** Parses a CSS color (rgb, rgba, hex) into [r, g, b]. Hex returns the
@@ -163,7 +227,13 @@ function parseColor(c: string): [number, number, number] {
   return [255, 255, 255]
 }
 
-export function ParticleLayer({ config, paletteBlobs }: ParticleLayerProps) {
+export function ParticleLayer({
+  config,
+  paletteBlobs,
+  blur = 0,
+  opacity = 1,
+  countOverride
+}: ParticleLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const particlesRef = useRef<Particle[]>([])
   const sizeRef = useRef({ width: 0, height: 0, dpr: 1 })
@@ -203,7 +273,10 @@ export function ParticleLayer({ config, paletteBlobs }: ParticleLayerProps) {
     let last = performance.now()
     particlesRef.current = []
 
-    const cap = Math.min(HARD_PARTICLE_CAP, Math.max(0, Math.floor(config.count)))
+    const cap = Math.min(
+      HARD_PARTICLE_CAP,
+      Math.max(0, Math.floor(countOverride ?? config.count))
+    )
 
     const tick = (ts: number): void => {
       const dt = Math.min(64, ts - last)
@@ -294,6 +367,7 @@ export function ParticleLayer({ config, paletteBlobs }: ParticleLayerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     JSON.stringify(config),
+    countOverride,
     paletteBlobs.map((b) => `${b.color}@${b.pos}`).join('|')
   ])
 
@@ -301,7 +375,11 @@ export function ParticleLayer({ config, paletteBlobs }: ParticleLayerProps) {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 pointer-events-none"
-      style={{ borderRadius: 'inherit' }}
+      style={{
+        borderRadius: 'inherit',
+        filter: blur > 0 ? `blur(${blur}px)` : undefined,
+        opacity: opacity < 1 ? opacity : undefined
+      }}
     />
   )
 }

@@ -68,6 +68,11 @@ export interface BorderBeamConfig {
    *  28 ≈ upstream default; 100 = full uniform perimeter glow. Line mode
    *  ignores this — its travel + breathe animations dictate streak length. */
   beamLength: number
+  /** Inset in CSS px from the BorderBeam wrapper's edge — how far inward
+   *  the beam (and inner glow + bloom) sits. 0 = at the very edge (default,
+   *  matches upstream); higher values pull the beam inward and tighten its
+   *  rounded corners proportionally so it stays concentric. */
+  beamInset: number
   /** Per-blob color override (advanced). Length up to 9 (md size has 9
    *  border blobs; sm has 8). Each slot replaces the matching blob's
    *  color in the rotating beam; null preserves the variant default for
@@ -130,6 +135,23 @@ export interface ParticleConfig {
   spawn: 'palette' | 'inside' | 'edges'
   /** 0 = hard core, 1 = very soft halo. Controls the radial gradient stop. */
   glowSoftness: number
+  /** 0 = exact blob color, 1 = wide HSL jitter (±60° hue, ±30% sat, ±40% light).
+   *  Use to break up the obvious tinting when many particles share a blob. */
+  colorJitter: number
+  /** When true, render particles across 3 stacked sub-layers with
+   *  independent blur and opacity per layer. Each enabled layer gets
+   *  count/3 particles spawned independently — a cheap depth-of-field. */
+  threeLayers: boolean
+  /** Per-layer configs (only consulted when threeLayers is true). */
+  layers: [ParticleLayerConfig, ParticleLayerConfig, ParticleLayerConfig]
+}
+
+export interface ParticleLayerConfig {
+  enabled: boolean
+  /** CSS blur radius applied to the layer's canvas via `filter: blur()`. */
+  blur: number
+  /** 0–1, applied via `opacity` on the canvas. */
+  opacity: number
 }
 
 export type ThemeId = 'border-beam'
@@ -160,7 +182,8 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   innerOpacity: 0.7,
   bloomOpacity: 0.8,
   innerShadow: 'rgba(255, 255, 255, 0.27)',
-  beamLength: 28
+  beamLength: 28,
+  beamInset: 0
 }
 
 // Defaults tuned for fine pixel-dust: minSize 0.5 ≈ one device pixel on a
@@ -178,7 +201,14 @@ export const DEFAULT_PARTICLE_CONFIG: ParticleConfig = {
   maxLifetimeMs: 4000,
   speed: 30,
   spawn: 'palette',
-  glowSoftness: 0.5
+  glowSoftness: 0.5,
+  colorJitter: 0,
+  threeLayers: false,
+  layers: [
+    { enabled: true, blur: 0, opacity: 1 },
+    { enabled: true, blur: 2, opacity: 0.7 },
+    { enabled: true, blur: 6, opacity: 0.4 }
+  ]
 }
 
 export const DEFAULT_BURST_CONFIG: BurstConfig = {
