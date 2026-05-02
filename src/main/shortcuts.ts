@@ -1,11 +1,20 @@
 import { globalShortcut } from 'electron'
 import { store } from './store'
 import { createListWindow, createQuickAddWindow, createShortcutsOverviewWindow } from './windows'
-import type { BuiltinShortcuts } from '../shared/types'
+import type { BuiltinShortcuts, List } from '../shared/types'
 import { DEFAULT_BUILTIN_SHORTCUTS } from '../shared/types'
 import { orchestrator } from './onboarding'
 
 let cycleIndex = 0
+
+// "First list" semantics across the app mean the user-facing first list,
+// i.e. the topmost row in Settings → Lists / the first entry in the tray
+// menu. That order is governed by list.sortOrder; the array stored on
+// disk is in insertion order. Sort here so global-shortcut callbacks
+// resolve the same list the user sees as "1".
+function listsInDisplayOrder(): List[] {
+  return [...store.get('lists')].sort((a, b) => a.sortOrder - b.sortOrder)
+}
 
 // Track registered accelerators so we can selectively unregister
 const registeredBuiltinAccelerators: string[] = []
@@ -33,7 +42,7 @@ function registerBuiltinShortcuts(): void {
 
   // Open first list
   tryRegisterBuiltin(config.openFirstList, () => {
-    const lists = store.get('lists')
+    const lists = listsInDisplayOrder()
     if (lists.length > 0) {
       createListWindow(lists[0].id)
     }
@@ -44,7 +53,7 @@ function registerBuiltinShortcuts(): void {
 
   // Quick-add to first list (fixed)
   tryRegisterBuiltin(config.quickAddFirst, () => {
-    const lists = store.get('lists')
+    const lists = listsInDisplayOrder()
     if (lists.length > 0) {
       createQuickAddWindow('fixed', lists[0].id)
     }
@@ -73,7 +82,6 @@ function tryRegisterBuiltin(accelerator: string, callback: () => void): void {
 
 function registerUserShortcuts(): void {
   const shortcuts = store.get('shortcuts')
-  const lists = store.get('lists')
 
   for (const shortcut of shortcuts) {
     try {
@@ -82,11 +90,13 @@ function registerUserShortcuts(): void {
           case 'openList':
             if (shortcut.targetId) createListWindow(shortcut.targetId)
             break
-          case 'quickAddFixed':
-            createQuickAddWindow('fixed', shortcut.targetId || lists[0]?.id)
+          case 'quickAddFixed': {
+            const fallback = listsInDisplayOrder()[0]?.id
+            createQuickAddWindow('fixed', shortcut.targetId || fallback)
             break
+          }
           case 'cycleAllLists': {
-            const currentLists = store.get('lists')
+            const currentLists = listsInDisplayOrder()
             if (currentLists.length === 0) return
             cycleIndex = cycleIndex % currentLists.length
             createListWindow(currentLists[cycleIndex].id)
