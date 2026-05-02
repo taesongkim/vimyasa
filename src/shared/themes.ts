@@ -119,9 +119,15 @@ export interface ParticleConfig {
   maxLifetimeMs: number
   /** Max drift speed in px/sec (each axis independently random in [-speed, +speed]). */
   speed: number
-  /** Where new particles appear. 'inside' = anywhere in the host's box;
-   *  'edges' = only along the perimeter. */
-  spawn: 'inside' | 'edges'
+  /** Where new particles appear:
+   *  - 'palette' (default): spawn near the palette blob positions with
+   *    jitter; color comes from the same blob. Particles cluster where
+   *    the wave colors are concentrated.
+   *  - 'inside': spawn anywhere in the host's box. Color is picked from
+   *    the nearest palette blob (when `color === 'auto'`).
+   *  - 'edges': spawn along the perimeter. Color is also picked from
+   *    the nearest palette blob (when `color === 'auto'`). */
+  spawn: 'palette' | 'inside' | 'edges'
   /** 0 = hard core, 1 = very soft halo. Controls the radial gradient stop. */
   glowSoftness: number
 }
@@ -157,16 +163,21 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   beamLength: 28
 }
 
+// Defaults tuned for fine pixel-dust: minSize 0.5 ≈ one device pixel on a
+// 2× retina screen (the smallest visible mark); maxSize 1 caps each particle
+// at one CSS pixel. Spawn mode 'palette' clusters them near the wave blob
+// positions and inherits each blob's color so the dust visually echoes the
+// rotating beam underneath. Override per-surface in the dev panel.
 export const DEFAULT_PARTICLE_CONFIG: ParticleConfig = {
   enabled: false,
   count: 30,
   color: 'auto',
-  minSize: 6,
-  maxSize: 20,
+  minSize: 0.5,
+  maxSize: 1,
   minLifetimeMs: 1500,
   maxLifetimeMs: 4000,
   speed: 30,
-  spawn: 'inside',
+  spawn: 'palette',
   glowSoftness: 0.5
 }
 

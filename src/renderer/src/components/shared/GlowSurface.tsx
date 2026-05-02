@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { BorderBeam } from '../../lib/border-beam-fork/BorderBeam'
-import { defaultPaletteHex } from '../../lib/border-beam-fork/palettes'
+import { paletteBlobsWithOverride } from '../../lib/border-beam-fork/palettes'
 import { ParticleLayer } from './ParticleLayer'
 import { useThemesStore } from '../../store/themesStore'
 import { DEFAULT_BORDER_BEAM_CONFIG, type SurfaceId, type SurfaceConfig } from '@shared/themes'
@@ -24,20 +24,6 @@ interface GlowSurfaceProps {
   className?: string
 }
 
-function resolveVariantColors(
-  variant: SurfaceConfig['borderBeam']['colorVariant'],
-  override: SurfaceConfig['borderBeam']['paletteOverride']
-): string[] {
-  // Particles default to picking from the variant's palette so they tint
-  // alongside the beam. Per-blob overrides (when set) take priority so a
-  // user's custom palette feeds particles too.
-  const defaults = defaultPaletteHex(variant)
-  if (!override) return defaults
-  return defaults.map((d, i) => {
-    const o = override[i]
-    return typeof o === 'string' && o.length > 0 ? o : d
-  })
-}
 
 function renderBeam(
   c: SurfaceConfig['borderBeam'],
@@ -132,8 +118,11 @@ export function GlowSurface({
   const active = baseActive && (!burstEnabled || burstPulse)
   const particles = surfaceConfig?.particles
   const showParticles = active && (particles?.enabled ?? false)
-  const variantColors = surfaceConfig
-    ? resolveVariantColors(
+  // Pass the live palette blobs (with per-blob color overrides applied) to
+  // the particle layer so its 'palette' spawn mode and 'auto' coloring stay
+  // in sync with whatever the beam is rendering.
+  const paletteBlobs = surfaceConfig
+    ? paletteBlobsWithOverride(
         surfaceConfig.borderBeam.colorVariant,
         surfaceConfig.borderBeam.paletteOverride
       )
@@ -141,7 +130,7 @@ export function GlowSurface({
 
   const particleLayer =
     showParticles && particles ? (
-      <ParticleLayer config={particles} variantColors={variantColors} />
+      <ParticleLayer config={particles} paletteBlobs={paletteBlobs} />
     ) : null
 
   if (mode === 'overlay') {

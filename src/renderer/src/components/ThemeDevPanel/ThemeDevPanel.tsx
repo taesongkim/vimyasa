@@ -528,19 +528,19 @@ export function ThemeDevPanel() {
             />
           </div>
           <Slider
-            label="Min size (px)"
+            label="Min size (CSS px) — 0.5 ≈ one device pixel on retina"
             value={p.minSize}
-            min={1}
-            max={80}
-            step={1}
+            min={0.25}
+            max={4}
+            step={0.05}
             onChange={(v) => updateParticles({ minSize: v })}
           />
           <Slider
-            label="Max size (px)"
+            label="Max size (CSS px)"
             value={p.maxSize}
-            min={1}
-            max={80}
-            step={1}
+            min={0.25}
+            max={4}
+            step={0.05}
             onChange={(v) => updateParticles({ maxSize: v })}
           />
           <Slider
@@ -581,9 +581,13 @@ export function ThemeDevPanel() {
             </span>
             <Segmented
               value={p.spawn}
-              options={['inside', 'edges'] as const}
+              options={['palette', 'inside', 'edges'] as const}
               onChange={(v) => updateParticles({ spawn: v })}
             />
+            <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)]">
+              palette: cluster near wave blobs · inside / edges: random,
+              colored from nearest blob (when color = auto)
+            </span>
           </div>
         </Section>
 
