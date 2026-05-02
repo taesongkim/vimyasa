@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { BorderBeam } from 'border-beam'
+import { BorderBeam } from '../../lib/border-beam-fork/BorderBeam'
 import { useThemesStore } from '../../store/themesStore'
 import type { SurfaceId, SurfaceConfig } from '@shared/themes'
 
@@ -35,6 +35,11 @@ function renderBeam(c: SurfaceConfig['borderBeam'], children: ReactNode, style?:
       hueRange={c.hueRange}
       staticColors={c.staticColors}
       borderRadius={c.borderRadius}
+      borderWidth={c.borderWidth}
+      strokeOpacity={c.strokeOpacity}
+      innerOpacity={c.innerOpacity}
+      bloomOpacity={c.bloomOpacity}
+      innerShadow={c.innerShadow}
       style={style}
       className={className}
     >

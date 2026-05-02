@@ -21,11 +21,9 @@ const COLOR_OPTIONS: SurfaceConfig['borderBeam']['colorVariant'][] = [
   'sunset'
 ]
 
-// border-beam ships only three size enums (sm + md = full perimeter at
-// different scales, line = bottom-only travelling beam). We expose a
-// slider over those three stops so the dev panel feels gestural even
-// though the underlying value is discrete. If we need genuinely
-// continuous size we'll need to fork the package or layer custom CSS.
+// `size` selects the *geometry* (full-perimeter rotating beam vs bottom-
+// only travelling beam). Continuous size now comes from `borderWidth` —
+// both knobs are exposed.
 const SIZE_STOPS: SurfaceConfig['borderBeam']['size'][] = ['sm', 'md', 'line']
 const SIZE_LABELS: Record<SurfaceConfig['borderBeam']['size'], string> = {
   sm: 'sm · small full perimeter',
@@ -304,10 +302,18 @@ export function ThemeDevPanel() {
               />
             </div>
             <Slider
-              label="Strength (opacity)"
+              label="Border width (px) — main size knob"
+              value={c.borderWidth}
+              min={0.5}
+              max={40}
+              step={0.5}
+              onChange={(v) => update({ borderWidth: v })}
+            />
+            <Slider
+              label="Strength (opacity multiplier)"
               value={c.strength}
               min={0}
-              max={2}
+              max={5}
               step={0.05}
               onChange={(v) => update({ strength: v })}
             />
@@ -366,6 +372,48 @@ export function ThemeDevPanel() {
                 className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none"
               />
             </div>
+          </div>
+        </Section>
+
+        {/* Per-layer fine tuning. The package's three layers (beam stroke,
+            inner glow, outer bloom) compose the final look — these used to
+            be pinned to the size enum. The fork lets us mix them freely. */}
+        <Section title="Layers (fork)">
+          <Slider
+            label="Stroke opacity (z-index 2 — beam itself)"
+            value={c.strokeOpacity}
+            min={0}
+            max={2}
+            step={0.02}
+            onChange={(v) => update({ strokeOpacity: v })}
+          />
+          <Slider
+            label="Inner glow opacity (z-index 1)"
+            value={c.innerOpacity}
+            min={0}
+            max={2}
+            step={0.02}
+            onChange={(v) => update({ innerOpacity: v })}
+          />
+          <Slider
+            label="Outer bloom opacity (z-index 3)"
+            value={c.bloomOpacity}
+            min={0}
+            max={2}
+            step={0.02}
+            onChange={(v) => update({ bloomOpacity: v })}
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
+              Inner shadow color (any CSS color)
+            </span>
+            <input
+              type="text"
+              value={c.innerShadow}
+              onChange={(e) => update({ innerShadow: e.target.value })}
+              placeholder="rgba(255, 255, 255, 0.27)"
+              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none font-mono"
+            />
           </div>
         </Section>
 

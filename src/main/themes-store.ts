@@ -4,6 +4,7 @@
 
 import Store from 'electron-store'
 import {
+  DEFAULT_BORDER_BEAM_CONFIG,
   defaultThemesState,
   defaultThemeDevPresetsState,
   defaultSurfaceConfig,
@@ -23,7 +24,10 @@ export const themesStore = new Store<ThemesState>({
 })
 
 /** Read full state. Backfills any missing surface entries (e.g. when a new
- *  surface is added in a future build) so the renderer never sees `undefined`. */
+ *  surface is added in a future build) and any missing borderBeam fields
+ *  on existing entries (e.g. fork-only fields like borderWidth that landed
+ *  after a user already had persisted state). Renderer never sees undefined
+ *  for required fields. */
 export function getThemesState(): ThemesState {
   const raw: ThemesState = {
     schemaVersion: themesStore.get('schemaVersion'),
@@ -36,6 +40,23 @@ export function getThemesState(): ThemesState {
   for (const id of SURFACE_IDS) {
     if (!surfaces[id]) {
       surfaces[id] = defaultSurfaceConfig()
+      mutated = true
+      continue
+    }
+    // Backfill any missing borderBeam fields with the md/dark preset
+    // defaults so the renderer always sees a fully-typed config.
+    const cur = surfaces[id]
+    const backfilled: SurfaceConfig['borderBeam'] = {
+      ...DEFAULT_BORDER_BEAM_CONFIG,
+      ...(cur.borderBeam ?? {})
+    }
+    if (
+      cur.borderBeam == null ||
+      Object.keys(backfilled).some(
+        (k) => (cur.borderBeam as Record<string, unknown>)?.[k] === undefined
+      )
+    ) {
+      surfaces[id] = { ...cur, borderBeam: backfilled }
       mutated = true
     }
   }

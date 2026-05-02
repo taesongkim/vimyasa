@@ -34,8 +34,15 @@ export const SURFACE_LABELS: Record<SurfaceId, string> = {
   'welcome-callout-start-button': 'Welcome callout — Start Tour button'
 }
 
-// Subset of border-beam's props we expose for tuning. We always pass
+// Subset of border-beam-fork's props we expose for tuning. We always pass
 // theme: 'dark' since the app is dark-mode-only by intent.
+//
+// `size` selects the geometry (sm/md = full perimeter rotating beam,
+// line = bottom-only travelling beam). The fork-only knobs below
+// (borderWidth, strokeOpacity, innerOpacity, bloomOpacity, innerShadow)
+// were size-enum-pinned in the upstream package; here they're always
+// active overrides so the dev panel can tune the look continuously
+// without being stuck in 3-stop preset land.
 export interface BorderBeamConfig {
   size: 'sm' | 'md' | 'line'
   colorVariant: 'colorful' | 'mono' | 'ocean' | 'sunset'
@@ -45,8 +52,18 @@ export interface BorderBeamConfig {
   saturation: number
   hueRange: number
   staticColors: boolean
-  /** Optional override; when undefined, border-beam auto-detects from the host element. */
+  /** Optional override; when undefined, the fork auto-detects from the host element. */
   borderRadius?: number
+  /** Stroke thickness in px. Upstream pinned to 1 for every size; here it
+   *  becomes the primary "size" knob — dial it up for thicker beams. */
+  borderWidth: number
+  /** Per-layer opacities. Independent of `size` so the layer mix can be
+   *  tuned freely. Initial defaults match the upstream md/dark preset. */
+  strokeOpacity: number
+  innerOpacity: number
+  bloomOpacity: number
+  /** Inner-shadow color (any CSS color). Initial default matches md/dark. */
+  innerShadow: string
 }
 
 // One configured effect stack per surface. Future effect layers (particles,
@@ -67,6 +84,10 @@ export interface ThemesState {
   surfaces: Record<SurfaceId, SurfaceConfig>
 }
 
+// Defaults below mirror the upstream `border-beam` md/dark preset
+// (sizePresets.md.borderWidth = 1; sizeThemePresets.md.dark = { strokeOpacity:
+// 0.48, innerOpacity: 0.7, bloomOpacity: 0.8, innerShadow: rgba(255,255,255,0.27) }).
+// New surfaces start with this baseline and the dev panel can dial from there.
 export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   size: 'md',
   colorVariant: 'colorful',
@@ -75,7 +96,12 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   brightness: 1.3,
   saturation: 1.2,
   hueRange: 30,
-  staticColors: false
+  staticColors: false,
+  borderWidth: 1,
+  strokeOpacity: 0.48,
+  innerOpacity: 0.7,
+  bloomOpacity: 0.8,
+  innerShadow: 'rgba(255, 255, 255, 0.27)'
 }
 
 export function defaultSurfaceConfig(): SurfaceConfig {
