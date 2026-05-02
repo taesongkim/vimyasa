@@ -53,6 +53,7 @@ function renderBeam(
       innerShadow={c.innerShadow}
       beamLength={c.beamLength}
       glowDepth={c.glowDepth}
+      whiteSheen={c.whiteSheen}
       paletteOverride={c.paletteOverride}
       overlay={overlay}
       style={style}

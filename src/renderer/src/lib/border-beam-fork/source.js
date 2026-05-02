@@ -274,6 +274,83 @@ function __palette(defaults, override) {
     return typeof c === 'string' && c.length > 0 ? { ...blob, color: c } : blob
   })
 }
+// Fork addition: `whiteSheen` (0–1, default 1) scales the white highlight
+// streak that rides on top of the colored blob gradients in ::after, plus
+// the narrower bright spike inside the bloom layer. The colored streak
+// ($h) is unaffected — turn this down to reveal the pure-hue beam without
+// the white travelling sheen on top. Light theme uses black-tinted analogs;
+// scale applies to either.
+function __sheenAlpha(base, scale) {
+  if (typeof scale !== 'number' || !Number.isFinite(scale) || scale < 0) return base
+  return Math.max(0, Math.min(1, base * scale))
+}
+function __strokeSheen(angleVar, isDark, scale) {
+  // Wide sheen used on the beam stroke (::after). Peak alpha 0.75 (dark)
+  // or 0.55 (light) — 8 stops fading in/out across 24% of the perimeter.
+  if (isDark) {
+    return `conic-gradient(
+        from ${angleVar},
+        transparent 0%, transparent 54%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.1, scale).toFixed(3)}) 57%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.3, scale).toFixed(3)}) 60%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.6, scale).toFixed(3)}) 63%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.75, scale).toFixed(3)}) 66%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.6, scale).toFixed(3)}) 69%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.3, scale).toFixed(3)}) 72%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.1, scale).toFixed(3)}) 75%,
+        transparent 78%, transparent 100%
+      )`
+  }
+  return `conic-gradient(
+        from ${angleVar},
+        transparent 0%, transparent 54%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.08, scale).toFixed(3)}) 57%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.2, scale).toFixed(3)}) 60%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.4, scale).toFixed(3)}) 63%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.55, scale).toFixed(3)}) 66%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.4, scale).toFixed(3)}) 69%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.2, scale).toFixed(3)}) 72%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.08, scale).toFixed(3)}) 75%,
+        transparent 78%, transparent 100%
+      )`
+}
+function __bloomSheen(angleVar, isDark, scale) {
+  // Narrower, brighter spike used inside the [data-beam-bloom] layer. Peak
+  // alpha 0.85 (dark) or 0.6 (light) at 70%, with a fast falloff.
+  if (isDark) {
+    return `conic-gradient(
+        from ${angleVar},
+        transparent 0%, transparent 58%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.03, scale).toFixed(3)}) 62%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.08, scale).toFixed(3)}) 65%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.2, scale).toFixed(3)}) 67%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.45, scale).toFixed(3)}) 69%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.85, scale).toFixed(3)}) 70%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.85, scale).toFixed(3)}) 70.5%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.45, scale).toFixed(3)}) 71.5%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.2, scale).toFixed(3)}) 73%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.08, scale).toFixed(3)}) 75%,
+        rgba(255, 255, 255, ${__sheenAlpha(0.03, scale).toFixed(3)}) 78%,
+        transparent 82%
+      )`
+  }
+  return `conic-gradient(
+        from ${angleVar},
+        transparent 0%, transparent 58%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.02, scale).toFixed(3)}) 62%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.08, scale).toFixed(3)}) 65%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.2, scale).toFixed(3)}) 67%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.4, scale).toFixed(3)}) 69%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.6, scale).toFixed(3)}) 70%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.6, scale).toFixed(3)}) 70.5%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.4, scale).toFixed(3)}) 71.5%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.2, scale).toFixed(3)}) 73%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.08, scale).toFixed(3)}) 75%,
+        rgba(0, 0, 0, ${__sheenAlpha(0.02, scale).toFixed(3)}) 78%,
+        transparent 82%
+      )`
+}
+
 // Fork addition: `glowDepth` multiplies the radial-gradient blob sizes
 // that compose the inner glow layer (::before / ::after's color stack).
 // Lower = glow tighter to the perimeter; higher = glow extends further
@@ -667,63 +744,14 @@ function ve(r) {
     theme: Y,
     beamLength,
     paletteOverride,
-    glowDepth
+    glowDepth,
+    whiteSheen
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   50% { filter: hue-rotate(${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   100% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
-}`, y = Y === "dark", W = y ? `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 54%,
-        rgba(255, 255, 255, 0.1) 57%,
-        rgba(255, 255, 255, 0.3) 60%,
-        rgba(255, 255, 255, 0.6) 63%,
-        rgba(255, 255, 255, 0.75) 66%,
-        rgba(255, 255, 255, 0.6) 69%,
-        rgba(255, 255, 255, 0.3) 72%,
-        rgba(255, 255, 255, 0.1) 75%,
-        transparent 78%, transparent 100%
-      )` : `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 54%,
-        rgba(0, 0, 0, 0.08) 57%,
-        rgba(0, 0, 0, 0.2) 60%,
-        rgba(0, 0, 0, 0.4) 63%,
-        rgba(0, 0, 0, 0.55) 66%,
-        rgba(0, 0, 0, 0.4) 69%,
-        rgba(0, 0, 0, 0.2) 72%,
-        rgba(0, 0, 0, 0.08) 75%,
-        transparent 78%, transparent 100%
-      )`, h = pe(c, paletteOverride, glowDepth), X = le(c, paletteOverride, glowDepth), x = y ? `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 58%,
-        rgba(255, 255, 255, 0.03) 62%,
-        rgba(255, 255, 255, 0.08) 65%,
-        rgba(255, 255, 255, 0.2) 67%,
-        rgba(255, 255, 255, 0.45) 69%,
-        rgba(255, 255, 255, 0.85) 70%,
-        rgba(255, 255, 255, 0.85) 70.5%,
-        rgba(255, 255, 255, 0.45) 71.5%,
-        rgba(255, 255, 255, 0.2) 73%,
-        rgba(255, 255, 255, 0.08) 75%,
-        rgba(255, 255, 255, 0.03) 78%,
-        transparent 82%
-      )` : `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 58%,
-        rgba(0, 0, 0, 0.02) 62%,
-        rgba(0, 0, 0, 0.08) 65%,
-        rgba(0, 0, 0, 0.2) 67%,
-        rgba(0, 0, 0, 0.4) 69%,
-        rgba(0, 0, 0, 0.6) 70%,
-        rgba(0, 0, 0, 0.6) 70.5%,
-        rgba(0, 0, 0, 0.4) 71.5%,
-        rgba(0, 0, 0, 0.2) 73%,
-        rgba(0, 0, 0, 0.08) 75%,
-        rgba(0, 0, 0, 0.02) 78%,
-        transparent 82%
-      )`, F = __beamMask(e, beamLength);
+}`, y = Y === "dark", W = __strokeSheen(`var(--beam-angle-${e})`, y, whiteSheen), h = pe(c, paletteOverride, glowDepth), X = le(c, paletteOverride, glowDepth), x = __bloomSheen(`var(--beam-angle-${e})`, y, whiteSheen), F = __beamMask(e, beamLength);
   return `
 @property --beam-angle-${e} {
   syntax: "<angle>";
@@ -856,63 +884,14 @@ function ye(r) {
     theme: Y,
     beamLength,
     paletteOverride,
-    glowDepth
+    glowDepth,
+    whiteSheen
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   50% { filter: hue-rotate(${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   100% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
-}`, y = Y === "dark", W = y ? `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 54%,
-        rgba(255, 255, 255, 0.1) 57%,
-        rgba(255, 255, 255, 0.3) 60%,
-        rgba(255, 255, 255, 0.6) 63%,
-        rgba(255, 255, 255, 0.75) 66%,
-        rgba(255, 255, 255, 0.6) 69%,
-        rgba(255, 255, 255, 0.3) 72%,
-        rgba(255, 255, 255, 0.1) 75%,
-        transparent 78%, transparent 100%
-      )` : `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 54%,
-        rgba(0, 0, 0, 0.08) 57%,
-        rgba(0, 0, 0, 0.2) 60%,
-        rgba(0, 0, 0, 0.4) 63%,
-        rgba(0, 0, 0, 0.55) 66%,
-        rgba(0, 0, 0, 0.4) 69%,
-        rgba(0, 0, 0, 0.2) 72%,
-        rgba(0, 0, 0, 0.08) 75%,
-        transparent 78%, transparent 100%
-      )`, h = be(c, paletteOverride), X = fe(c, paletteOverride, glowDepth), x = y ? `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 58%,
-        rgba(255, 255, 255, 0.03) 62%,
-        rgba(255, 255, 255, 0.08) 65%,
-        rgba(255, 255, 255, 0.2) 67%,
-        rgba(255, 255, 255, 0.45) 69%,
-        rgba(255, 255, 255, 0.85) 70%,
-        rgba(255, 255, 255, 0.85) 70.5%,
-        rgba(255, 255, 255, 0.45) 71.5%,
-        rgba(255, 255, 255, 0.2) 73%,
-        rgba(255, 255, 255, 0.08) 75%,
-        rgba(255, 255, 255, 0.03) 78%,
-        transparent 82%
-      )` : `conic-gradient(
-        from var(--beam-angle-${e}),
-        transparent 0%, transparent 58%,
-        rgba(0, 0, 0, 0.02) 62%,
-        rgba(0, 0, 0, 0.08) 65%,
-        rgba(0, 0, 0, 0.2) 67%,
-        rgba(0, 0, 0, 0.4) 69%,
-        rgba(0, 0, 0, 0.6) 70%,
-        rgba(0, 0, 0, 0.6) 70.5%,
-        rgba(0, 0, 0, 0.4) 71.5%,
-        rgba(0, 0, 0, 0.2) 73%,
-        rgba(0, 0, 0, 0.08) 75%,
-        rgba(0, 0, 0, 0.02) 78%,
-        transparent 82%
-      )`;
+}`, y = Y === "dark", W = __strokeSheen(`var(--beam-angle-${e})`, y, whiteSheen), h = be(c, paletteOverride), X = fe(c, paletteOverride, glowDepth), x = __bloomSheen(`var(--beam-angle-${e})`, y, whiteSheen);
   return `
 @property --beam-angle-${e} {
   syntax: "<angle>";

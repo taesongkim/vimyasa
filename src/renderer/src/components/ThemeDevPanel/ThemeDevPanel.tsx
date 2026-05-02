@@ -341,6 +341,14 @@ export function ThemeDevPanel() {
               onChange={(v) => update({ glowDepth: v })}
             />
             <Slider
+              label="White sheen (0 = pure hue streak, 1 = upstream white highlight)"
+              value={c.whiteSheen}
+              min={0}
+              max={1}
+              step={0.02}
+              onChange={(v) => update({ whiteSheen: v })}
+            />
+            <Slider
               label="Strength (opacity multiplier)"
               value={c.strength}
               min={0}

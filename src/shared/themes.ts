@@ -79,6 +79,12 @@ export interface BorderBeamConfig {
    *  perimeter position is unchanged — the streak still anchors at the
    *  edge, only the soft falloff is reshaped. */
   glowDepth: number
+  /** Intensity of the white highlight streak riding on top of the colored
+   *  blob gradients (and the bright spike inside the bloom layer). 0 = no
+   *  white sheen — the rotating beam shows only the variant's hue blobs.
+   *  1 = upstream behavior. The colored streak is unaffected — turn this
+   *  down to keep just the hue. */
+  whiteSheen: number
   /** Per-blob color override (advanced). Length up to 9 (md size has 9
    *  border blobs; sm has 8). Each slot replaces the matching blob's
    *  color in the rotating beam; null preserves the variant default for
@@ -190,7 +196,8 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   innerShadow: 'rgba(255, 255, 255, 0.27)',
   beamLength: 28,
   beamInset: 0,
-  glowDepth: 1
+  glowDepth: 1,
+  whiteSheen: 1
 }
 
 // Defaults tuned for fine pixel-dust: minSize 0.5 ≈ one device pixel on a

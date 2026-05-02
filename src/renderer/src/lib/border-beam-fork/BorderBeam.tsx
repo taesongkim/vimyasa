@@ -65,6 +65,9 @@ interface BeamCSSOptions {
   /** Inner-glow blob size multiplier (default 1). Tightens / loosens the
    *  inward gradient depth without moving the beam. */
   glowDepth: number
+  /** White highlight streak intensity (0–1, default 1). 0 = no white
+   *  sheen, only the colored hue streak. */
+  whiteSheen: number
 }
 
 interface SizeThemePreset {
@@ -129,6 +132,9 @@ export interface BorderBeamProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
    *  the edge, higher lets it bleed further inward. Beam perimeter
    *  position is unchanged. */
   glowDepth?: number
+  /** White highlight streak intensity (0–1, default 1). 0 removes the
+   *  white sheen layer entirely, leaving only the colored hue streak. */
+  whiteSheen?: number
   /** Extra content rendered as a sibling of children inside the BorderBeam
    *  wrapper (which has position:relative). Used by GlowSurface to mount
    *  the ParticleLayer canvas overlay so it inherits the wrapper's
@@ -179,6 +185,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
       beamInset = 0,
       paletteOverride,
       glowDepth = 1,
+      whiteSheen = 1,
       overlay,
       className,
       style,
@@ -269,7 +276,8 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
           theme: resolvedTheme,
           beamLength,
           paletteOverride,
-          glowDepth
+          glowDepth,
+          whiteSheen
         }),
       [
         id,
@@ -289,6 +297,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
         resolvedTheme,
         beamLength,
         glowDepth,
+        whiteSheen,
         // useMemo deps must be primitives or stable references. Stringify the
         // override so identity changes when the user tweaks any blob color.
         paletteOverride ? paletteOverride.join('|') : ''
