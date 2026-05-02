@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -68,18 +68,23 @@ export function ItemRow({
     transition
   }
 
+  // Focus + select on edit-mode entry. After-paint timing is fine here —
+  // focus is a user-perceptible action that doesn't need to be pre-paint.
   useEffect(() => {
     if (editing) {
       inputRef.current?.focus()
       inputRef.current?.select()
-      // Match the textarea's height to its content immediately so a
-      // multi-line item doesn't briefly squash to one line on entry.
-      autoResizeTextarea(inputRef.current)
     }
   }, [editing])
 
-  // Resize on every text change so the textarea grows/shrinks with content.
-  useEffect(() => {
+  // Resize the textarea to match its content. Must be useLayoutEffect, not
+  // useEffect: the resize has to happen between React's commit and the
+  // browser's paint, so the height update lands in the same frame as the
+  // text update. With a regular useEffect, the browser paints once with
+  // the new text in the old (smaller or larger) box — visible squish on
+  // line growth, visible stretch on line shrink. useLayoutEffect runs
+  // synchronously after commit before paint, eliminating that mid-state.
+  useLayoutEffect(() => {
     if (editing) {
       autoResizeTextarea(inputRef.current)
     }
@@ -181,11 +186,22 @@ export function ItemRow({
     <motion.div
       ref={setNodeRef}
       style={style}
+      // Keep layout=true so reorder/archive/delete still animate smoothly.
+      // While editing, override the layout-transition duration to 0 — the
+      // textarea grows/shrinks with content via useLayoutEffect, and we
+      // don't want Framer's 150ms spring on the row to lag behind the
+      // textarea (which produced the visible squish on growth and stretch
+      // on shrink). layout="position" alone wasn't enough; some height
+      // animation slipped through. Explicit duration:0 on layout closes it.
       layout
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
-      transition={{ duration: 0.15, delay: index * 0.02 }}
+      transition={{
+        duration: 0.15,
+        delay: index * 0.02,
+        layout: editing ? { duration: 0 } : undefined
+      }}
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
