@@ -182,7 +182,13 @@ export function ListsTab() {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={sortedLists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col gap-2">
+          {/*
+            mt-3 (12px) here — explicit because the parent's space-y-6
+            isn't reaching this wrapper through DndContext / SortableContext.
+            Keeps the first row from running visually into the description
+            text above it.
+          */}
+          <div className="flex flex-col gap-2 mt-3">
             {sortedLists.map((list, index) => (
               <SortableListItem
                 key={list.id}
