@@ -59,6 +59,9 @@ interface BeamCSSOptions {
   /** Percent of the perimeter the bright streak covers (sm/md only).
    *  28 ≈ upstream default; 100 = full uniform glow. */
   beamLength: number
+  /** Optional per-blob color override. Up to 9 entries; null/undefined
+   *  preserves the variant default for that blob. */
+  paletteOverride?: (string | null)[]
 }
 
 interface SizeThemePreset {
@@ -110,6 +113,9 @@ export interface BorderBeamProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
    *  Defaults to 28 (≈ upstream behavior); set to 100 for a uniform
    *  full-perimeter glow with no rotating streak. */
   beamLength?: number
+  /** Per-blob color override. Up to 9 entries; null/undefined preserves
+   *  the variant's default for that blob. Forwarded into the CSS generator. */
+  paletteOverride?: (string | null)[]
   onActivate?: () => void
   onDeactivate?: () => void
 }
@@ -152,6 +158,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
       bloomOpacity,
       innerShadow,
       beamLength = 28,
+      paletteOverride,
       className,
       style,
       onActivate,
@@ -239,7 +246,8 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
           saturation: finalSaturation,
           hueRange: finalHueRange,
           theme: resolvedTheme,
-          beamLength
+          beamLength,
+          paletteOverride
         }),
       [
         id,
@@ -257,7 +265,10 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
         finalSaturation,
         finalHueRange,
         resolvedTheme,
-        beamLength
+        beamLength,
+        // useMemo deps must be primitives or stable references. Stringify the
+        // override so identity changes when the user tweaks any blob color.
+        paletteOverride ? paletteOverride.join('|') : ''
       ]
     )
 

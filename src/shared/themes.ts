@@ -68,6 +68,12 @@ export interface BorderBeamConfig {
    *  28 ≈ upstream default; 100 = full uniform perimeter glow. Line mode
    *  ignores this — its travel + breathe animations dictate streak length. */
   beamLength: number
+  /** Per-blob color override (advanced). Length up to 9 (md size has 9
+   *  border blobs; sm has 8). Each slot replaces the matching blob's
+   *  color in the rotating beam; null preserves the variant default for
+   *  that slot. Position and size inherit from the variant — only color
+   *  is editable from the dev panel. Undefined = no override applied. */
+  paletteOverride?: (string | null)[]
 }
 
 // One configured effect stack per surface. Future effect layers (particles,

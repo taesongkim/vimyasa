@@ -48,6 +48,7 @@ function renderBeam(
       bloomOpacity={c.bloomOpacity}
       innerShadow={c.innerShadow}
       beamLength={c.beamLength}
+      paletteOverride={c.paletteOverride}
       style={style}
       className={className}
     >

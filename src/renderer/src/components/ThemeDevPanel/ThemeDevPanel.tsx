@@ -13,6 +13,7 @@ import {
   type SurfaceConfig,
   type ThemeDevPreset
 } from '@shared/themes'
+import { defaultPaletteHex } from '../../lib/border-beam-fork/palettes'
 
 const COLOR_OPTIONS: SurfaceConfig['borderBeam']['colorVariant'][] = [
   'colorful',
@@ -381,6 +382,65 @@ export function ThemeDevPanel() {
               />
             </div>
           </div>
+        </Section>
+
+        {/* Per-blob color editing for the rotating beam. The package picks
+            from a 9-blob palette per variant; here you can swap any blob's
+            color. Position and size are inherited from the variant. */}
+        <Section title="Colors (per blob — sm/md only)">
+          <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] mb-1">
+            Click a swatch to override the blob color. Reset clears all 9.
+          </div>
+          {(() => {
+            const defaults = defaultPaletteHex(c.colorVariant)
+            const override = c.paletteOverride ?? []
+            const numBlobs = Math.max(defaults.length, 9)
+            const swatches: { idx: number; current: string; isOverride: boolean }[] = []
+            for (let i = 0; i < numBlobs; i++) {
+              const o = override[i]
+              const def = defaults[i] ?? '#000000'
+              const isOverride = typeof o === 'string' && o.length > 0
+              swatches.push({ idx: i, current: isOverride ? o : def, isOverride })
+            }
+            const setBlob = (i: number, hex: string | null) => {
+              const next = [...(c.paletteOverride ?? [])]
+              while (next.length < numBlobs) next.push(null)
+              next[i] = hex
+              const allEmpty = next.every((v) => v == null)
+              update({ paletteOverride: allEmpty ? undefined : next })
+            }
+            return (
+              <>
+                <div className="grid grid-cols-9 gap-1">
+                  {swatches.map((s) => (
+                    <label
+                      key={s.idx}
+                      className="relative block w-full aspect-square rounded-[var(--radius-sm)] cursor-pointer overflow-hidden border border-[var(--color-border)]"
+                      style={{ backgroundColor: s.current }}
+                      title={`Blob ${s.idx + 1}${s.isOverride ? ' (override)' : ''}`}
+                    >
+                      <input
+                        type="color"
+                        value={s.current}
+                        onChange={(e) => setBlob(s.idx, e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      {s.isOverride && (
+                        <span className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] m-0.5" />
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  className="mt-1 px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+                  onClick={() => update({ paletteOverride: undefined })}
+                  disabled={!c.paletteOverride || c.paletteOverride.every((v) => v == null)}
+                >
+                  Reset to {c.colorVariant} defaults
+                </button>
+              </>
+            )
+          })()}
         </Section>
 
         {/* Per-layer fine tuning. The package's three layers (beam stroke,
