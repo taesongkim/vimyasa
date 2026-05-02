@@ -9,9 +9,7 @@ interface GlowSurfaceProps {
   surface: SurfaceId
   /** 'wrap' (default): renders <BorderBeam>{children}</BorderBeam>. The
    *  BorderBeam wrapper div is layout-affecting — pass `style` to control
-   *  its display/sizing. Wrap mode ALWAYS mounts BorderBeam (with active
-   *  driven by the per-surface flag) so descendants like the QuickAdd
-   *  input keep focus across hydration.
+   *  its display/sizing.
    *
    *  'overlay': renders ONLY a positioned overlay containing the beam,
    *  no children pass-through. Drop the GlowSurface alongside the host's
@@ -19,13 +17,13 @@ interface GlowSurfaceProps {
    *  `position: relative` and a defined `border-radius` so the overlay
    *  inherits both. Use this for surfaces where the glow should match an
    *  outer container without disturbing structural refs (e.g. dnd-kit
-   *  setNodeRef on motion.div) or AnimatePresence exit transitions.
-   *  Overlay mode bails to null when the surface is disabled — cheap. */
+   *  setNodeRef on motion.div) or AnimatePresence exit transitions. */
   mode?: 'wrap' | 'overlay'
   children?: ReactNode
   style?: CSSProperties
   className?: string
 }
+
 
 function renderBeam(
   c: SurfaceConfig['borderBeam'],
@@ -54,7 +52,6 @@ function renderBeam(
       bloomOpacity={c.bloomOpacity}
       innerShadow={c.innerShadow}
       beamLength={c.beamLength}
-      beamInset={c.beamInset}
       paletteOverride={c.paletteOverride}
       overlay={overlay}
       style={style}
@@ -65,6 +62,20 @@ function renderBeam(
   )
 }
 
+/** Wraps (or overlays) a target surface with the active theme's effect.
+ *
+ *  Wrap mode ALWAYS mounts BorderBeam; the `active` prop drives the
+ *  fade-in/out animations. This keeps DOM identity stable so descendants
+ *  (e.g. the QuickAdd input that auto-focuses on mount) don't lose their
+ *  state when themes hydrate or the per-surface toggle flips.
+ *
+ *  Overlay mode keeps conditional rendering — the overlay is a sibling
+ *  (pointer-events:none) so it can come and go without affecting the
+ *  host's children.
+ *
+ *  Particle layer (when enabled) composes alongside the beam — inside the
+ *  BorderBeam wrapper for wrap mode, inside the overlay div for overlay
+ *  mode. Either way it inherits border-radius and clipping from its parent. */
 export function GlowSurface({
   surface,
   children,
@@ -72,24 +83,19 @@ export function GlowSurface({
   style,
   className
 }: GlowSurfaceProps) {
-  // Subscribe via thin selectors so unrelated theme-store updates (e.g. a
-  // user dragging a slider for a *different* surface) don't re-render every
-  // GlowSurface on the page. The list-window route mounts hundreds of
-  // ItemRow GlowSurfaces — wide subscriptions there cause render thrash
-  // and visible glitches under load (rows go black/blank as the renderer
-  // can't keep up).
-  const hydrated = useThemesStore((s) => s.hydrated)
   const masterEnabled = useThemesStore((s) => s.masterEnabled)
-  const enabled = useThemesStore((s) => s.surfaces[surface]?.enabled ?? false)
-  const baseActive = hydrated && masterEnabled && enabled
+  const surfaceConfig = useThemesStore((s) => s.surfaces[surface])
+  const hydrated = useThemesStore((s) => s.hydrated)
 
-  // Burst hook — selector returns undefined when not active so disabled
-  // surfaces never re-render on burst-config changes for OTHER surfaces.
-  const [burstPulse, setBurstPulse] = useState(true)
-  const burst = useThemesStore((s) =>
-    baseActive ? s.surfaces[surface]?.burst : undefined
-  )
+  const baseActive = hydrated && masterEnabled && (surfaceConfig?.enabled ?? false)
+  const burst = surfaceConfig?.burst
   const burstEnabled = baseActive && (burst?.enabled ?? false)
+
+  // Burst pulse: when enabled, toggles burstPulse between true/false on a
+  // setTimeout cycle. The beam's own fade-in/out animations carry the
+  // visual smoothing; we just flip `active` on schedule. When burst is
+  // off, burstPulse stays true so it's a no-op multiplier.
+  const [burstPulse, setBurstPulse] = useState(true)
   useEffect(() => {
     if (!burstEnabled || !burst) {
       setBurstPulse(true)
@@ -109,64 +115,27 @@ export function GlowSurface({
     }
   }, [burstEnabled, burst?.onMs, burst?.offMs])
 
-  // Heavy selector — only fetches the full config when active. Disabled
-  // surfaces stay subscribed to `undefined` so config tweaks elsewhere
-  // don't fire re-renders here.
-  const surfaceConfig = useThemesStore((s) =>
-    baseActive ? s.surfaces[surface] : undefined
-  )
-
-  // Overlay mode disabled: bail null. Cheap; no DOM, no further work.
-  if (mode === 'overlay' && !baseActive) return null
-
   const active = baseActive && (!burstEnabled || burstPulse)
-
-  // For wrap mode when DISABLED we still mount BorderBeam (with active=false)
-  // so the children's parent in the React tree stays stable across hydration —
-  // otherwise inputs that auto-focus on mount lose focus when the user toggles
-  // the surface on. Use defaults when surfaceConfig is undefined.
-  const cfg = surfaceConfig
-  const c: SurfaceConfig['borderBeam'] = cfg?.borderBeam ?? DEFAULT_BORDER_BEAM_CONFIG
-  const particles = cfg?.particles
+  const particles = surfaceConfig?.particles
   const showParticles = active && (particles?.enabled ?? false)
-  const paletteBlobs = active
-    ? paletteBlobsWithOverride(c.colorVariant, c.paletteOverride)
-    : []
-  // Particle layer composition. Three modes:
-  //  - particles disabled: nothing
-  //  - threeLayers off: a single ParticleLayer with full count, no blur
-  //  - threeLayers on: stacked canvases, one per enabled layer config,
-  //    each getting count/3 particles and its own blur + opacity (CSS
-  //    filter on the canvas — runs in the GPU compositor, ~free)
-  let particleLayer: ReactNode = null
-  if (showParticles && particles) {
-    if (particles.threeLayers) {
-      const enabledLayers = particles.layers.filter((l) => l.enabled)
-      const perLayerCount =
-        enabledLayers.length > 0 ? Math.round(particles.count / enabledLayers.length) : 0
-      particleLayer = (
-        <>
-          {particles.layers.map((layer, i) =>
-            layer.enabled ? (
-              <ParticleLayer
-                key={i}
-                config={particles}
-                paletteBlobs={paletteBlobs}
-                blur={layer.blur}
-                opacity={layer.opacity}
-                countOverride={perLayerCount}
-              />
-            ) : null
-          )}
-        </>
+  // Pass the live palette blobs (with per-blob color overrides applied) to
+  // the particle layer so its 'palette' spawn mode and 'auto' coloring stay
+  // in sync with whatever the beam is rendering.
+  const paletteBlobs = surfaceConfig
+    ? paletteBlobsWithOverride(
+        surfaceConfig.borderBeam.colorVariant,
+        surfaceConfig.borderBeam.paletteOverride
       )
-    } else {
-      particleLayer = <ParticleLayer config={particles} paletteBlobs={paletteBlobs} />
-    }
-  }
+    : []
+
+  const particleLayer =
+    showParticles && particles ? (
+      <ParticleLayer config={particles} paletteBlobs={paletteBlobs} />
+    ) : null
 
   if (mode === 'overlay') {
-    // (baseActive must be true here — the early-return above caught the rest)
+    if (!baseActive) return null
+    const c = surfaceConfig!.borderBeam
     return (
       <div
         className="absolute inset-0 pointer-events-none"
@@ -185,6 +154,15 @@ export function GlowSurface({
     )
   }
 
-  // Wrap mode (active or inactive): always render BorderBeam.
+  // Wrap mode disabled: return children bare (no BorderBeam wrapper).
+  // An always-mounted wrapper with overflow:hidden + border-radius inside
+  // a vibrancy: under-window BrowserWindow can fail to composite the OS
+  // backdrop and paint opaque black behind content. The QuickAdd focus
+  // issue this used to fix is handled differently — see the focus
+  // discussion in the next commit.
+  if (!baseActive) {
+    return <>{children}</>
+  }
+  const c = surfaceConfig!.borderBeam
   return renderBeam(c, active, children, particleLayer, style, className)
 }

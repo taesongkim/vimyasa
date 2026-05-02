@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
@@ -25,8 +25,15 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const EXIT_DURATION_MS = 150
   const EXIT_OFFSET_PX = 4
 
-  useEffect(() => {
-    inputRef.current?.focus()
+  // Focus on every mount via a ref callback rather than a one-shot
+  // useEffect. Reason: when the user has the quickadd-input GlowSurface
+  // enabled, themes hydration flips us from "children rendered bare" to
+  // "<BorderBeam>children</BorderBeam>", which remounts the input — a
+  // mount-time useEffect would run on the OLD instance and lose focus.
+  // The ref callback fires on every (re)mount and re-applies focus.
+  const handleInputRef = useCallback((el: HTMLInputElement | null) => {
+    inputRef.current = el
+    if (el) el.focus()
   }, [])
 
   // If the targeted list is deleted while this form is open, the dropdown
@@ -161,7 +168,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       {/* Input */}
       <GlowSurface surface="quickadd-input" style={{ display: 'block', width: '100%' }}>
         <input
-          ref={inputRef}
+          ref={handleInputRef}
           className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
           placeholder=""
           value={text}
