@@ -78,11 +78,26 @@ export interface BorderBeamConfig {
 
 // One configured effect stack per surface. The border beam is the primary
 // visual; the particle layer is an optional companion that composes on top.
+// Burst is an optional timing mode that drives both layers in pulses.
 export interface SurfaceConfig {
   enabled: boolean
   effect: 'border-beam'
   borderBeam: BorderBeamConfig
   particles: ParticleConfig
+  burst: BurstConfig
+}
+
+/** Periodic on/off cycle for the surface's active state. When enabled, the
+ *  surface fires for `onMs`, fades out, waits `offMs`, then repeats — both
+ *  the beam's CSS fade and the particle layer's mount/unmount follow this
+ *  cycle. Use it for "burst and fade" iteration without wiring per-surface
+ *  trigger events. */
+export interface BurstConfig {
+  enabled: boolean
+  /** How long each burst stays active before fading out. */
+  onMs: number
+  /** Quiet time between bursts (after fade-out completes). */
+  offMs: number
 }
 
 /** Drifting particle effect — a canvas painted alongside the beam. Each
@@ -155,12 +170,19 @@ export const DEFAULT_PARTICLE_CONFIG: ParticleConfig = {
   glowSoftness: 0.5
 }
 
+export const DEFAULT_BURST_CONFIG: BurstConfig = {
+  enabled: false,
+  onMs: 1500,
+  offMs: 800
+}
+
 export function defaultSurfaceConfig(): SurfaceConfig {
   return {
     enabled: false,
     effect: 'border-beam',
     borderBeam: { ...DEFAULT_BORDER_BEAM_CONFIG },
-    particles: { ...DEFAULT_PARTICLE_CONFIG }
+    particles: { ...DEFAULT_PARTICLE_CONFIG },
+    burst: { ...DEFAULT_BURST_CONFIG }
   }
 }
 

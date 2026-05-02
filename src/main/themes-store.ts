@@ -6,6 +6,7 @@ import Store from 'electron-store'
 import {
   DEFAULT_BORDER_BEAM_CONFIG,
   DEFAULT_PARTICLE_CONFIG,
+  DEFAULT_BURST_CONFIG,
   defaultThemesState,
   defaultThemeDevPresetsState,
   defaultSurfaceConfig,
@@ -56,6 +57,10 @@ export function getThemesState(): ThemesState {
       ...DEFAULT_PARTICLE_CONFIG,
       ...(cur.particles ?? {})
     }
+    const backfilledBurst: SurfaceConfig['burst'] = {
+      ...DEFAULT_BURST_CONFIG,
+      ...(cur.burst ?? {})
+    }
     const beamMissing =
       cur.borderBeam == null ||
       Object.keys(backfilledBeam).some(
@@ -66,11 +71,17 @@ export function getThemesState(): ThemesState {
       Object.keys(backfilledParticles).some(
         (k) => (cur.particles as Record<string, unknown> | undefined)?.[k] === undefined
       )
-    if (beamMissing || particlesMissing) {
+    const burstMissing =
+      cur.burst == null ||
+      Object.keys(backfilledBurst).some(
+        (k) => (cur.burst as Record<string, unknown> | undefined)?.[k] === undefined
+      )
+    if (beamMissing || particlesMissing || burstMissing) {
       surfaces[id] = {
         ...cur,
         borderBeam: backfilledBeam,
-        particles: backfilledParticles
+        particles: backfilledParticles,
+        burst: backfilledBurst
       }
       mutated = true
     }

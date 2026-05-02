@@ -167,6 +167,7 @@ export function ThemeDevPanel() {
   const config = surfaces[selectedSurface] ?? defaultSurfaceConfig()
   const c = config.borderBeam
   const p = config.particles
+  const b = config.burst
 
   const update = (patch: Partial<SurfaceConfig['borderBeam']>) => {
     void setSurfaceConfig(selectedSurface, {
@@ -178,6 +179,12 @@ export function ThemeDevPanel() {
     void setSurfaceConfig(selectedSurface, {
       ...config,
       particles: { ...p, ...patch }
+    })
+  }
+  const updateBurst = (patch: Partial<SurfaceConfig['burst']>) => {
+    void setSurfaceConfig(selectedSurface, {
+      ...config,
+      burst: { ...b, ...patch }
     })
   }
 
@@ -577,6 +584,35 @@ export function ThemeDevPanel() {
               options={['inside', 'edges'] as const}
               onChange={(v) => updateParticles({ spawn: v })}
             />
+          </div>
+        </Section>
+
+        {/* Burst-and-fade timing — drives both beam and particles in pulses. */}
+        <Section title="Burst mode (auto pulse)">
+          <ToggleRow
+            label="Enable burst pulsing"
+            on={b.enabled}
+            onToggle={() => updateBurst({ enabled: !b.enabled })}
+          />
+          <Slider
+            label="On duration (ms) — beam visible"
+            value={b.onMs}
+            min={100}
+            max={6000}
+            step={50}
+            onChange={(v) => updateBurst({ onMs: v })}
+          />
+          <Slider
+            label="Off duration (ms) — quiet between bursts"
+            value={b.offMs}
+            min={0}
+            max={6000}
+            step={50}
+            onChange={(v) => updateBurst({ offMs: v })}
+          />
+          <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] mt-1">
+            Cycle drives the surface's active state — beam fade and particle
+            mount/unmount both follow.
           </div>
         </Section>
 

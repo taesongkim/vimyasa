@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { BorderBeam } from '../../lib/border-beam-fork/BorderBeam'
 import { defaultPaletteHex } from '../../lib/border-beam-fork/palettes'
 import { ParticleLayer } from './ParticleLayer'
@@ -101,7 +101,35 @@ export function GlowSurface({
   const surfaceConfig = useThemesStore((s) => s.surfaces[surface])
   const hydrated = useThemesStore((s) => s.hydrated)
 
-  const active = hydrated && masterEnabled && (surfaceConfig?.enabled ?? false)
+  const baseActive = hydrated && masterEnabled && (surfaceConfig?.enabled ?? false)
+  const burst = surfaceConfig?.burst
+  const burstEnabled = baseActive && (burst?.enabled ?? false)
+
+  // Burst pulse: when enabled, toggles burstPulse between true/false on a
+  // setTimeout cycle. The beam's own fade-in/out animations carry the
+  // visual smoothing; we just flip `active` on schedule. When burst is
+  // off, burstPulse stays true so it's a no-op multiplier.
+  const [burstPulse, setBurstPulse] = useState(true)
+  useEffect(() => {
+    if (!burstEnabled || !burst) {
+      setBurstPulse(true)
+      return
+    }
+    let id: number | undefined
+    let on = true
+    setBurstPulse(true)
+    const tick = (): void => {
+      on = !on
+      setBurstPulse(on)
+      id = window.setTimeout(tick, on ? burst.onMs : burst.offMs)
+    }
+    id = window.setTimeout(tick, burst.onMs)
+    return () => {
+      if (id != null) window.clearTimeout(id)
+    }
+  }, [burstEnabled, burst?.onMs, burst?.offMs])
+
+  const active = baseActive && (!burstEnabled || burstPulse)
   const particles = surfaceConfig?.particles
   const showParticles = active && (particles?.enabled ?? false)
   const variantColors = surfaceConfig
@@ -117,7 +145,11 @@ export function GlowSurface({
     ) : null
 
   if (mode === 'overlay') {
-    if (!active) return null
+    // Mount the overlay whenever the surface is at least baseActive — burst
+    // off-cycles toggle the beam's `active` prop (smooth fade) but keep the
+    // overlay wrapper mounted so the fade animations run instead of the
+    // wrapper disappearing.
+    if (!baseActive) return null
     const c = surfaceConfig!.borderBeam
     return (
       <div
@@ -126,7 +158,7 @@ export function GlowSurface({
       >
         {renderBeam(
           c,
-          true,
+          active,
           <div style={{ width: '100%', height: '100%' }} />,
           null,
           { width: '100%', height: '100%' },
