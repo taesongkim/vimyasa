@@ -333,14 +333,6 @@ export function ThemeDevPanel() {
               onChange={(v) => update({ beamLength: v })}
             />
             <Slider
-              label="Beam edge inset (px) — 0 = at the edge, higher pulls inward"
-              value={c.beamInset}
-              min={0}
-              max={40}
-              step={0.5}
-              onChange={(v) => update({ beamInset: v })}
-            />
-            <Slider
               label="Strength (opacity multiplier)"
               value={c.strength}
               min={0}

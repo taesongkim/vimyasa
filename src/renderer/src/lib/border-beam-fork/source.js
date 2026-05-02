@@ -742,10 +742,10 @@ function ve(r) {
 [data-beam="${e}"][data-fading]::after {
   content: "";
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${g}px - var(--beam-inset, 0px));
+  inset: 0;
+  border-radius: ${g}px;
   padding: ${t}px;
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  clip-path: inset(0 round ${a}px);
   background: ${W},${h};
   -webkit-mask:
     ${__beamMask(e, beamLength)},
@@ -767,9 +767,9 @@ function ve(r) {
 [data-beam="${e}"][data-fading]::before {
   content: "";
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${a}px - var(--beam-inset, 0px));
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  inset: 0;
+  border-radius: ${a}px;
+  clip-path: inset(0 round ${a}px);
   background: ${X};
   box-shadow: inset 0 0 5px 1px ${$};
   -webkit-mask-image: ${F};
@@ -785,9 +785,9 @@ function ve(r) {
 [data-beam="${e}"] [data-beam-bloom] {
   display: none;
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${g}px - var(--beam-inset, 0px));
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  inset: 0;
+  border-radius: ${g}px;
+  clip-path: inset(0 round ${a}px);
   background: ${x};
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -930,10 +930,10 @@ function ye(r) {
 [data-beam="${e}"][data-fading]::after {
   content: "";
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${g}px - var(--beam-inset, 0px));
+  inset: 0;
+  border-radius: ${g}px;
   padding: ${t}px;
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  clip-path: inset(0 round ${a}px);
   background: ${W},${h};
   -webkit-mask:
     ${__beamMask(e, beamLength)},
@@ -955,8 +955,8 @@ function ye(r) {
 [data-beam="${e}"][data-fading]::before {
   content: "";
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${a}px - var(--beam-inset, 0px));
+  inset: 0;
+  border-radius: ${a}px;
   background: ${X};
   box-shadow: inset 0 0 9px 1px ${$};
   -webkit-mask-image:
@@ -972,16 +972,16 @@ function ye(r) {
   pointer-events: none;
   z-index: 1;
   opacity: calc(var(--beam-opacity-${e}) * ${H.toFixed(2)} * var(--beam-strength, 1));
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  clip-path: inset(0 round ${a}px);
   ${k}
 }
 
 [data-beam="${e}"] [data-beam-bloom] {
   display: none;
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${g}px - var(--beam-inset, 0px));
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  inset: 0;
+  border-radius: ${g}px;
+  clip-path: inset(0 round ${a}px);
   background: ${x};
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -1126,10 +1126,10 @@ function we(r) {
 [data-beam="${e}"][data-fading]::after {
   content: "";
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${g}px - var(--beam-inset, 0px));
+  inset: 0;
+  border-radius: ${g}px;
   padding: ${t}px;
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  clip-path: inset(0 round ${a}px);
   background: ${W}, ${h};
   -webkit-mask:
     radial-gradient(
@@ -1157,8 +1157,8 @@ function we(r) {
 [data-beam="${e}"][data-fading]::before {
   content: "";
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${a}px - var(--beam-inset, 0px));
+  inset: 0;
+  border-radius: ${a}px;
   background: ${X};
   box-shadow: inset 0 0 9px 1px ${$};
   -webkit-mask-image:
@@ -1180,16 +1180,16 @@ function we(r) {
   pointer-events: none;
   z-index: 1;
   opacity: calc(var(--beam-opacity-${e}) * var(--beam-edge-${e}) * ${H.toFixed(2)} * var(--beam-strength, 1));
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  clip-path: inset(0 round ${a}px);
   ${k}
 }
 
 [data-beam="${e}"] [data-beam-bloom] {
   display: none;
   position: absolute;
-  inset: var(--beam-inset, 0px);
-  border-radius: calc(${g}px - var(--beam-inset, 0px));
-  clip-path: inset(var(--beam-inset, 0px) round calc(${a}px - var(--beam-inset, 0px)));
+  inset: 0;
+  border-radius: ${g}px;
+  clip-path: inset(0 round ${a}px);
   padding: 0;
   -webkit-mask: radial-gradient(
     ellipse calc(84px * var(--beam-w-${e})) calc(110px * var(--beam-h-${e})) at calc(var(--beam-x-${e}) * 100%) 100%,

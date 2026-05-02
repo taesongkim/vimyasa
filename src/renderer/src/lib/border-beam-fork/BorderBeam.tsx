@@ -297,12 +297,14 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
     // — we leave the upper end open so the dev panel can over-drive.
     const mergedStyle: CSSProperties = {
       ...(style ?? {}),
-      ['--beam-strength' as string]: Math.max(0, strength),
-      // beam-inset CSS variable consumed by source.js's pseudo-element
-      // rules (inset, border-radius, clip-path) so we can tighten/loosen
-      // the beam without regenerating all the CSS templates.
-      ['--beam-inset' as string]: `${Math.max(0, beamInset)}px`
+      ['--beam-strength' as string]: Math.max(0, strength)
     }
+    // beamInset is currently a no-op — schema field kept so older presets
+    // load cleanly, but the CSS-variable wiring it depended on caused
+    // visual regressions and is reverted. We'll re-introduce as a
+    // "glow depth inward" knob via a different mechanism (radial-gradient
+    // softness on the inner layer rather than inset/clip-path surgery).
+    void beamInset
 
     return (
       <>
