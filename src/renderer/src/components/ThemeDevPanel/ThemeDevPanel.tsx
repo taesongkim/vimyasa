@@ -414,6 +414,101 @@ export function ThemeDevPanel() {
           </div>
         </Section>
 
+        {/* Extra beams: stacked secondary rotations layered on top of the
+            primary beam. Each has its own duration / beamLength / strength
+            but inherits variant + palette so the family stays coherent. */}
+        <Section title={`Extra beams (${c.extraBeams.length}/3)`}>
+          <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] mb-1">
+            Up to 3 stacked rotating layers; each at its own speed + length.
+            Variant + palette + colors are inherited from the primary above.
+          </div>
+          <button
+            className="px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-40"
+            disabled={c.extraBeams.length >= 3}
+            onClick={() =>
+              update({
+                extraBeams: [
+                  ...c.extraBeams,
+                  {
+                    enabled: true,
+                    duration: 2.4,
+                    beamLength: 28,
+                    strength: 1
+                  }
+                ]
+              })
+            }
+          >
+            + Add beam layer
+          </button>
+          <div className="flex flex-col gap-2 mt-1">
+            {c.extraBeams.map((eb, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-0.5 p-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
+              >
+                <div className="flex items-center justify-between">
+                  <ToggleRow
+                    label={`Beam ${i + 1}`}
+                    on={eb.enabled}
+                    onToggle={() => {
+                      const next = [...c.extraBeams]
+                      next[i] = { ...eb, enabled: !eb.enabled }
+                      update({ extraBeams: next })
+                    }}
+                  />
+                  <button
+                    className="ml-2 px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-amber)] hover:bg-[var(--hover-highlight)] transition-default"
+                    onClick={() => {
+                      const next = c.extraBeams.filter((_, j) => j !== i)
+                      update({ extraBeams: next })
+                    }}
+                    title="Remove this beam"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <Slider
+                  label="Duration (s)"
+                  value={eb.duration}
+                  min={0.5}
+                  max={8}
+                  step={0.1}
+                  onChange={(v) => {
+                    const next = [...c.extraBeams]
+                    next[i] = { ...eb, duration: v }
+                    update({ extraBeams: next })
+                  }}
+                />
+                <Slider
+                  label="Beam length (% of perimeter)"
+                  value={eb.beamLength}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onChange={(v) => {
+                    const next = [...c.extraBeams]
+                    next[i] = { ...eb, beamLength: v }
+                    update({ extraBeams: next })
+                  }}
+                />
+                <Slider
+                  label="Strength"
+                  value={eb.strength}
+                  min={0}
+                  max={5}
+                  step={0.05}
+                  onChange={(v) => {
+                    const next = [...c.extraBeams]
+                    next[i] = { ...eb, strength: v }
+                    update({ extraBeams: next })
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </Section>
+
         {/* Per-blob color editing for the rotating beam. The package picks
             from a 9-blob palette per variant; here you can swap any blob's
             color. Position and size are inherited from the variant. */}

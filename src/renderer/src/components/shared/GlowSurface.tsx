@@ -3,7 +3,12 @@ import { BorderBeam } from '../../lib/border-beam-fork/BorderBeam'
 import { paletteBlobsWithOverride } from '../../lib/border-beam-fork/palettes'
 import { ParticleLayer } from './ParticleLayer'
 import { useThemesStore } from '../../store/themesStore'
-import { DEFAULT_BORDER_BEAM_CONFIG, type SurfaceId, type SurfaceConfig } from '@shared/themes'
+import {
+  DEFAULT_BORDER_BEAM_CONFIG,
+  type SurfaceId,
+  type SurfaceConfig,
+  type ExtraBeam
+} from '@shared/themes'
 
 interface GlowSurfaceProps {
   surface: SurfaceId
@@ -130,6 +135,46 @@ export function GlowSurface({
       )
     : []
 
+  // Extra beams: stacked sibling BorderBeams with independent
+  // duration / beamLength / strength but the primary's variant + palette.
+  // Each renders into the primary's wrapper via the overlay slot, sized
+  // absolute inset:0 so it shares the wrapper's geometry exactly. Streaks
+  // overlap and rotate independently.
+  const extraBeams: ExtraBeam[] = baseActive ? surfaceConfig?.borderBeam.extraBeams ?? [] : []
+  const renderedExtraBeams = extraBeams
+    .filter((eb) => eb.enabled)
+    .map((eb, i) => {
+      const cfg = surfaceConfig!.borderBeam
+      return (
+        <BorderBeam
+          key={`extra-${i}`}
+          active={active}
+          size={cfg.size}
+          colorVariant={cfg.colorVariant}
+          theme="dark"
+          duration={eb.duration}
+          beamLength={eb.beamLength}
+          strength={eb.strength}
+          brightness={cfg.brightness}
+          saturation={cfg.saturation}
+          hueRange={cfg.hueRange}
+          staticColors={cfg.staticColors}
+          borderRadius={cfg.borderRadius}
+          borderWidth={cfg.borderWidth}
+          strokeOpacity={cfg.strokeOpacity}
+          innerOpacity={cfg.innerOpacity}
+          bloomOpacity={cfg.bloomOpacity}
+          innerShadow={cfg.innerShadow}
+          glowDepth={cfg.glowDepth}
+          whiteSheen={cfg.whiteSheen}
+          paletteOverride={cfg.paletteOverride}
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+        >
+          <div style={{ width: '100%', height: '100%' }} />
+        </BorderBeam>
+      )
+    })
+
   // Particle composition. When threeLayers is on, render one ParticleLayer
   // per enabled sub-layer with its own blur + opacity (CSS filter on the
   // canvas, runs in the GPU compositor) — the count is split across enabled
@@ -164,6 +209,16 @@ export function GlowSurface({
     }
   }
 
+  // Combined overlay slot — extras render BEHIND the primary's pseudo-elements
+  // visually (rendered first inside the wrapper), particles on top of those.
+  const innerOverlay =
+    renderedExtraBeams.length > 0 || particleLayer ? (
+      <>
+        {renderedExtraBeams}
+        {particleLayer}
+      </>
+    ) : null
+
   if (mode === 'overlay') {
     if (!baseActive) return null
     const c = surfaceConfig!.borderBeam
@@ -176,11 +231,10 @@ export function GlowSurface({
           c,
           active,
           <div style={{ width: '100%', height: '100%' }} />,
-          null,
+          innerOverlay,
           { width: '100%', height: '100%' },
           className
         )}
-        {particleLayer}
       </div>
     )
   }
@@ -195,5 +249,5 @@ export function GlowSurface({
     return <>{children}</>
   }
   const c = surfaceConfig!.borderBeam
-  return renderBeam(c, active, children, particleLayer, style, className)
+  return renderBeam(c, active, children, innerOverlay, style, className)
 }

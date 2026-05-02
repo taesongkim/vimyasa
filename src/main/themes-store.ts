@@ -51,7 +51,13 @@ export function getThemesState(): ThemesState {
     const cur = surfaces[id]
     const backfilledBeam: SurfaceConfig['borderBeam'] = {
       ...DEFAULT_BORDER_BEAM_CONFIG,
-      ...(cur.borderBeam ?? {})
+      ...(cur.borderBeam ?? {}),
+      // extraBeams is an array — preserve user's saved layers when present,
+      // otherwise default to empty (single-beam, matches upstream).
+      extraBeams:
+        (cur.borderBeam as Record<string, unknown> | undefined)?.extraBeams !== undefined
+          ? (cur.borderBeam as SurfaceConfig['borderBeam']).extraBeams
+          : DEFAULT_BORDER_BEAM_CONFIG.extraBeams
     }
     const backfilledParticles: SurfaceConfig['particles'] = {
       ...DEFAULT_PARTICLE_CONFIG,

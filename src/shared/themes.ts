@@ -91,6 +91,23 @@ export interface BorderBeamConfig {
    *  that slot. Position and size inherit from the variant — only color
    *  is editable from the dev panel. Undefined = no override applied. */
   paletteOverride?: (string | null)[]
+  /** Stacked secondary beams (up to 3) layered on top of the primary, each
+   *  with its own rotation duration, beam length, and strength. They share
+   *  the primary's color variant + palette so the family stays coherent;
+   *  use them to make multiple streaks meet and diverge at different rates.
+   *  Empty array = single-beam (default). */
+  extraBeams: ExtraBeam[]
+}
+
+export interface ExtraBeam {
+  enabled: boolean
+  /** Rotation period in seconds — independent of the primary's duration. */
+  duration: number
+  /** Streak coverage 0–100 (% of perimeter). Mirrors the primary's
+   *  beamLength but per-layer. */
+  beamLength: number
+  /** Opacity multiplier 0–N applied via --beam-strength on this layer. */
+  strength: number
 }
 
 // One configured effect stack per surface. The border beam is the primary
@@ -197,7 +214,8 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   beamLength: 28,
   beamInset: 0,
   glowDepth: 1,
-  whiteSheen: 1
+  whiteSheen: 1,
+  extraBeams: []
 }
 
 // Defaults tuned for fine pixel-dust: minSize 0.5 ≈ one device pixel on a
