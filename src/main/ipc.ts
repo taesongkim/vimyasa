@@ -144,6 +144,18 @@ export function registerIpcHandlers(): void {
       'comments',
       store.get('comments').filter((c) => !itemIds.includes(c.itemId))
     )
+    // Auto-unbind any custom global shortcut that targeted this list.
+    // Without this the shortcut's accelerator stays registered with a
+    // dangling targetId — pressing it would either no-op (openList) or
+    // open whichever list happens to be "first" (quickAddFixed fallback).
+    // Drop those shortcuts from the store and re-register so the
+    // accelerator is freed up immediately.
+    const shortcuts = store.get('shortcuts')
+    const remainingShortcuts = shortcuts.filter((s) => s.targetId !== id)
+    if (remainingShortcuts.length !== shortcuts.length) {
+      store.set('shortcuts', remainingShortcuts)
+      refreshUserShortcuts()
+    }
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
   })
