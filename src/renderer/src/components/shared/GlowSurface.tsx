@@ -129,10 +129,39 @@ export function GlowSurface({
       )
     : []
 
-  const particleLayer =
-    showParticles && particles ? (
-      <ParticleLayer config={particles} paletteBlobs={paletteBlobs} />
-    ) : null
+  // Particle composition. When threeLayers is on, render one ParticleLayer
+  // per enabled sub-layer with its own blur + opacity (CSS filter on the
+  // canvas, runs in the GPU compositor) — the count is split across enabled
+  // layers so total on-screen population matches `count`. When off, a
+  // single ParticleLayer with default blur=0 opacity=1.
+  let particleLayer: ReactNode = null
+  if (showParticles && particles) {
+    if (particles.threeLayers) {
+      const enabledLayers = particles.layers.filter((l) => l.enabled)
+      const perLayerCount =
+        enabledLayers.length > 0
+          ? Math.round(particles.count / enabledLayers.length)
+          : 0
+      particleLayer = (
+        <>
+          {particles.layers.map((layer, i) =>
+            layer.enabled ? (
+              <ParticleLayer
+                key={i}
+                config={particles}
+                paletteBlobs={paletteBlobs}
+                blur={layer.blur}
+                opacity={layer.opacity}
+                countOverride={perLayerCount}
+              />
+            ) : null
+          )}
+        </>
+      )
+    } else {
+      particleLayer = <ParticleLayer config={particles} paletteBlobs={paletteBlobs} />
+    }
+  }
 
   if (mode === 'overlay') {
     if (!baseActive) return null
