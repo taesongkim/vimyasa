@@ -19,7 +19,7 @@ const api: VimyasaAPI = {
   deleteList: (id) => ipcRenderer.invoke('deleteList', id),
 
   // Items
-  createItem: (listId, text) => ipcRenderer.invoke('createItem', listId, text),
+  createItem: (listId, text, clientId) => ipcRenderer.invoke('createItem', listId, text, clientId),
   updateItem: (id, updates) => ipcRenderer.invoke('updateItem', id, updates),
   deleteItem: (id) => ipcRenderer.invoke('deleteItem', id),
   setItemStatus: (id, status) => ipcRenderer.invoke('setItemStatus', id, status),

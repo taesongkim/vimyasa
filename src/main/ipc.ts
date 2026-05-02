@@ -140,7 +140,7 @@ export function registerIpcHandlers(): void {
   })
 
   // ── Items ───────────────────────────────────────────────────────
-  ipcMain.handle('createItem', (e, listId: string, text: string): Item => {
+  ipcMain.handle('createItem', (e, listId: string, text: string, clientId?: string): Item => {
     const items = store.get('items')
     // Use max(sortOrder) + 1 over *all* items in the list (including
     // archived) rather than the visible count. Archived items keep their
@@ -151,7 +151,13 @@ export function registerIpcHandlers(): void {
     const nextSortOrder =
       allInList.length > 0 ? Math.max(...allInList.map((i) => i.sortOrder)) + 1 : 0
     const item: Item = {
-      id: uuid(),
+      // Accept the renderer's client-side id when present. The optimistic
+      // addItem in useStore generates a uuid so the new ItemRow can mount
+      // immediately; reusing it here means the persisted item ends up
+      // with the same id, so React's reconciliation doesn't see a
+      // temp-id-→-real-id swap (which would otherwise cause an
+      // AnimatePresence exit/enter flash on the optimistic row).
+      id: clientId ?? uuid(),
       listId,
       text,
       status: 'active',

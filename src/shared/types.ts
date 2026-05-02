@@ -90,7 +90,7 @@ export interface VimyasaAPI {
   deleteList: (id: string) => Promise<void>
 
   // Items
-  createItem: (listId: string, text: string) => Promise<Item>
+  createItem: (listId: string, text: string, clientId?: string) => Promise<Item>
   updateItem: (id: string, updates: Partial<Pick<Item, 'text' | 'status' | 'listId' | 'sortOrder' | 'archivedAt'>>) => Promise<Item>
   deleteItem: (id: string) => Promise<void>
   setItemStatus: (id: string, status: ItemStatus) => Promise<Item>

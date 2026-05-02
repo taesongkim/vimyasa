@@ -186,22 +186,25 @@ export function ItemRow({
     <motion.div
       ref={setNodeRef}
       style={style}
-      // Keep layout=true so reorder/archive/delete still animate smoothly.
-      // While editing, override the layout-transition duration to 0 — the
-      // textarea grows/shrinks with content via useLayoutEffect, and we
-      // don't want Framer's 150ms spring on the row to lag behind the
-      // textarea (which produced the visible squish on growth and stretch
-      // on shrink). layout="position" alone wasn't enough; some height
-      // animation slipped through. Explicit duration:0 on layout closes it.
-      layout
-      initial={{ opacity: 0, x: -12 }}
+      // No `layout` prop — Framer Motion's layout system was leaving
+      // stale state on surviving siblings after sequential AnimatePresence
+      // exits, producing visible "frozen" rows and phantom scroll space
+      // after the second+ archive on a window. The exit animation
+      // (slide+fade on the archived item) still runs because it's
+      // driven by `exit` below, not `layout`. Sibling reflow on
+      // archive/delete now happens via natural CSS flow — items snap
+      // to their new positions instead of springing. Reorder via drag
+      // is still animated because @dnd-kit/sortable applies its own
+      // CSS transition through the `style` prop above.
+      //
+      // initial={false} skips Framer's initial → animate transition
+      // entirely. Items appear in their final position with no fade-in
+      // and no horizontal slide — matches the in-place feel of
+      // entering/exiting edit mode on an existing item.
+      initial={false}
       animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
-      transition={{
-        duration: 0.15,
-        delay: index * 0.02,
-        layout: editing ? { duration: 0 } : undefined
-      }}
+      transition={{ duration: 0.15 }}
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
@@ -235,7 +238,7 @@ export function ItemRow({
           <textarea
             ref={inputRef}
             rows={1}
-            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)] resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
+            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
             style={{ lineHeight: '1.5rem' }}
             value={text}
             onChange={(e) => setText(e.target.value.replace(/\n/g, ' '))}
@@ -267,11 +270,20 @@ export function ItemRow({
         )}
       </div>
 
-      {/* Hover actions — always rendered, opacity-reveal on hover */}
+      {/* Hover actions — always rendered, opacity-reveal on hover.
+          During edit, hold them at a slightly higher dim than the
+          resting state (0.55 vs 0.3) so the user can still see them
+          alongside the textarea without them competing with the focus. */}
       <div
         className="flex items-center gap-1 shrink-0 transition-default"
         style={{
-          opacity: showCopyConfirmation ? 0.2 : (hovered && !editing ? 1 : 0.3),
+          opacity: showCopyConfirmation
+            ? 0.2
+            : hovered && !editing
+              ? 1
+              : editing
+                ? 0.55
+                : 0.3,
           pointerEvents: hovered && !editing ? 'auto' : 'none'
         }}
       >
@@ -314,11 +326,19 @@ export function ItemRow({
         </button>
       </div>
 
-      {/* Drag handle — opacity-reveal */}
+      {/* Drag handle — opacity-reveal. Same idea as the actions: bumped
+          slightly higher during edit (0.45 vs 0.2) so the user can see
+          it without it being a focal element. */}
       <div
         className="no-drag cursor-grab active:cursor-grabbing text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-default self-center"
         style={{
-          opacity: showCopyConfirmation ? 0.2 : (hovered && !editing ? 1 : 0.2),
+          opacity: showCopyConfirmation
+            ? 0.2
+            : hovered && !editing
+              ? 1
+              : editing
+                ? 0.45
+                : 0.2,
           pointerEvents: hovered && !editing ? 'auto' : 'none'
         }}
         {...attributes}

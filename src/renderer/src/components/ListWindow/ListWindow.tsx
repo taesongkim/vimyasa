@@ -19,11 +19,11 @@ import { useKeyboard } from '../../hooks/useKeyboard'
 import { TitleBar } from './TitleBar'
 import { type FilterType } from './FilterBar'
 import { ItemRow } from './ItemRow'
-import { AddRow, type AddRowHandle } from './AddRow'
+import { DraftItemRow } from './DraftItemRow'
 import type { Item, ItemStatus } from '../../../../../shared/types'
 
 export function ListWindow({ listId: initialListId }: { listId: string }) {
-  const { items, lists, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
+  const { items, lists, addItem, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
     useStore()
 
   const [activeListId, setActiveListId] = useState(initialListId)
@@ -31,9 +31,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const [focusIndex, setFocusIndex] = useState(-1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
+  // Whether a new-item draft row is currently active at the bottom of the
+  // list. Toggled by the `n` shortcut and the "+ Add item" toolbar button.
+  // Save-vs-discard is handled inside DraftItemRow on Enter / blur / Esc /
+  // Tab; this flag just controls whether the row is rendered.
+  const [isAddingItem, setIsAddingItem] = useState(false)
   const focusedItemCopyFnRef = useRef<(() => void) | null>(null)
   const cycleTargetRef = useRef<string | null>(null)
-  const addRowRef = useRef<AddRowHandle>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Custom scrollbar state
@@ -158,14 +162,31 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   //      at the time this runs — the React re-render that filters out the removed
   //      item happens after the current event handler returns.
   //   2. Force DOM focus back to body. When the focused row unmounts, Electron
-  //      sometimes hands DOM focus to the next focusable sibling (typically the
-  //      AddRow input) instead of falling back to body. If that happens, the
-  //      window-level keyboard handler bails out on every subsequent keypress
-  //      because it ignores keys when an input/textarea/contentEditable is focused
-  //      — meaning j/k/a appear to silently stop working.
+  //      sometimes hands DOM focus to the next focusable sibling (e.g. an open
+  //      DraftItemRow textarea or the toolbar's "+ Add item" button) instead
+  //      of falling back to body. If that happens, the window-level keyboard
+  //      handler bails out on every subsequent keypress because it ignores
+  //      keys when an input/textarea/contentEditable is focused — meaning
+  //      j/k/a appear to silently stop working.
   const handlePostDestructive = useCallback(() => {
     setFocusIndex((i) => Math.min(i, listItems.length - 2))
     ;(document.activeElement as HTMLElement | null)?.blur?.()
+  }, [listItems.length])
+
+  // After the visible list shrinks (archive, delete, filter change), if
+  // the scroll position now points past the bottom of the content,
+  // smooth-scroll up to compact the view. Without this, the user is
+  // left with empty scrollable space below the last item — annoying
+  // when they archive several items at the bottom and the viewport
+  // doesn't follow. Smooth (vs instant) so the adjustment feels like a
+  // deliberate pull-up rather than a snap.
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const maxScrollTop = Math.max(0, el.scrollHeight - el.clientHeight)
+    if (el.scrollTop > maxScrollTop) {
+      el.scrollTo({ top: maxScrollTop, behavior: 'smooth' })
+    }
   }, [listItems.length])
 
   // Clear copy function when focus changes
@@ -290,6 +311,65 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     [listItems, activeListId, reorder]
   )
 
+  // List-cycle helper. Used by Tab in the empty list area and Tab inside
+  // the draft row's textarea (where the parent's keyboard listener doesn't
+  // fire because focus is in a text input).
+  const cycleToNextList = useCallback(() => {
+    const idx = sortedLists.findIndex((l) => l.id === activeListId)
+    if (sortedLists.length > 1 && cyclePhase === 'idle') {
+      const nextList = sortedLists[(idx + 1) % sortedLists.length]
+      cycleTargetRef.current = nextList.id
+      setCyclePhase('out')
+    }
+  }, [sortedLists, activeListId, cyclePhase])
+
+  // Draft handlers. The DraftItemRow owns the textarea + UX; the list
+  // window owns persistence (addItem) and the visibility flag.
+  const startDraft = useCallback(() => {
+    setIsAddingItem(true)
+  }, [])
+
+  const commitDraft = useCallback(
+    (text: string) => {
+      // Empty text reaches here when DraftItemRow's commit logic decided
+      // there's nothing to save (e.g. blur with empty content). DraftItemRow
+      // calls onDiscard in that path, not onSave; this guard is a belt
+      // against any future caller that forgets to trim.
+      //
+      // addItem is optimistic — it inserts the new Item synchronously
+      // before awaiting IPC. Together with the synchronous
+      // setIsAddingItem(false) below, React batches both state changes
+      // into a single render: the draft unmounts AND the new item
+      // appears in the same frame, so there's no intermediate "draft
+      // gone, new item not yet rendered" state for the browser to
+      // clamp scrollTop on or for Framer Motion to read as a layout
+      // change.
+      if (text) {
+        void addItem(activeListId, text)
+      }
+      setIsAddingItem(false)
+    },
+    [addItem, activeListId]
+  )
+
+  const discardDraft = useCallback(() => {
+    setIsAddingItem(false)
+  }, [])
+
+  // Tab from inside the draft textarea: commit-or-discard, then cycle to
+  // the next list. The parent's onTab in useKeyboard doesn't fire while
+  // focus is in a text input, so we route Tab through here explicitly.
+  const handleDraftTab = useCallback(
+    (text: string) => {
+      if (text) {
+        void addItem(activeListId, text)
+      }
+      setIsAddingItem(false)
+      cycleToNextList()
+    },
+    [addItem, activeListId, cycleToNextList]
+  )
+
   // Keyboard navigation
   useKeyboard({
     onArrowUp: () => {
@@ -360,7 +440,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         handlePostDestructive()
       }
     },
-    onN: () => addRowRef.current?.focus(),
+    onN: startDraft,
     onEscape: () => {
       // While the onboarding tour is running, Escape is a one-shot exit
       // for the tour itself — easier than hunting for the dismiss X on
@@ -403,14 +483,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onNumber7: () => switchToListByNumber(7),
     onNumber8: () => switchToListByNumber(8),
     onNumber9: () => switchToListByNumber(9),
-    onTab: () => {
-      const idx = sortedLists.findIndex((l) => l.id === activeListId)
-      if (sortedLists.length > 1 && cyclePhase === 'idle') {
-        const nextList = sortedLists[(idx + 1) % sortedLists.length]
-        cycleTargetRef.current = nextList.id
-        setCyclePhase('out')
-      }
-    }
+    onTab: cycleToNextList
   })
 
   // Custom scrollbar event listeners
@@ -539,9 +612,21 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
             </AnimatePresence>
           </SortableContext>
         </DndContext>
+
+        {/* Draft row for new-item creation. Rendered at the end of the
+            list (inside the scroll area) so it scrolls into view as it
+            grows. Lives outside SortableContext because it has no id-on-
+            disk to reorder against. */}
+        {isAddingItem && (
+          <DraftItemRow
+            onSave={commitDraft}
+            onDiscard={discardDraft}
+            onTab={handleDraftTab}
+          />
+        )}
         </div>
 
-        {listItems.length === 0 && (
+        {listItems.length === 0 && !isAddingItem && (
           <div className="flex items-center justify-center h-20 text-[color:var(--color-text-muted)] text-[length:var(--font-size-base)]">
             {filter === 'all' ? 'No items yet. Press N to add one.' : `No ${filter} items.`}
           </div>
@@ -549,7 +634,19 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
       </div>
 
-      <AddRow ref={addRowRef} listId={activeListId} />
+      {/* Bottom toolbar — replaces the old AddRow input field. Designed
+          as a flex container so future actions can sit alongside the
+          add-item button without restructuring. */}
+      <div className="flex items-center gap-1 px-2 py-1.5 border-t border-[var(--color-border)]">
+        <button
+          className="no-drag flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          onClick={startDraft}
+          title="Add item (N)"
+        >
+          <span className="text-[length:var(--font-size-md)]">+</span>
+          <span>Add item</span>
+        </button>
+      </div>
 
       {/* Custom scrollbar - positioned outside scroll container but aligned to it */}
       {scrollbarVisible && (
