@@ -10,6 +10,7 @@ import { ShortcutsOverview } from './components/ShortcutsOverview'
 import { CalloutWindow } from './components/Onboarding/CalloutWindow'
 import { DimOverlay } from './components/Onboarding/DimOverlay'
 import { GlowSurface } from './components/shared/GlowSurface'
+import { ThemeDevPanel } from './components/ThemeDevPanel/ThemeDevPanel'
 
 interface RouteInfo {
   route: string
@@ -43,6 +44,9 @@ function parseHash(): RouteInfo {
   }
   if (parts[1] === 'onboarding') {
     return { route: 'onboarding', params: {} }
+  }
+  if (parts[1] === 'themedev') {
+    return { route: 'themedev', params: {} }
   }
   if (parts[1] === 'onboarding-dim') {
     return { route: 'onboarding-dim', params: {} }
@@ -105,6 +109,11 @@ export default function App() {
   }
   if (route.route === 'onboarding-dim') {
     return <DimOverlay />
+  }
+  // Theme dev panel needs no data hydration — it reads from the themes
+  // store only (which hydrates from main on its own).
+  if (route.route === 'themedev') {
+    return <ThemeDevPanel />
   }
 
   if (!hydrated) {

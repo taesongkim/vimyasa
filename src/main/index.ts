@@ -1,8 +1,9 @@
 import { app, nativeTheme } from 'electron'
-import { electronApp, optimizer } from '@electron-toolkit/utils'
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipc'
 import { registerWindowIpcHandlers, wireOnboardingHosts } from './windows'
 import { createTray } from './tray'
+import { registerThemeDevPanelHandlers } from './theme-dev-panel'
 import {
   registerGlobalShortcuts,
   unregisterAllShortcuts,
@@ -33,6 +34,13 @@ app.whenReady().then(() => {
   // Register all IPC handlers before any windows are created
   registerIpcHandlers()
   registerWindowIpcHandlers()
+
+  // Replace the theme-dev-panel stub handlers with real implementations
+  // in dev builds only. Production builds keep the throwing stubs from
+  // ipc.ts so the panel surface area stays inert.
+  if (is.dev) {
+    registerThemeDevPanelHandlers()
+  }
 
   // Wire the onboarding orchestrator's data sources before maybeRun() —
   // it needs to know which BrowserWindows are its hosts and which
