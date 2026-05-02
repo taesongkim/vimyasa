@@ -66,6 +66,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const list = lists.find((l) => l.id === activeListId)
   const listNumber = sortedLists.findIndex((l) => l.id === activeListId) + 1
 
+  // If the active list is deleted from somewhere else (Settings → Lists,
+  // a future tray action, etc.), this window has nothing left to show.
+  // Close it. Skip the empty-lists case during initial hydration so we
+  // don't close on first mount before the store has populated.
+  useEffect(() => {
+    if (lists.length > 0 && !lists.some((l) => l.id === activeListId)) {
+      window.api.closeWindow()
+    }
+  }, [lists, activeListId])
+
   // Flash the title-bar number when it changes because of a reorder, but not
   // when it changes because the user is actively switching lists. Bumping
   // numberFlashKey re-keys the span in TitleBar, which restarts the CSS
