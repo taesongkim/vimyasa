@@ -9,7 +9,8 @@ import {
   type SurfaceId,
   type SurfaceConfig,
   type ExtraBeam,
-  type ThemeEventName
+  type ThemeEventName,
+  type ThemeEventPayload
 } from '@shared/themes'
 
 interface GlowSurfaceProps {
@@ -26,6 +27,13 @@ interface GlowSurfaceProps {
    *  outer container without disturbing structural refs (e.g. dnd-kit
    *  setNodeRef on motion.div) or AnimatePresence exit transitions. */
   mode?: 'wrap' | 'overlay'
+  /** Optional metadata filter applied to triggered events. When set, the
+   *  surface only fires its trigger pulse if the incoming event payload
+   *  matches every defined field — e.g., passing `{ itemId: item.id }`
+   *  on a list-item GlowSurface scopes its 'item-status-changed' pulse
+   *  to that single row. Empty/undefined = match every event whose name
+   *  is in the surface's triggers.events list (current global behavior). */
+  eventFilter?: { itemId?: string }
   children?: ReactNode
   style?: CSSProperties
   className?: string
@@ -89,6 +97,7 @@ export function GlowSurface({
   surface,
   children,
   mode = 'wrap',
+  eventFilter,
   style,
   className
 }: GlowSurfaceProps) {
@@ -136,11 +145,20 @@ export function GlowSurface({
   const [triggered, setTriggered] = useState(false)
   const triggerTimeoutRef = useRef<number | undefined>(undefined)
 
+  // Filter primitive snapshot for the dep array — a stable string we can
+  // diff. Adding fields here is straightforward (e.g., listId later).
+  const filterItemId = eventFilter?.itemId ?? ''
+
   useEffect(() => {
     if (!triggersEnabled || triggerEvents.length === 0) return
     const matchSet = new Set<ThemeEventName>(triggerEvents)
-    const onEvent = (name: ThemeEventName): void => {
-      if (!matchSet.has(name)) return
+    const onEvent = (payload: ThemeEventPayload): void => {
+      if (!matchSet.has(payload.name)) return
+      // Metadata filter: when filterItemId is set, the event MUST carry a
+      // matching itemId. Events without an itemId never match a scoped
+      // surface — that's intentional so per-row surfaces don't pulse on
+      // unrelated unscoped events.
+      if (filterItemId && payload.itemId !== filterItemId) return
       setTriggered(true)
       if (triggerTimeoutRef.current != null) {
         window.clearTimeout(triggerTimeoutRef.current)
@@ -162,7 +180,7 @@ export function GlowSurface({
       setTriggered(false)
     }
     // Stringify events array so identity changes when the user edits it.
-  }, [triggersEnabled, triggerEvents.join('|'), triggerDurationMs])
+  }, [triggersEnabled, triggerEvents.join('|'), triggerDurationMs, filterItemId])
 
   // Effective active state combines all the gates:
   //  - baseActive must be true (master + per-surface enabled, hydrated)

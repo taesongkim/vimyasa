@@ -3,9 +3,9 @@
 // listeners (typically GlowSurface instances). Avoids each GlowSurface
 // installing its own ipcRenderer listener — one bridge, many subscribers.
 
-import type { ThemeEventName } from '@shared/themes'
+import type { ThemeEventPayload } from '@shared/themes'
 
-type Listener = (name: ThemeEventName) => void
+type Listener = (payload: ThemeEventPayload) => void
 
 class ThemeEventBus {
   private listeners = new Set<Listener>()
@@ -21,10 +21,10 @@ class ThemeEventBus {
   }
 
   /** Useful for non-React callsites (none today) and for tests. */
-  emit(name: ThemeEventName): void {
+  emit(payload: ThemeEventPayload): void {
     this.listeners.forEach((l) => {
       try {
-        l(name)
+        l(payload)
       } catch {
         // Swallow listener errors so one bad subscriber doesn't poison the rest.
       }
@@ -35,7 +35,7 @@ class ThemeEventBus {
     if (this.bridgeInstalled) return
     this.bridgeInstalled = true
     // Lazy: only attach the IPC listener when something actually subscribes.
-    this.removeBridge = window.api.themeEvents.onEvent((name) => this.emit(name))
+    this.removeBridge = window.api.themeEvents.onEvent((payload) => this.emit(payload))
   }
 
   /** Currently never called — the renderer lives for the window's lifetime

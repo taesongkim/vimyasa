@@ -18,7 +18,8 @@ import type {
   SurfaceId,
   ThemesState,
   ThemeDevPreset,
-  ThemeEventName
+  ThemeEventName,
+  ThemeEventPayload
 } from '../shared/themes'
 
 function now(): string {
@@ -48,11 +49,17 @@ function broadcastDataChanged(senderWebContentsId?: number): void {
 /** Fan a theme trigger event out to every renderer (including the sender) so
  *  GlowSurface instances on any window can pulse in response — e.g.,
  *  QuickAdd submitting fires on the list window too. Sender included so a
- *  surface in the SAME window as the action can also respond. */
-function broadcastThemeEvent(name: ThemeEventName): void {
+ *  surface in the SAME window as the action can also respond. Metadata
+ *  (e.g. itemId) lets per-row GlowSurface filter to its own item rather
+ *  than firing on every change in the list. */
+function broadcastThemeEvent(
+  name: ThemeEventName,
+  metadata?: Omit<ThemeEventPayload, 'name'>
+): void {
+  const payload: ThemeEventPayload = { name, ...metadata }
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) {
-      win.webContents.send('theme:event', { name })
+      win.webContents.send('theme:event', payload)
     }
   }
 }
@@ -206,7 +213,7 @@ export function registerIpcHandlers(): void {
     store.set('items', [...items, item])
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
-    broadcastThemeEvent('item-added')
+    broadcastThemeEvent('item-added', { itemId: item.id })
     // Notify the onboarding orchestrator — its 'capture-add' step counts
     // up to 3 successful adds before auto-advancing. Cheap when no tour is
     // active.
@@ -227,7 +234,7 @@ export function registerIpcHandlers(): void {
     // can target text edits specifically. Status changes flow through
     // setItemStatus and emit their own event there.
     if (typeof updates.text === 'string' && updates.text !== prev.text) {
-      broadcastThemeEvent('item-edit-committed')
+      broadcastThemeEvent('item-edit-committed', { itemId: id })
     }
     return items[idx]
   })
@@ -253,7 +260,7 @@ export function registerIpcHandlers(): void {
     store.set('items', items)
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
-    broadcastThemeEvent('item-status-changed')
+    broadcastThemeEvent('item-status-changed', { itemId: id })
     return items[idx]
   })
 

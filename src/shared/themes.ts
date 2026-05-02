@@ -138,6 +138,16 @@ export const THEME_EVENT_NAMES: readonly ThemeEventName[] = [
   'manual-test'
 ] as const
 
+/** Event payload broadcast over IPC. Optional metadata lets surfaces filter
+ *  to specific entities — e.g., a list-item GlowSurface can subscribe to
+ *  'item-status-changed' but only react when payload.itemId matches its
+ *  own row, so toggling one item's status pulses only that row instead of
+ *  every list-item GlowSurface in the window. */
+export interface ThemeEventPayload {
+  name: ThemeEventName
+  itemId?: string
+}
+
 /** When `enabled`, the surface becomes active only when one of `events`
  *  fires, and stays active for `durationMs` before fading out (the beam's
  *  own fade-in/out animations carry the visual smoothing). When `enabled`
@@ -367,9 +377,10 @@ export interface ThemesAPI {
 }
 
 export interface ThemeEventsAPI {
-  /** Subscribe to broadcasted theme events from the main process. Returns
+  /** Subscribe to broadcasted theme events from the main process. Receives
+   *  the full payload (name + optional metadata like itemId). Returns
    *  an unsubscribe function. */
-  onEvent: (callback: (name: ThemeEventName) => void) => () => void
+  onEvent: (callback: (payload: ThemeEventPayload) => void) => () => void
   /** Ask main to broadcast a named theme event — used by the dev panel's
    *  "Test fire" button. */
   fire: (name: ThemeEventName) => Promise<void>

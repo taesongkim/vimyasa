@@ -131,8 +131,8 @@ const api: VimyasaAPI = {
   themeEvents: {
     onEvent: (callback) => {
       const listener = (_e: unknown, payload: unknown): void => {
-        const p = payload as { name?: string } | null
-        if (p && typeof p.name === 'string') callback(p.name as never)
+        const p = payload as { name?: string; itemId?: string } | null
+        if (p && typeof p.name === 'string') callback(p as never)
       }
       ipcRenderer.on('theme:event', listener)
       return () => ipcRenderer.removeListener('theme:event', listener)

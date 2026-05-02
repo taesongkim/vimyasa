@@ -261,7 +261,7 @@ export function ItemRow({
           inserting a wrapper div that would break dnd-kit's setNodeRef
           chain or AnimatePresence's exit animations. The overlay is a
           pointer-events:none sibling — it never intercepts clicks. */}
-      <GlowSurface surface="list-item" mode="overlay" />
+      <GlowSurface surface="list-item" mode="overlay" eventFilter={{ itemId: item.id }} />
       {/* Content with baseline alignment */}
       <div className="flex items-baseline gap-1 flex-1 transition-opacity duration-150"
            style={{ opacity: showCopyConfirmation ? 0.2 : 1 }}>
