@@ -14,6 +14,36 @@
 //
 // @ts-nocheck
 /* eslint-disable */
+
+// Fork addition: lets the renderer dial the bright streak's perimeter
+// coverage continuously (0% = nothing, 28% = upstream default streak,
+// 100% = uniform full perimeter — beam visible everywhere). Replaces the
+// hardcoded conic-gradient mask that ran 52%-80% bright with fade zones
+// before/after. Center is held at 66% so the default visual matches the
+// upstream package; for L >= 95 we swap to a flat linear mask for true
+// full-perimeter coverage (avoids conic-gradient out-of-range stops).
+function __beamMask(e, L) {
+  const n = typeof L === 'number' ? L : 28
+  if (n >= 95) return `linear-gradient(#fff 0 0)`
+  const center = 66
+  const streakStart = Math.max(0, center - n / 2)
+  const streakEnd = Math.min(100, center + n / 2)
+  const fIn1 = Math.max(0, streakStart - 22)
+  const fIn2 = Math.max(0, streakStart - 16)
+  const fIn3 = Math.max(0, streakStart - 8)
+  const fOut1 = Math.min(100, streakEnd + 6)
+  const fOut2 = Math.min(100, streakEnd + 12)
+  const fOut3 = Math.min(100, streakEnd + 15)
+  return `conic-gradient(
+      from var(--beam-angle-${e}),
+      transparent 0%, transparent ${fIn1}%,
+      rgba(255, 255, 255, 0.1) ${fIn2}%, rgba(255, 255, 255, 0.35) ${fIn3}%,
+      white ${streakStart}%, white ${streakEnd}%,
+      rgba(255, 255, 255, 0.35) ${fOut1}%, rgba(255, 255, 255, 0.1) ${fOut2}%,
+      transparent ${fOut3}%, transparent 100%
+    )`
+}
+
 const ce = {
   sm: {
     borderRadius: 18,
@@ -579,7 +609,8 @@ function ve(r) {
     brightness: i,
     saturation: n,
     hueRange: l,
-    theme: Y
+    theme: Y,
+    beamLength
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
@@ -635,14 +666,7 @@ function ve(r) {
         rgba(0, 0, 0, 0.08) 75%,
         rgba(0, 0, 0, 0.02) 78%,
         transparent 82%
-      )`, F = `conic-gradient(
-    from var(--beam-angle-${e}),
-    transparent 0%, transparent 22%,
-    rgba(255, 255, 255, 0.12) 28%, rgba(255, 255, 255, 0.4) 36%,
-    white 46%, white 82%,
-    rgba(255, 255, 255, 0.4) 88%, rgba(255, 255, 255, 0.12) 94%,
-    transparent 97%, transparent 100%
-  )`;
+      )`, F = __beamMask(e, beamLength);
   return `
 @property --beam-angle-${e} {
   syntax: "<angle>";
@@ -684,26 +708,12 @@ function ve(r) {
   clip-path: inset(0 round ${a}px);
   background: ${W},${h};
   -webkit-mask:
-    conic-gradient(
-      from var(--beam-angle-${e}),
-      transparent 0%, transparent 30%,
-      rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0.35) 44%,
-      white 52%, white 80%,
-      rgba(255, 255, 255, 0.35) 86%, rgba(255, 255, 255, 0.1) 92%,
-      transparent 95%, transparent 100%
-    ),
+    ${__beamMask(e, beamLength)},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: source-in, xor;
   mask:
-    conic-gradient(
-      from var(--beam-angle-${e}),
-      transparent 0%, transparent 30%,
-      rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0.35) 44%,
-      white 52%, white 80%,
-      rgba(255, 255, 255, 0.35) 86%, rgba(255, 255, 255, 0.1) 92%,
-      transparent 95%, transparent 100%
-    ),
+    ${__beamMask(e, beamLength)},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: intersect, exclude;
@@ -786,7 +796,8 @@ function ye(r) {
     brightness: i,
     saturation: n,
     hueRange: l,
-    theme: Y
+    theme: Y,
+    beamLength
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
@@ -884,26 +895,12 @@ function ye(r) {
   clip-path: inset(0 round ${a}px);
   background: ${W},${h};
   -webkit-mask:
-    conic-gradient(
-      from var(--beam-angle-${e}),
-      transparent 0%, transparent 30%,
-      rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0.35) 44%,
-      white 52%, white 80%,
-      rgba(255, 255, 255, 0.35) 86%, rgba(255, 255, 255, 0.1) 92%,
-      transparent 95%, transparent 100%
-    ),
+    ${__beamMask(e, beamLength)},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: source-in, xor;
   mask:
-    conic-gradient(
-      from var(--beam-angle-${e}),
-      transparent 0%, transparent 30%,
-      rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0.35) 44%,
-      white 52%, white 80%,
-      rgba(255, 255, 255, 0.35) 86%, rgba(255, 255, 255, 0.1) 92%,
-      transparent 95%, transparent 100%
-    ),
+    ${__beamMask(e, beamLength)},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: intersect, exclude;
@@ -922,26 +919,12 @@ function ye(r) {
   background: ${X};
   box-shadow: inset 0 0 9px 1px ${$};
   -webkit-mask-image:
-    conic-gradient(
-      from var(--beam-angle-${e}),
-      transparent 0%, transparent 30%,
-      rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0.35) 44%,
-      white 52%, white 80%,
-      rgba(255, 255, 255, 0.35) 86%, rgba(255, 255, 255, 0.1) 92%,
-      transparent 95%, transparent 100%
-    ),
+    ${__beamMask(e, beamLength)},
     linear-gradient(white, transparent 28px, transparent calc(100% - 28px), white),
     linear-gradient(to right, white, transparent 28px, transparent calc(100% - 28px), white);
   -webkit-mask-composite: source-in, source-over;
   mask-image:
-    conic-gradient(
-      from var(--beam-angle-${e}),
-      transparent 0%, transparent 30%,
-      rgba(255, 255, 255, 0.1) 36%, rgba(255, 255, 255, 0.35) 44%,
-      white 52%, white 80%,
-      rgba(255, 255, 255, 0.35) 86%, rgba(255, 255, 255, 0.1) 92%,
-      transparent 95%, transparent 100%
-    ),
+    ${__beamMask(e, beamLength)},
     linear-gradient(white, transparent 28px, transparent calc(100% - 28px), white),
     linear-gradient(to right, white, transparent 28px, transparent calc(100% - 28px), white);
   mask-composite: intersect, add;

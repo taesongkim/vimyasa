@@ -302,12 +302,20 @@ export function ThemeDevPanel() {
               />
             </div>
             <Slider
-              label="Border width (px) — main size knob"
+              label="Border width (px) — stroke thickness"
               value={c.borderWidth}
               min={0.5}
               max={40}
               step={0.5}
               onChange={(v) => update({ borderWidth: v })}
+            />
+            <Slider
+              label="Beam length (% of perimeter) — 100 = full perimeter"
+              value={c.beamLength}
+              min={0}
+              max={100}
+              step={1}
+              onChange={(v) => update({ beamLength: v })}
             />
             <Slider
               label="Strength (opacity multiplier)"

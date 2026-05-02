@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { BorderBeam } from '../../lib/border-beam-fork/BorderBeam'
 import { useThemesStore } from '../../store/themesStore'
-import type { SurfaceId, SurfaceConfig } from '@shared/themes'
+import { DEFAULT_BORDER_BEAM_CONFIG, type SurfaceId, type SurfaceConfig } from '@shared/themes'
 
 interface GlowSurfaceProps {
   surface: SurfaceId
@@ -22,9 +22,16 @@ interface GlowSurfaceProps {
   className?: string
 }
 
-function renderBeam(c: SurfaceConfig['borderBeam'], children: ReactNode, style?: CSSProperties, className?: string) {
+function renderBeam(
+  c: SurfaceConfig['borderBeam'],
+  active: boolean,
+  children: ReactNode,
+  style?: CSSProperties,
+  className?: string
+) {
   return (
     <BorderBeam
+      active={active}
       size={c.size}
       colorVariant={c.colorVariant}
       theme="dark"
@@ -40,6 +47,7 @@ function renderBeam(c: SurfaceConfig['borderBeam'], children: ReactNode, style?:
       innerOpacity={c.innerOpacity}
       bloomOpacity={c.bloomOpacity}
       innerShadow={c.innerShadow}
+      beamLength={c.beamLength}
       style={style}
       className={className}
     >
@@ -49,8 +57,15 @@ function renderBeam(c: SurfaceConfig['borderBeam'], children: ReactNode, style?:
 }
 
 /** Wraps (or overlays) a target surface with the active theme's effect.
- *  When the master switch is off OR the per-surface toggle is off, renders
- *  nothing (overlay mode) or just children unwrapped (wrap mode). */
+ *
+ *  Wrap mode ALWAYS mounts BorderBeam; the `active` prop drives the
+ *  fade-in/out animations. This keeps DOM identity stable so descendants
+ *  (e.g. the QuickAdd input that auto-focuses on mount) don't lose their
+ *  state when themes hydrate or the per-surface toggle flips.
+ *
+ *  Overlay mode keeps conditional rendering — the overlay is a sibling
+ *  (pointer-events:none) so it can come and go without affecting the
+ *  host's children. */
 export function GlowSurface({
   surface,
   children,
@@ -62,15 +77,11 @@ export function GlowSurface({
   const surfaceConfig = useThemesStore((s) => s.surfaces[surface])
   const hydrated = useThemesStore((s) => s.hydrated)
 
-  const inactive = !hydrated || !masterEnabled || !surfaceConfig?.enabled
+  const active = hydrated && masterEnabled && (surfaceConfig?.enabled ?? false)
 
   if (mode === 'overlay') {
-    if (inactive) return null
+    if (!active) return null
     const c = surfaceConfig!.borderBeam
-    // The outer absolute div positions the beam relative to the host. Inner
-    // empty div gives BorderBeam a sized box (it sizes to its child by default).
-    // pointer-events: none so the overlay never intercepts clicks/hovers
-    // on the host's actual interactive children.
     return (
       <div
         className="absolute inset-0 pointer-events-none"
@@ -78,6 +89,7 @@ export function GlowSurface({
       >
         {renderBeam(
           c,
+          true,
           <div style={{ width: '100%', height: '100%' }} />,
           { width: '100%', height: '100%' },
           className
@@ -86,7 +98,9 @@ export function GlowSurface({
     )
   }
 
-  // wrap mode
-  if (inactive) return <>{children}</>
-  return renderBeam(surfaceConfig!.borderBeam, children, style, className)
+  // Wrap mode: always-mount with active prop so children's identity is stable.
+  // Use the persisted config when available, otherwise fall back to defaults
+  // (which only matters during the brief pre-hydration window).
+  const c = surfaceConfig?.borderBeam ?? DEFAULT_BORDER_BEAM_CONFIG
+  return renderBeam(c, active, children, style, className)
 }

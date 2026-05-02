@@ -64,6 +64,10 @@ export interface BorderBeamConfig {
   bloomOpacity: number
   /** Inner-shadow color (any CSS color). Initial default matches md/dark. */
   innerShadow: string
+  /** Percent of the perimeter the bright streak covers (sm/md only).
+   *  28 ≈ upstream default; 100 = full uniform perimeter glow. Line mode
+   *  ignores this — its travel + breathe animations dictate streak length. */
+  beamLength: number
 }
 
 // One configured effect stack per surface. Future effect layers (particles,
@@ -101,7 +105,8 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   strokeOpacity: 0.48,
   innerOpacity: 0.7,
   bloomOpacity: 0.8,
-  innerShadow: 'rgba(255, 255, 255, 0.27)'
+  innerShadow: 'rgba(255, 255, 255, 0.27)',
+  beamLength: 28
 }
 
 export function defaultSurfaceConfig(): SurfaceConfig {

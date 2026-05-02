@@ -56,6 +56,9 @@ interface BeamCSSOptions {
   saturation: number
   hueRange: number
   theme: 'dark' | 'light'
+  /** Percent of the perimeter the bright streak covers (sm/md only).
+   *  28 ≈ upstream default; 100 = full uniform glow. */
+  beamLength: number
 }
 
 interface SizeThemePreset {
@@ -103,6 +106,10 @@ export interface BorderBeamProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
   bloomOpacity?: number
   /** Override the inner-shadow color (any CSS color). */
   innerShadow?: string
+  /** Bright-streak coverage as a percent of the perimeter (sm/md only).
+   *  Defaults to 28 (≈ upstream behavior); set to 100 for a uniform
+   *  full-perimeter glow with no rotating streak. */
+  beamLength?: number
   onActivate?: () => void
   onDeactivate?: () => void
 }
@@ -144,6 +151,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
       innerOpacity,
       bloomOpacity,
       innerShadow,
+      beamLength = 28,
       className,
       style,
       onActivate,
@@ -230,7 +238,8 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
           brightness,
           saturation: finalSaturation,
           hueRange: finalHueRange,
-          theme: resolvedTheme
+          theme: resolvedTheme,
+          beamLength
         }),
       [
         id,
@@ -247,7 +256,8 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
         brightness,
         finalSaturation,
         finalHueRange,
-        resolvedTheme
+        resolvedTheme,
+        beamLength
       ]
     )
 
