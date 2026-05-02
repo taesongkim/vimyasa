@@ -108,6 +108,9 @@ const api: VimyasaAPI = {
     }
   },
 
+  // System
+  openExternal: (url) => ipcRenderer.invoke('openExternal', url),
+
   // Themes (production)
   themes: {
     get: () => ipcRenderer.invoke('themes:get'),

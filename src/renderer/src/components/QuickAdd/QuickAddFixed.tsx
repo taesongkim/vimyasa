@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
+import { GlowSurface } from '../shared/GlowSurface'
 
 export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const { lists, addItem } = useStore()
@@ -158,25 +159,27 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       </div>
 
       {/* Input */}
-      <input
-        ref={inputRef}
-        className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
-        placeholder=""
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            handleSubmit()
-          }
-          if (e.key === 'Tab') {
-            e.preventDefault()
-            const idx = lists.findIndex((l) => l.id === selectedListId)
-            const nextIdx = (idx + 1) % lists.length
-            setSelectedListId(lists[nextIdx].id)
-          }
-        }}
-      />
+      <GlowSurface surface="quickadd-input" style={{ display: 'block', width: '100%' }}>
+        <input
+          ref={inputRef}
+          className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
+          placeholder=""
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              handleSubmit()
+            }
+            if (e.key === 'Tab') {
+              e.preventDefault()
+              const idx = lists.findIndex((l) => l.id === selectedListId)
+              const nextIdx = (idx + 1) % lists.length
+              setSelectedListId(lists[nextIdx].id)
+            }
+          }}
+        />
+      </GlowSurface>
 
       {/* Help text */}
       <div data-submit-fade className="flex justify-center">

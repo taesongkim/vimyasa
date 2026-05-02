@@ -135,6 +135,7 @@ export interface VimyasaAPI {
   onDataChanged: (callback: () => void) => () => void
 
   // System
+  openExternal: (url: string) => Promise<void>
   revealDataFile: () => Promise<void>
   getLoginItemSettings: () => Promise<{ openAtLogin: boolean }>
   setLoginItemSettings: (openAtLogin: boolean) => Promise<void>

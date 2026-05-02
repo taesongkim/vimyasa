@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getStepBody } from './StepBodies'
 import { VimyasaMark } from './VimyasaMark'
+import { GlowSurface } from '../shared/GlowSurface'
 
 interface CalloutPayload {
   stepId: string
@@ -177,13 +178,18 @@ export function CalloutWindow(): JSX.Element | null {
                   >
                     Skip
                   </button>
-                  <button
-                    type="button"
-                    className="onb-btn onb-btn-primary"
-                    onClick={advance}
+                  <GlowSurface
+                    surface="welcome-callout-start-button"
+                    style={{ display: 'inline-block' }}
                   >
-                    Start Tour
-                  </button>
+                    <button
+                      type="button"
+                      className="onb-btn onb-btn-primary"
+                      onClick={advance}
+                    >
+                      Start Tour
+                    </button>
+                  </GlowSurface>
                 </div>
                 <div className="onb-mark">
                   <VimyasaMark />

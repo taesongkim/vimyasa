@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, shell } from 'electron'
 import { v4 as uuid } from 'uuid'
 import { store } from './store'
 import { createListInStore } from './lists'
@@ -527,4 +527,18 @@ export function registerIpcHandlers(): void {
     throw new Error('Theme dev panel is not available in this build.')
   })
   ipcMain.handle('themeDev:isPanelOpen', (): boolean => false)
+
+  // ── System: external links ──────────────────────────────────────
+  // Used by attribution links in the Themes tab. Validates the URL
+  // protocol so a renderer can never coerce us into opening file:// or
+  // an unknown scheme, even if the URL is dynamic.
+  ipcMain.handle('openExternal', (_e, url: string): void => {
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return
+      shell.openExternal(url)
+    } catch {
+      // Malformed URL — ignore.
+    }
+  })
 }

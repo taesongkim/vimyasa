@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { StatusDot } from '../shared/StatusDot'
+import { GlowSurface } from '../shared/GlowSurface'
 import { useStore } from '../../store/useStore'
 import type { Item, ItemStatus, List } from '../../../../../shared/types'
 
@@ -255,6 +256,21 @@ export function ItemRow({
       onDoubleClick={startEditing}
       onContextMenu={handleContextMenu}
     >
+      {/* GlowSurface for `list-item` wraps motion.div's regular children
+          with a flex container that mirrors motion.div's own layout
+          (flex / gap-1 / items-center) so toggling glow on/off doesn't
+          shift the row. Copy overlay stays a direct child of motion.div
+          so its `absolute inset-0` keeps positioning relative to the row. */}
+      <GlowSurface
+        surface="list-item"
+        style={{
+          display: 'flex',
+          flex: 1,
+          alignItems: 'center',
+          gap: '0.25rem',
+          minWidth: 0
+        }}
+      >
       {/* Content with baseline alignment */}
       <div className="flex items-baseline gap-1 flex-1 transition-opacity duration-150"
            style={{ opacity: showCopyConfirmation ? 0.2 : 1 }}>
@@ -393,6 +409,7 @@ export function ItemRow({
           <circle cx="7" cy="12" r="1.5" />
         </svg>
       </div>
+      </GlowSurface>
 
       {/* Copy confirmation overlay */}
       {showCopyConfirmation && (
