@@ -18,6 +18,16 @@ const statusOpacity: Record<ItemStatus, number> = {
   hold: 0.35
 }
 
+// Resize a textarea to match its content height. The reset-then-measure
+// pattern is required because scrollHeight reflects the larger of content
+// and current height — without the reset to 'auto' first, the textarea
+// can only grow, not shrink.
+function autoResizeTextarea(el: HTMLTextAreaElement | null): void {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+
 export function ItemRow({
   item,
   isFocused,
@@ -40,7 +50,7 @@ export function ItemRow({
   const [text, setText] = useState(item.text)
   const [hovered, setHovered] = useState(false)
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const copyFunctionRef = useRef<() => void>()
 
@@ -62,8 +72,18 @@ export function ItemRow({
     if (editing) {
       inputRef.current?.focus()
       inputRef.current?.select()
+      // Match the textarea's height to its content immediately so a
+      // multi-line item doesn't briefly squash to one line on entry.
+      autoResizeTextarea(inputRef.current)
     }
   }, [editing])
+
+  // Resize on every text change so the textarea grows/shrinks with content.
+  useEffect(() => {
+    if (editing) {
+      autoResizeTextarea(inputRef.current)
+    }
+  }, [text, editing])
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -186,14 +206,32 @@ export function ItemRow({
 
         {/* Text */}
         {editing ? (
-          <input
+          // Textarea (not input) so multi-line items keep their visual
+          // height and wrapping during edit instead of collapsing to a
+          // single horizontal line. Width/font/line-height/padding match
+          // the display span so the box is byte-identical to what the
+          // user sees post-edit. Auto-resizes height to content via the
+          // useEffect on `text`. resize-none kills the corner handle.
+          // overflow-hidden prevents an inner scrollbar (auto-resize
+          // makes one unnecessary). Newlines are stripped on input so
+          // an item never ends up with \n characters even via paste —
+          // items are single logical lines that may visually wrap.
+          <textarea
             ref={inputRef}
-            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)]"
+            rows={1}
+            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)] resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
+            style={{ lineHeight: '1.5rem' }}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => setText(e.target.value.replace(/\n/g, ' '))}
             onBlur={commitEdit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitEdit()
+              if (e.key === 'Enter') {
+                // Block the textarea's default newline insertion and
+                // treat Enter as save. Shift+Enter falls into the same
+                // branch — we don't allow newlines either way.
+                e.preventDefault()
+                commitEdit()
+              }
               if (e.key === 'Escape') {
                 // We've handled this level (cancel without committing); don't
                 // let the window-level Escape handler also run and step focus
