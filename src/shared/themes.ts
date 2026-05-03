@@ -407,6 +407,9 @@ export function defaultThemesState(): ThemesState {
 
 export interface ThemeAttribution {
   themeId: ThemeId
+  /** Public-facing theme name shown in Settings. The internal `themeId`
+   *  stays a stable code identifier; this is what users read. */
+  displayName: string
   author: string
   authorUrl?: string
   packageName?: string
@@ -419,13 +422,14 @@ export interface ThemeAttribution {
 export const THEME_ATTRIBUTIONS: Record<ThemeId, ThemeAttribution> = {
   'border-beam': {
     themeId: 'border-beam',
+    displayName: 'Magic Colors',
     author: 'Jakub Antalik',
     authorUrl: 'https://github.com/Jakubantalik',
     packageName: 'border-beam',
     packageUrl: 'https://github.com/Jakubantalik/border-beam',
     playgroundUrl: 'https://beam.jakubantalik.com/',
     license: 'MIT',
-    description: 'Animated CSS border beam — conic-gradient glow with optional hue-shift cycling.'
+    description: 'Animated glows and particles to accent the interface.'
   }
 }
 

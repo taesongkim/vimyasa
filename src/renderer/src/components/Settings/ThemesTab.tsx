@@ -1,10 +1,5 @@
 import { useThemesStore } from '../../store/themesStore'
-import {
-  SURFACE_IDS,
-  SURFACE_LABELS,
-  THEME_ATTRIBUTIONS,
-  type SurfaceId
-} from '@shared/themes'
+import { THEME_ATTRIBUTIONS } from '@shared/themes'
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
@@ -43,99 +38,51 @@ function ToggleSwitch({
   )
 }
 
+// Single theme on/off. Per-surface fidelity is intentionally hidden — each
+// theme defines its own surface coverage in code (THEME_1_SURFACE_OVERRIDES
+// in shared/themes.ts). The user's only knob is "is this theme on or off."
 export function ThemesTab() {
   const masterEnabled = useThemesStore((s) => s.masterEnabled)
-  const surfaces = useThemesStore((s) => s.surfaces)
   const activeTheme = useThemesStore((s) => s.activeTheme)
   const setMasterEnabled = useThemesStore((s) => s.setMasterEnabled)
-  const setSurfaceEnabled = useThemesStore((s) => s.setSurfaceEnabled)
-  const reset = useThemesStore((s) => s.reset)
 
   const attribution = THEME_ATTRIBUTIONS[activeTheme]
 
   return (
     <div className="flex flex-col gap-4 px-1 py-3">
-      {/* Master toggle */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[length:var(--font-size-base)] font-medium">Visual effects</div>
+      {/* Single theme toggle */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5 flex-1">
+          <div className="text-[length:var(--font-size-base)] font-medium">
+            Theme 1: {attribution.displayName}
+          </div>
           <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
-            Master switch — turns all theme effects on or off.
+            {attribution.description}
+          </div>
+          <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] mt-1">
+            Based off the work of{' '}
+            {attribution.authorUrl ? (
+              <ExternalLink href={attribution.authorUrl}>{attribution.author}</ExternalLink>
+            ) : (
+              attribution.author
+            )}
+            {attribution.packageUrl && (
+              <>
+                {' · '}
+                <ExternalLink href={attribution.packageUrl}>{attribution.packageName}</ExternalLink>
+              </>
+            )}
+            {attribution.playgroundUrl && (
+              <>
+                {' · '}
+                <ExternalLink href={attribution.playgroundUrl}>Playground</ExternalLink>
+              </>
+            )}
+            {' · '}
+            {attribution.license}
           </div>
         </div>
         <ToggleSwitch on={masterEnabled} onToggle={() => setMasterEnabled(!masterEnabled)} />
-      </div>
-
-      <div className="border-t border-[var(--color-border)]" />
-
-      {/* Active theme + attribution */}
-      <div className="flex flex-col gap-1.5">
-        <div className="text-[length:var(--font-size-base)] font-medium">Theme 1: Border Beam</div>
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
-          {attribution.description}
-        </div>
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] mt-1">
-          By{' '}
-          {attribution.authorUrl ? (
-            <ExternalLink href={attribution.authorUrl}>{attribution.author}</ExternalLink>
-          ) : (
-            attribution.author
-          )}
-          {attribution.packageUrl && (
-            <>
-              {' · '}
-              <ExternalLink href={attribution.packageUrl}>{attribution.packageName}</ExternalLink>
-            </>
-          )}
-          {attribution.playgroundUrl && (
-            <>
-              {' · '}
-              <ExternalLink href={attribution.playgroundUrl}>Playground</ExternalLink>
-            </>
-          )}
-          {' · '}
-          {attribution.license}
-        </div>
-      </div>
-
-      <div className="border-t border-[var(--color-border)]" />
-
-      {/* Per-surface toggles */}
-      <div className="flex flex-col gap-2">
-        <div className="text-[length:var(--font-size-base)] font-medium">Apply to surfaces</div>
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
-          Enable the effect on each surface independently. The master switch above must also be on.
-        </div>
-        <div className="flex flex-col gap-1 mt-1">
-          {SURFACE_IDS.map((id: SurfaceId) => (
-            <div key={id} className="flex items-center justify-between py-1">
-              <span className="text-[length:var(--font-size-sm)]">{SURFACE_LABELS[id]}</span>
-              <ToggleSwitch
-                on={surfaces[id]?.enabled ?? false}
-                disabled={!masterEnabled}
-                onToggle={() => setSurfaceEnabled(id, !(surfaces[id]?.enabled ?? false))}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="border-t border-[var(--color-border)]" />
-
-      {/* Reset */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[length:var(--font-size-sm)] font-medium">Reset themes</div>
-          <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
-            Restore default theme settings (does not affect dev panel presets).
-          </div>
-        </div>
-        <button
-          className="no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
-          onClick={() => reset()}
-        >
-          Reset
-        </button>
       </div>
     </div>
   )
