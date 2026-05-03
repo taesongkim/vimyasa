@@ -33,9 +33,11 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   //
   // hiddenState starts true so the pre-warmed window has no content
   // rendered. visibilitychange flips it to true on every hide; the show
-  // event flips it to false. showCount is still useful for forcing a
-  // distinct mount per summon (resets useSubmitAnimation and other
-  // in-component state).
+  // event flips it to false. showCount keys motion.div so each summon
+  // gets a fresh mount of the form's visible tree (replays the fade-
+  // up entrance). It does NOT reset useSubmitAnimation — that hook
+  // lives at the component level, outside the keyed subtree, and is
+  // explicitly reset via submitAnim.reset() in the show handler below.
   const [showCount, setShowCount] = useState(0)
   const [hiddenState, setHiddenState] = useState(true)
   // Mirror of `exiting` for the post-submit hide path. After the
@@ -75,10 +77,17 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       setDropdownOpen(false)
       setExiting(false)
       exitingRef.current = false
+      // Clear any stuck submit-confirmation state from the previous
+      // summon. play() intentionally doesn't auto-reset (resetting
+      // mid-flow would visibly snap the faded siblings + glowing
+      // input back to normal before the exit animation can hide
+      // them — see useSubmitAnimation.ts). On the next summon this
+      // is the natural fresh-start point.
+      submitAnim.reset()
       setShowCount((c) => c + 1)
       setHiddenState(false) // re-mounts motion.div, fade-up plays
     })
-  }, [lists, initialListId])
+  }, [lists, initialListId, submitAnim])
 
   // Focus on every mount via a ref callback rather than a one-shot
   // useEffect. Reason: when the user has the quickadd-input GlowSurface

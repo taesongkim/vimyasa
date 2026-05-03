@@ -43,6 +43,15 @@ export interface SubmitAnimationApi {
    *  and the hold has elapsed. Safe to call when isPlaying is already true —
    *  becomes a no-op. */
   play: () => Promise<void>
+  /** Reset to the off state. play() intentionally does NOT auto-reset
+   *  because the caller usually wants the visual state to persist
+   *  through a follow-up window-exit animation; resetting at the wrong
+   *  moment causes a visible reflash as the CSS transition reverses.
+   *  Callers using a prewarm/persist pattern (e.g. QuickAdd) should
+   *  call reset() at the natural "fresh start" point — typically when
+   *  the form is summoned anew. Callers whose component unmounts
+   *  between submits don't need to call this. */
+  reset: () => void
 }
 
 export function useSubmitAnimation(
@@ -57,11 +66,23 @@ export function useSubmitAnimation(
     await new Promise<void>((resolve) =>
       setTimeout(resolve, config.durationMs + config.holdMs)
     )
+    // Intentionally NOT calling setActive(false) here. The caller's
+    // typical pattern is: play → addItem → exit-animate → hide window.
+    // Resetting active mid-flow makes the CSS transition snap the
+    // faded siblings + glowing input back to normal for ~120ms before
+    // the exit animation hides the form, producing a visible flicker.
+    // Caller is responsible for calling reset() at the natural fresh-
+    // start point (e.g. when the form is re-summoned).
   }, [config.containerClassName, config.durationMs, config.holdMs])
+
+  const reset = useCallback((): void => {
+    setActive(false)
+  }, [])
 
   return {
     containerClassName: active ? config.containerClassName : '',
     isPlaying: active,
-    play
+    play,
+    reset
   }
 }
