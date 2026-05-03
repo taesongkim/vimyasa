@@ -68,6 +68,10 @@ interface BeamCSSOptions {
   /** White highlight streak intensity (0–1, default 1). 0 = no white
    *  sheen, only the colored hue streak. */
   whiteSheen: number
+  /** Rotation phase offset in degrees (sm/md only; ignored by line). Shifts
+   *  the bright streak's start angle on the conic perimeter so stacked
+   *  beams don't all line up at 0°. 0 = upstream. */
+  startAngle: number
 }
 
 interface SizeThemePreset {
@@ -135,6 +139,10 @@ export interface BorderBeamProps extends Omit<HTMLAttributes<HTMLDivElement>, 'c
   /** White highlight streak intensity (0–1, default 1). 0 removes the
    *  white sheen layer entirely, leaving only the colored hue streak. */
   whiteSheen?: number
+  /** Rotation phase offset in degrees (sm/md only; line ignores). Shifts
+   *  this beam's start angle on the perimeter so stacked siblings don't
+   *  all peak at the same point. Default 0. */
+  startAngle?: number
   /** Extra content rendered as a sibling of children inside the BorderBeam
    *  wrapper (which has position:relative). Used by GlowSurface to mount
    *  the ParticleLayer canvas overlay so it inherits the wrapper's
@@ -186,6 +194,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
       paletteOverride,
       glowDepth = 1,
       whiteSheen = 1,
+      startAngle = 0,
       overlay,
       className,
       style,
@@ -277,7 +286,8 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
           beamLength,
           paletteOverride,
           glowDepth,
-          whiteSheen
+          whiteSheen,
+          startAngle
         }),
       [
         id,
@@ -298,6 +308,7 @@ export const BorderBeam = forwardRef<HTMLDivElement, BorderBeamProps>(
         beamLength,
         glowDepth,
         whiteSheen,
+        startAngle,
         // useMemo deps must be primitives or stable references. Stringify the
         // override so identity changes when the user tweaks any blob color.
         paletteOverride ? paletteOverride.join('|') : ''

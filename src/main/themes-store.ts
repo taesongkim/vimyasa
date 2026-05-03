@@ -50,14 +50,25 @@ export function getThemesState(): ThemesState {
     // always sees a fully-typed config (covers users whose persisted state
     // predates a schema addition).
     const cur = surfaces[id]
+    const savedExtras = (cur.borderBeam as Record<string, unknown> | undefined)?.extraBeams
     const backfilledBeam: SurfaceConfig['borderBeam'] = {
       ...DEFAULT_BORDER_BEAM_CONFIG,
       ...(cur.borderBeam ?? {}),
       // extraBeams is an array — preserve user's saved layers when present,
-      // otherwise default to empty (single-beam, matches upstream).
+      // otherwise default to empty (single-beam, matches upstream). For each
+      // saved layer, backfill any missing fields against ExtraBeam defaults
+      // so additions like `startAngle` land as 0 on pre-existing presets
+      // instead of leaking undefined into the dev-panel slider.
       extraBeams:
-        (cur.borderBeam as Record<string, unknown> | undefined)?.extraBeams !== undefined
-          ? (cur.borderBeam as SurfaceConfig['borderBeam']).extraBeams
+        savedExtras !== undefined
+          ? (savedExtras as SurfaceConfig['borderBeam']['extraBeams']).map((eb) => ({
+              enabled: true,
+              duration: 2.4,
+              beamLength: 28,
+              strength: 1,
+              startAngle: 0,
+              ...eb
+            }))
           : DEFAULT_BORDER_BEAM_CONFIG.extraBeams
     }
     const backfilledParticles: SurfaceConfig['particles'] = {

@@ -91,6 +91,12 @@ export interface BorderBeamConfig {
    *  that slot. Position and size inherit from the variant — only color
    *  is editable from the dev panel. Undefined = no override applied. */
   paletteOverride?: (string | null)[]
+  /** Rotation phase offset in degrees (0–360, sm/md only). Shifts where the
+   *  rotating bright streak starts on the perimeter — without this, every
+   *  beam on a surface starts at the same conic angle and stacked extras
+   *  visually line up. Line mode ignores this (its travel anim doesn't
+   *  rotate). Default 0 = upstream behavior. */
+  startAngle: number
   /** Stacked secondary beams (up to 3) layered on top of the primary, each
    *  with its own rotation duration, beam length, and strength. They share
    *  the primary's color variant + palette so the family stays coherent;
@@ -108,6 +114,10 @@ export interface ExtraBeam {
   beamLength: number
   /** Opacity multiplier 0–N applied via --beam-strength on this layer. */
   strength: number
+  /** Rotation phase offset in degrees (0–360, sm/md only). Shifts this
+   *  layer's start angle relative to the primary so stacked streaks don't
+   *  all line up at 0°. Line mode ignores this. Default 0. */
+  startAngle: number
 }
 
 // One configured effect stack per surface. The border beam is the primary
@@ -258,6 +268,7 @@ export const DEFAULT_BORDER_BEAM_CONFIG: BorderBeamConfig = {
   beamInset: 0,
   glowDepth: 1,
   whiteSheen: 1,
+  startAngle: 0,
   extraBeams: []
 }
 

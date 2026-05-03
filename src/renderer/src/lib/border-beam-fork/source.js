@@ -22,7 +22,7 @@
 // before/after. Center is held at 66% so the default visual matches the
 // upstream package; for L >= 95 we swap to a flat linear mask for true
 // full-perimeter coverage (avoids conic-gradient out-of-range stops).
-function __beamMask(e, L) {
+function __beamMask(e, L, angleExpr) {
   const n = typeof L === 'number' ? L : 28
   if (n >= 95) return `linear-gradient(#fff 0 0)`
   const center = 66
@@ -34,8 +34,9 @@ function __beamMask(e, L) {
   const fOut1 = Math.min(100, streakEnd + 6)
   const fOut2 = Math.min(100, streakEnd + 12)
   const fOut3 = Math.min(100, streakEnd + 15)
+  const from = angleExpr || `var(--beam-angle-${e})`
   return `conic-gradient(
-      from var(--beam-angle-${e}),
+      from ${from},
       transparent 0%, transparent ${fIn1}%,
       rgba(255, 255, 255, 0.1) ${fIn2}%, rgba(255, 255, 255, 0.35) ${fIn3}%,
       white ${streakStart}%, white ${streakEnd}%,
@@ -745,13 +746,14 @@ function ve(r) {
     beamLength,
     paletteOverride,
     glowDepth,
-    whiteSheen
+    whiteSheen,
+    startAngle
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   50% { filter: hue-rotate(${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   100% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
-}`, y = Y === "dark", W = __strokeSheen(`var(--beam-angle-${e})`, y, whiteSheen), h = pe(c, paletteOverride, glowDepth), X = le(c, paletteOverride, glowDepth), x = __bloomSheen(`var(--beam-angle-${e})`, y, whiteSheen), F = __beamMask(e, beamLength);
+}`, y = Y === "dark", angleExpr = startAngle ? `calc(var(--beam-angle-${e}) + ${startAngle}deg)` : `var(--beam-angle-${e})`, W = __strokeSheen(angleExpr, y, whiteSheen), h = pe(c, paletteOverride, glowDepth), X = le(c, paletteOverride, glowDepth), x = __bloomSheen(angleExpr, y, whiteSheen), F = __beamMask(e, beamLength, angleExpr);
   return `
 @property --beam-angle-${e} {
   syntax: "<angle>";
@@ -793,12 +795,12 @@ function ve(r) {
   clip-path: inset(0 round ${a}px);
   background: ${W},${h};
   -webkit-mask:
-    ${__beamMask(e, beamLength)},
+    ${F},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: source-in, xor;
   mask:
-    ${__beamMask(e, beamLength)},
+    ${F},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: intersect, exclude;
@@ -885,13 +887,14 @@ function ye(r) {
     beamLength,
     paletteOverride,
     glowDepth,
-    whiteSheen
+    whiteSheen,
+    startAngle
   } = r, g = Math.max(0, a - t), b = c === "mono" ? 0.5 : 1, z = p * b, H = m * b, d = s * b, k = f ? "" : `animation: beam-hue-shift-${e} 12s ease-in-out infinite;`, v = f ? "" : `
 @keyframes beam-hue-shift-${e} {
   0% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   50% { filter: hue-rotate(${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
   100% { filter: hue-rotate(-${l}deg) brightness(${i.toFixed(2)}) saturate(${n.toFixed(2)}); }
-}`, y = Y === "dark", W = __strokeSheen(`var(--beam-angle-${e})`, y, whiteSheen), h = be(c, paletteOverride), X = fe(c, paletteOverride, glowDepth), x = __bloomSheen(`var(--beam-angle-${e})`, y, whiteSheen);
+}`, y = Y === "dark", angleExpr = startAngle ? `calc(var(--beam-angle-${e}) + ${startAngle}deg)` : `var(--beam-angle-${e})`, W = __strokeSheen(angleExpr, y, whiteSheen), h = be(c, paletteOverride), X = fe(c, paletteOverride, glowDepth), x = __bloomSheen(angleExpr, y, whiteSheen), F = __beamMask(e, beamLength, angleExpr);
   return `
 @property --beam-angle-${e} {
   syntax: "<angle>";
@@ -933,12 +936,12 @@ function ye(r) {
   clip-path: inset(0 round ${a}px);
   background: ${W},${h};
   -webkit-mask:
-    ${__beamMask(e, beamLength)},
+    ${F},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: source-in, xor;
   mask:
-    ${__beamMask(e, beamLength)},
+    ${F},
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: intersect, exclude;
@@ -957,12 +960,12 @@ function ye(r) {
   background: ${X};
   box-shadow: inset 0 0 9px 1px ${$};
   -webkit-mask-image:
-    ${__beamMask(e, beamLength)},
+    ${F},
     linear-gradient(white, transparent 28px, transparent calc(100% - 28px), white),
     linear-gradient(to right, white, transparent 28px, transparent calc(100% - 28px), white);
   -webkit-mask-composite: source-in, source-over;
   mask-image:
-    ${__beamMask(e, beamLength)},
+    ${F},
     linear-gradient(white, transparent 28px, transparent calc(100% - 28px), white),
     linear-gradient(to right, white, transparent 28px, transparent calc(100% - 28px), white);
   mask-composite: intersect, add;

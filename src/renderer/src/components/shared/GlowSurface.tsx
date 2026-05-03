@@ -69,6 +69,7 @@ function renderBeam(
       beamLength={c.beamLength}
       glowDepth={c.glowDepth}
       whiteSheen={c.whiteSheen}
+      startAngle={c.startAngle}
       paletteOverride={c.paletteOverride}
       overlay={overlay}
       style={style}
@@ -234,6 +235,7 @@ export function GlowSurface({
           innerShadow={cfg.innerShadow}
           glowDepth={cfg.glowDepth}
           whiteSheen={cfg.whiteSheen}
+          startAngle={eb.startAngle}
           paletteOverride={cfg.paletteOverride}
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
         >

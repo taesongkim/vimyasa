@@ -342,6 +342,14 @@ export function ThemeDevPanel() {
               onChange={(v) => update({ beamLength: v })}
             />
             <Slider
+              label="Start angle (deg, sm/md only) — phase offset on perimeter"
+              value={c.startAngle}
+              min={0}
+              max={360}
+              step={1}
+              onChange={(v) => update({ startAngle: v })}
+            />
+            <Slider
               label="Glow depth inward (1 = upstream, lower = tighter to edge)"
               value={c.glowDepth}
               min={0.1}
@@ -442,7 +450,8 @@ export function ThemeDevPanel() {
                     enabled: true,
                     duration: 2.4,
                     beamLength: 28,
-                    strength: 1
+                    strength: 1,
+                    startAngle: 0
                   }
                 ]
               })
@@ -510,6 +519,18 @@ export function ThemeDevPanel() {
                   onChange={(v) => {
                     const next = [...c.extraBeams]
                     next[i] = { ...eb, strength: v }
+                    update({ extraBeams: next })
+                  }}
+                />
+                <Slider
+                  label="Start angle (deg) — phase offset"
+                  value={eb.startAngle}
+                  min={0}
+                  max={360}
+                  step={1}
+                  onChange={(v) => {
+                    const next = [...c.extraBeams]
+                    next[i] = { ...eb, startAngle: v }
                     update({ extraBeams: next })
                   }}
                 />
