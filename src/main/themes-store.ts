@@ -42,18 +42,43 @@ export function getThemesState(): ThemesState {
   let mutated = false
   let surfaces = { ...raw.surfaces } as Record<SurfaceId, SurfaceConfig>
 
-  // ── v1 → v2 migration ──────────────────────────────────────────
-  // Theme 1 (Border Beam) is baked into surface defaults: `quickadd-input`
-  // gets the tuned config and master flips on. For users (or dev installs)
-  // whose store was written before v2, re-apply just those two changes;
-  // leave any other surfaces' state alone so existing dev tuning isn't
-  // clobbered.
+  // ── Schema migrations ─────────────────────────────────────────
+  // Each step describes the surfaces + master state that became part
+  // of Theme 1 at that schema version. Steps are applied incrementally
+  // (a v1 store passes through both v2 and v3 logic) and only touch
+  // the specific surfaces the version introduced — other surfaces'
+  // existing state is preserved so dev tuning doesn't get clobbered.
   let schemaVersion = raw.schemaVersion
   let masterEnabled = raw.masterEnabled
-  if (schemaVersion < CURRENT_SCHEMA_VERSION) {
+  if (schemaVersion < 2) {
+    // v2: Theme 1 baked `quickadd-input` + flipped master on.
     surfaces = { ...surfaces, 'quickadd-input': defaultSurfaceConfig('quickadd-input') }
     masterEnabled = true
-    schemaVersion = CURRENT_SCHEMA_VERSION
+    schemaVersion = 2
+    mutated = true
+  }
+  if (schemaVersion < 3) {
+    // v3: Theme 1 added `list-item-edit` to the bake (renaming-row glow).
+    surfaces = { ...surfaces, 'list-item-edit': defaultSurfaceConfig('list-item-edit') }
+    schemaVersion = 3
+    mutated = true
+  }
+  if (schemaVersion < 4) {
+    // v4: Theme 1 added `list-add-new` to the bake (in-progress new-item glow).
+    surfaces = { ...surfaces, 'list-add-new': defaultSurfaceConfig('list-add-new') }
+    schemaVersion = 4
+    mutated = true
+  }
+  if (schemaVersion < 5) {
+    // v5: Theme 1 tuned MAGIC_COLORS_BEAM values; re-bake all three
+    // Magic Colors surfaces so existing stores pick up the new look.
+    surfaces = {
+      ...surfaces,
+      'quickadd-input': defaultSurfaceConfig('quickadd-input'),
+      'list-item-edit': defaultSurfaceConfig('list-item-edit'),
+      'list-add-new': defaultSurfaceConfig('list-add-new')
+    }
+    schemaVersion = 5
     mutated = true
   }
 

@@ -238,10 +238,18 @@ export interface ParticleLayerConfig {
 
 export type ThemeId = 'border-beam'
 
-/** Bumped from 1 → 2 when Theme 1 (border-beam) was baked into the
- *  surface defaults: `quickadd-input` got the tuned config below, and
- *  the master switch flips on. v1 stores get migrated in `getThemesState`. */
-export const CURRENT_SCHEMA_VERSION = 2 as const
+/** Schema version, bumped on each batch of baked-default changes:
+ *  - 1 → 2: Theme 1 baked `quickadd-input` and flipped master on.
+ *  - 2 → 3: Theme 1 added `list-item-edit` (renaming-row glow).
+ *  - 3 → 4: Theme 1 added `list-add-new` (in-progress new-item glow).
+ *  - 4 → 5: Theme 1 tuned MAGIC_COLORS_BEAM (innerOpacity 0.16 → 0.35);
+ *    migration re-bakes all three Magic Colors surfaces so the value
+ *    change actually reaches existing stores.
+ *
+ *  Each step is applied incrementally in `getThemesState` so a user
+ *  on v1 picks up everything; a user already on v4 (dev installs
+ *  only — nothing < v5 has shipped) only picks up v5. */
+export const CURRENT_SCHEMA_VERSION = 5 as const
 
 export interface ThemesState {
   schemaVersion: number
@@ -308,22 +316,63 @@ export const DEFAULT_BURST_CONFIG: BurstConfig = {
   offMs: 800
 }
 
-// ─── Theme 1 (Border Beam) baked-in surface overrides ─────────────
+// ─── Theme 1 (Border Beam — "Magic Colors") baked-in overrides ────
 //
-// Ships exactly one tuned surface: the QuickAdd entry-form input.
-// The values below were tuned in the dev panel and exported. Only
-// surfaces that should be *on* by default for a fresh install appear
-// here — surfaces the user hasn't asked for stay at the default-off
-// baseline (DEFAULT_BORDER_BEAM_CONFIG + everything disabled).
+// Each surface entry merges against the global defaults
+// (DEFAULT_BORDER_BEAM_CONFIG / DEFAULT_PARTICLE_CONFIG / etc) — only
+// fields that diverge belong in the override, so future schema
+// additions backfill cleanly. Surfaces not listed here stay at the
+// all-disabled baseline (no glow, no particles).
 //
-// To bake another surface later: add an entry here with `enabled: true`
-// plus the tuned partial config. To bake another *theme*, introduce a
-// separate map and switch on `activeTheme` in `defaultSurfaceConfig`.
-//
-// Convention: only include partial overrides for fields that diverge
-// from the global defaults — anything omitted falls through. Spreads
-// in `defaultSurfaceConfig` deep-merge against DEFAULT_BORDER_BEAM_CONFIG
-// etc. so future schema additions backfill cleanly.
+// Adding another surface to Theme 1: spread MAGIC_COLORS_BEAM +
+// MAGIC_COLORS_PARTICLES below and override `borderRadius` to match the
+// host element's corner radius. Adding another *theme* entirely:
+// introduce a separate overrides map and switch on `activeTheme` inside
+// `defaultSurfaceConfig`.
+
+// Shared "Magic Colors" animation styling — the visual character of
+// Theme 1. Per-surface entries spread this and override `borderRadius`
+// (and anything else that needs to differ). Keeping this isolated means
+// a single edit re-tunes every surface that uses it.
+const MAGIC_COLORS_BEAM: Partial<BorderBeamConfig> = {
+  strength: 0.95,
+  duration: 2.5,
+  brightness: 1.4,
+  saturation: 0.55,
+  hueRange: 198,
+  staticColors: true,
+  borderWidth: 0.5,
+  innerOpacity: 0.35,
+  bloomOpacity: 1.2,
+  beamLength: 43,
+  glowDepth: 0.5,
+  whiteSheen: 0.18,
+  paletteOverride: [
+    '#7a33ff',
+    '#ffde0a',
+    '#ff0a0a',
+    null,
+    '#11bae4',
+    '#001eff',
+    '#ffc629',
+    null,
+    null
+  ]
+  // extraBeams omitted: the original dump had one extra at enabled:false,
+  // which by the "don't bake disabled bits" rule means we ship without it.
+}
+
+const MAGIC_COLORS_PARTICLES: Partial<ParticleConfig> = {
+  enabled: true,
+  count: 5,
+  minSize: 0.25,
+  maxSize: 0.35,
+  minLifetimeMs: 350,
+  maxLifetimeMs: 1000,
+  speed: 11,
+  glowSoftness: 0.7
+}
+
 const THEME_1_SURFACE_OVERRIDES: Partial<
   Record<SurfaceId, Partial<Omit<SurfaceConfig, 'borderBeam' | 'particles' | 'burst' | 'triggers'>> & {
     borderBeam?: Partial<BorderBeamConfig>
@@ -332,46 +381,29 @@ const THEME_1_SURFACE_OVERRIDES: Partial<
     triggers?: Partial<TriggerConfig>
   }>
 > = {
+  // Entry-form input: 8px radius matches the QuickAdd input field.
   'quickadd-input': {
     enabled: true,
-    borderBeam: {
-      strength: 0.95,
-      duration: 2.5,
-      brightness: 1.4,
-      saturation: 0.55,
-      hueRange: 198,
-      staticColors: true,
-      borderWidth: 0.5,
-      innerOpacity: 0.16,
-      bloomOpacity: 1.2,
-      beamLength: 43,
-      glowDepth: 0.5,
-      whiteSheen: 0.18,
-      borderRadius: 8,
-      paletteOverride: [
-        '#7a33ff',
-        '#ffde0a',
-        '#ff0a0a',
-        null,
-        '#11bae4',
-        '#001eff',
-        '#ffc629',
-        null,
-        null
-      ]
-      // extraBeams omitted: the tuned dump had one extra at enabled:false,
-      // which by the "don't bake disabled bits" rule means we ship without it.
-    },
-    particles: {
-      enabled: true,
-      count: 5,
-      minSize: 0.25,
-      maxSize: 0.35,
-      minLifetimeMs: 350,
-      maxLifetimeMs: 1000,
-      speed: 11,
-      glowSoftness: 0.7
-    }
+    borderBeam: { ...MAGIC_COLORS_BEAM, borderRadius: 8 },
+    particles: { ...MAGIC_COLORS_PARTICLES }
+  },
+  // List item being renamed: 4px radius matches the row's `rounded`
+  // (Tailwind default = 0.25rem = 4px) so the beam traces the focus
+  // highlight's corners exactly. Same Magic Colors styling as the
+  // entry-form input — feels like the same surface in two places.
+  'list-item-edit': {
+    enabled: true,
+    borderBeam: { ...MAGIC_COLORS_BEAM, borderRadius: 4 },
+    particles: { ...MAGIC_COLORS_PARTICLES }
+  },
+  // New item in progress: same shape as the renaming row — DraftItemRow
+  // shares the row layout (and the `rounded` 4px radius), so the same
+  // Magic Colors styling reads as a continuous edit affordance whether
+  // the user is creating or renaming.
+  'list-add-new': {
+    enabled: true,
+    borderBeam: { ...MAGIC_COLORS_BEAM, borderRadius: 4 },
+    particles: { ...MAGIC_COLORS_PARTICLES }
   }
 }
 
