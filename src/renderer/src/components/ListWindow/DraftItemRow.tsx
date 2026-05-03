@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { StatusDot } from '../shared/StatusDot'
+import { GlowSurface } from '../shared/GlowSurface'
 
 // New-item creation row. Rendered at the end of the list when the user
 // presses `n` or clicks "+ Add item" in the bottom toolbar. Visually
@@ -80,6 +81,14 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
       transition={{ duration: 0.15 }}
       className="group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative"
     >
+      {/* `list-add-new` glow — overlay on the DraftItemRow's outer
+          row container. The user's mental model is the highlight
+          space of the row being created, not the textarea (see
+          project_theme_merge_plan_with_pr_c memory). DraftItemRow
+          only mounts while a draft is in progress, so the surface
+          fires automatically during creation and tears down on
+          save/discard. */}
+      <GlowSurface surface="list-add-new" mode="overlay" />
       <div className="flex items-baseline gap-1 flex-1">
         <div className="-translate-y-0.5">
           <StatusDot status="active" />

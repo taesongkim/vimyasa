@@ -262,6 +262,16 @@ export function ItemRow({
           chain or AnimatePresence's exit animations. The overlay is a
           pointer-events:none sibling — it never intercepts clicks. */}
       <GlowSurface surface="list-item" mode="overlay" eventFilter={{ itemId: item.id }} />
+      {/* `list-item-edit` glow — same row container as `list-item`, but
+          gated on `editing` so it only renders during inline edit. Both
+          overlays compose on top of each other (intentional layered
+          behavior — the row is "highlighted" + "in edit"). The user's
+          mental model is the highlight space of the item being acted on,
+          not the textarea — wrap-mode around the textarea was the wrong
+          abstraction (see project_theme_merge_plan_with_pr_c memory). */}
+      {editing && (
+        <GlowSurface surface="list-item-edit" mode="overlay" eventFilter={{ itemId: item.id }} />
+      )}
       {/* Content with baseline alignment */}
       <div className="flex items-baseline gap-1 flex-1 transition-opacity duration-150"
            style={{ opacity: showCopyConfirmation ? 0.2 : 1 }}>
