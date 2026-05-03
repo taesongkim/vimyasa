@@ -101,22 +101,15 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     }
   }, [lists, selectedListId])
 
-  // Track whether the onboarding tour is running, so Escape can exit it
-  // directly from QuickAdd (which is the focused window during step 01).
-  const [tourActive, setTourActive] = useState(false)
-  useEffect(() => {
-    return window.api.onboarding.onState((s) => setTourActive(s.active))
-  }, [])
+  // Note: Escape used to exit the onboarding tour from QuickAdd, but
+  // the 'escape' step's prompt teaches users to try Esc — and they were
+  // accidentally exiting the tour by following the lesson. Tour exit
+  // now lives only on the callout's dismiss X.
 
   // Global Escape handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        if (tourActive) {
-          // Tour-wide Escape: exit the whole onboarding flow.
-          void window.api.onboarding.close()
-          return
-        }
         if (dropdownOpen) {
           setDropdownOpen(false)
         } else {
@@ -126,7 +119,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [dropdownOpen, tourActive])
+  }, [dropdownOpen])
 
   // Close dropdown on outside click
   useEffect(() => {
