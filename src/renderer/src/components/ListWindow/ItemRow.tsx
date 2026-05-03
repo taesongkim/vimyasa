@@ -51,6 +51,25 @@ export function ItemRow({
   const [text, setText] = useState(item.text)
   const [hovered, setHovered] = useState(false)
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false)
+  // Save-confirmation flash. The flash is rendered as an overlay sibling
+  // inside the row container with a unique `key` per save event — React
+  // mounts a fresh element each time, so the CSS animation runs from
+  // scratch (re-adding a class to the same element wouldn't replay it).
+  // onAnimationEnd unmounts the overlay. flashId === null means no flash.
+  //
+  // Two triggers feed setFlashId:
+  //   1. New-item appearance (lazy useState init below): if this row is
+  //      mounting for an item created in the last second, set an initial
+  //      flashId. Catches in-list-draft commits (DraftItemRow unmounts →
+  //      new ItemRow mounts) AND QuickAdd-into-this-list (IPC arrives →
+  //      list re-renders → new ItemRow mounts).
+  //   2. Rename commit (in commitEdit below): if the text actually
+  //      changed, set a new flashId. The same row stays mounted — the
+  //      keyed overlay is what makes the flash replay.
+  const [flashId, setFlashId] = useState<string | null>(() => {
+    const ageMs = Date.now() - new Date(item.createdAt).getTime()
+    return ageMs < 1000 ? `mount-${item.id}` : null
+  })
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const copyFunctionRef = useRef<() => void>()
@@ -117,6 +136,11 @@ export function ItemRow({
     const trimmed = text.trim()
     if (trimmed && trimmed !== item.text) {
       await editItem(item.id, { text: trimmed })
+      // Same flash users see on QuickAdd submit + new-item appearance —
+      // the row didn't unmount (rename keeps the same item.id), so we
+      // mint a fresh flashId to remount the keyed overlay and replay
+      // the animation. No-op if text didn't actually change.
+      setFlashId(`edit-${Date.now()}`)
     }
     setEditing(false)
   }, [text, item.id, item.text, editItem])
@@ -256,6 +280,20 @@ export function ItemRow({
       onDoubleClick={startEditing}
       onContextMenu={handleContextMenu}
     >
+      {/* Save-confirmation flash overlay. Mounts with a fresh key per
+          flash event (new-item appearance, rename commit) so the CSS
+          animation runs from scratch. Unmounts itself via onAnimationEnd.
+          Renders ABOVE the list-item GlowSurface in DOM order so the
+          flash visually stacks on top of the Magic Colors glow during
+          the brief moment they overlap. */}
+      {flashId && (
+        <div
+          key={flashId}
+          className="absolute inset-0 pointer-events-none item-row-save-flash"
+          style={{ borderRadius: 'inherit' }}
+          onAnimationEnd={() => setFlashId(null)}
+        />
+      )}
       {/* `list-item` glow uses overlay mode so the beam runs around the
           motion.div outer edge (where the focus highlight lives) without
           inserting a wrapper div that would break dnd-kit's setNodeRef
