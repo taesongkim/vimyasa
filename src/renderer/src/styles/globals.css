@@ -864,6 +864,21 @@ html, body, #root {
   background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
 }
+/* Variant for the welcome-callout Start Tour button. The wrapping
+   GlowSurface provides all the visual emphasis (rotating beam + dust)
+   so the button itself stays neutral — the blue accent of onb-btn-
+   primary muted the animation's palette and read as competing visual
+   noise. Skip + Start Tour now look similar at rest; the glow is what
+   tells the user which one is the primary action. */
+.onb-btn-glow {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.onb-btn-glow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
 .onb-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;

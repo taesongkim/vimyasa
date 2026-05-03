@@ -461,7 +461,8 @@ export const THEME_ATTRIBUTIONS: Record<ThemeId, ThemeAttribution> = {
     packageUrl: 'https://github.com/Jakubantalik/border-beam',
     playgroundUrl: 'https://beam.jakubantalik.com/',
     license: 'MIT',
-    description: 'Animated glows and particles to accent the interface.'
+    description:
+      'Animated glows and sparks to bring life to focused areas. This will be a premium feature. Free for my beloved testers :) Thanks guys ♡'
   }
 }
 

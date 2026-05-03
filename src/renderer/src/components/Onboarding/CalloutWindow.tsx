@@ -184,7 +184,7 @@ export function CalloutWindow(): JSX.Element | null {
                   >
                     <button
                       type="button"
-                      className="onb-btn onb-btn-primary"
+                      className="onb-btn onb-btn-glow"
                       onClick={advance}
                     >
                       Start Tour

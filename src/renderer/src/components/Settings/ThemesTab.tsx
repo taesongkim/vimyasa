@@ -66,20 +66,7 @@ export function ThemesTab() {
             ) : (
               attribution.author
             )}
-            {attribution.packageUrl && (
-              <>
-                {' · '}
-                <ExternalLink href={attribution.packageUrl}>{attribution.packageName}</ExternalLink>
-              </>
-            )}
-            {attribution.playgroundUrl && (
-              <>
-                {' · '}
-                <ExternalLink href={attribution.playgroundUrl}>Playground</ExternalLink>
-              </>
-            )}
-            {' · '}
-            {attribution.license}
+            {attribution.packageName ? `'s ${attribution.packageName}.` : '.'}
           </div>
         </div>
         <ToggleSwitch on={masterEnabled} onToggle={() => setMasterEnabled(!masterEnabled)} />
