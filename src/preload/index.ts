@@ -88,6 +88,14 @@ const api: VimyasaAPI = {
       ipcRenderer.removeListener('data-changed', listener)
     }
   },
+  onContextMenuAction: (callback) => {
+    const listener = (_event: unknown, data: Parameters<typeof callback>[0]): void =>
+      callback(data)
+    ipcRenderer.on('context-menu-action', listener)
+    return () => {
+      ipcRenderer.removeListener('context-menu-action', listener)
+    }
+  },
 
   // System
   revealDataFile: () => ipcRenderer.invoke('revealDataFile'),

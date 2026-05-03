@@ -455,14 +455,21 @@ export function registerWindowIpcHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return
 
-    const menu = Menu.buildFromTemplate(
-      template.map((item) => ({
+    // Recursive — Menu.buildFromTemplate does walk `submenu` trees, but
+    // it expects each entry's `click` callback to already be attached.
+    // Earlier this only mapped the top level, so nested items in
+    // Status / Send-to-List submenus had ipcEvent + ipcData set but no
+    // click handler — submenus appeared to do nothing on click.
+    const attachClicks = (entries: any[]): any[] =>
+      entries.map((item) => ({
         ...item,
         click: item.ipcEvent
-          ? () => { event.sender.send(item.ipcEvent, item.ipcData) }
-          : undefined
+          ? () => event.sender.send(item.ipcEvent, item.ipcData)
+          : undefined,
+        submenu: Array.isArray(item.submenu) ? attachClicks(item.submenu) : item.submenu
       }))
-    )
+
+    const menu = Menu.buildFromTemplate(attachClicks(template))
     menu.popup({ window: win })
   })
 }

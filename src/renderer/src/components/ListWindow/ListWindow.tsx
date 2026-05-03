@@ -43,6 +43,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Tab; this flag just controls whether the row is rendered.
   const [isAddingItem, setIsAddingItem] = useState(false)
   const focusedItemCopyFnRef = useRef<(() => void) | null>(null)
+  // Same pattern as copy: the focused ItemRow registers its
+  // startEditing callback here, so the context menu's "Edit" action
+  // (which fires on the item the user right-clicked → that item gets
+  // focused before the menu pops, see ItemRow.handleContextMenu)
+  // can trigger the row's local editing state from this scope.
+  const focusedItemEditFnRef = useRef<(() => void) | null>(null)
   const cycleTargetRef = useRef<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   // Container holding the items themselves (inside the scroll container,
@@ -197,10 +203,14 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [listItems.length])
 
-  // Clear copy function when focus changes
+  // Clear focus-scoped action refs when nothing's focused, so a stale
+  // copy/edit fn can't fire on whatever was last focused. Refs get
+  // re-populated on the next focus by ItemRow's onCopyRequest /
+  // onEditRequest effects.
   useEffect(() => {
     if (focusIndex === -1) {
       focusedItemCopyFnRef.current = null
+      focusedItemEditFnRef.current = null
     }
   }, [focusIndex])
 
@@ -244,52 +254,50 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [focusIndex])
 
-  // Listen for context menu actions from main process
+  // Listen for context menu actions from main process. Subscribed via
+  // window.api.onContextMenuAction — an earlier version reached for
+  // window.electron?.ipcRenderer?.on(...) which silently no-op'd
+  // because nothing in preload exposes window.electron, and every
+  // context-menu click was being thrown away.
   useEffect(() => {
-    const handleContextAction = (_e: any, data: any) => {
+    return window.api.onContextMenuAction((data) => {
       switch (data.action) {
         case 'edit':
-          // Start editing via double-click simulation — handled in ItemRow
+          // ItemRow registers its startEditing fn into focusedItemEditFnRef
+          // when focused. handleContextMenu in ItemRow calls onFocus()
+          // before popping the menu, so the right-clicked row is the
+          // focused row by the time this fires.
+          focusedItemEditFnRef.current?.()
           break
         case 'copy':
-          {
-            // Use the centralized copy function which includes feedback
-            if (focusedItemCopyFnRef.current) {
-              focusedItemCopyFnRef.current()
-            }
-          }
+          // Centralized copy fn (includes feedback overlay).
+          focusedItemCopyFnRef.current?.()
           break
         case 'setStatus':
-          changeItemStatus(data.itemId, data.status)
+          if (data.itemId && data.status) {
+            changeItemStatus(data.itemId, data.status as ItemStatus)
+          }
           break
         case 'sendTo':
-          sendItemToList(data.itemId, data.listId)
+          if (data.itemId && data.listId) {
+            sendItemToList(data.itemId, data.listId)
+          }
           break
         case 'archive':
-          archiveItem(data.itemId)
-          handlePostDestructive()
+          if (data.itemId) {
+            archiveItem(data.itemId)
+            handlePostDestructive()
+          }
           break
         case 'delete':
-          removeItem(data.itemId)
-          handlePostDestructive()
+          if (data.itemId) {
+            removeItem(data.itemId)
+            handlePostDestructive()
+          }
           break
       }
-    }
-
-    // Use window.api pattern instead of direct ipcRenderer
-    // Context menu events come through electron's IPC
-    if (typeof window !== 'undefined' && 'electron' in window) {
-      // @ts-ignore
-      window.electron?.ipcRenderer?.on('context-menu-action', handleContextAction)
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && 'electron' in window) {
-        // @ts-ignore
-        window.electron?.ipcRenderer?.removeListener('context-menu-action', handleContextAction)
-      }
-    }
-  }, [items, changeItemStatus, sendItemToList, archiveItem, removeItem, handlePostDestructive])
+    })
+  }, [changeItemStatus, sendItemToList, archiveItem, removeItem, handlePostDestructive])
 
   // DnD sensors
   const sensors = useSensors(
@@ -640,6 +648,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   index={idx}
                   dataIndex={idx}
                   onCopyRequest={(fn) => { focusedItemCopyFnRef.current = fn }}
+                  onEditRequest={(fn) => { focusedItemEditFnRef.current = fn }}
                 />
               ))}
             </AnimatePresence>

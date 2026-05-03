@@ -133,6 +133,11 @@ export interface VimyasaAPI {
 
   // Events
   onDataChanged: (callback: () => void) => () => void
+  /** Subscribe to clicks on items in a previously-shown context menu.
+   *  Main re-broadcasts the chosen action (with the ipcData payload the
+   *  caller attached to the template entry) over `context-menu-action`.
+   *  Returns an unsubscribe function. */
+  onContextMenuAction: (callback: (data: { action: string; itemId?: string; status?: string; listId?: string }) => void) => () => void
 
   // System
   openExternal: (url: string) => Promise<void>

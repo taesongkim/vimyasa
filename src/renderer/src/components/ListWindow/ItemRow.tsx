@@ -36,7 +36,8 @@ export function ItemRow({
   lists,
   index = 0,
   dataIndex,
-  onCopyRequest
+  onCopyRequest,
+  onEditRequest
 }: {
   item: Item
   isFocused: boolean
@@ -45,6 +46,7 @@ export function ItemRow({
   index?: number
   dataIndex?: number
   onCopyRequest?: (copyFn: () => void) => void
+  onEditRequest?: (editFn: () => void) => void
 }) {
   const { editItem, removeItem, changeItemStatus, sendItemToList, archiveItem } = useStore()
   const [editing, setEditing] = useState(false)
@@ -131,6 +133,18 @@ export function ItemRow({
     setText(item.text)
     setEditing(true)
   }, [item.text])
+
+  // Register the edit-trigger with the parent when focused, mirroring the
+  // copy-fn registration above. Lets ListWindow's context-menu handler
+  // call into this row's local editing state without needing a ref map
+  // or lifted state. Right-click → ItemRow.handleContextMenu calls
+  // onFocus first, so by the time the menu's "Edit" action fires this
+  // row is the focused one.
+  useEffect(() => {
+    if (onEditRequest && isFocused) {
+      onEditRequest(startEditing)
+    }
+  }, [isFocused, onEditRequest, startEditing])
 
   const commitEdit = useCallback(async () => {
     const trimmed = text.trim()
