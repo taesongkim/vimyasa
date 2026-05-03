@@ -43,11 +43,11 @@ export function getThemesState(): ThemesState {
   let surfaces = { ...raw.surfaces } as Record<SurfaceId, SurfaceConfig>
 
   // ── v1 → v2 migration ──────────────────────────────────────────
-  // v0.2 ships Theme 1 (Border Beam) baked into surface defaults:
-  // `quickadd-input` gets the tuned config and master flips on.
-  // For users (or dev installs) whose store was written before v2,
-  // re-apply just those two changes; leave any other surfaces' state
-  // alone so existing dev tuning isn't clobbered.
+  // Theme 1 (Border Beam) is baked into surface defaults: `quickadd-input`
+  // gets the tuned config and master flips on. For users (or dev installs)
+  // whose store was written before v2, re-apply just those two changes;
+  // leave any other surfaces' state alone so existing dev tuning isn't
+  // clobbered.
   let schemaVersion = raw.schemaVersion
   let masterEnabled = raw.masterEnabled
   if (schemaVersion < CURRENT_SCHEMA_VERSION) {

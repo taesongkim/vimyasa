@@ -238,8 +238,8 @@ export interface ParticleLayerConfig {
 
 export type ThemeId = 'border-beam'
 
-/** Bumped from 1 → 2 when the v0.2 ship baked Theme 1 (border-beam) into
- *  the surface defaults: `quickadd-input` got the tuned config below, and
+/** Bumped from 1 → 2 when Theme 1 (border-beam) was baked into the
+ *  surface defaults: `quickadd-input` got the tuned config below, and
  *  the master switch flips on. v1 stores get migrated in `getThemesState`. */
 export const CURRENT_SCHEMA_VERSION = 2 as const
 
@@ -310,7 +310,7 @@ export const DEFAULT_BURST_CONFIG: BurstConfig = {
 
 // ─── Theme 1 (Border Beam) baked-in surface overrides ─────────────
 //
-// v0.2 ships exactly one tuned surface: the QuickAdd entry-form input.
+// Ships exactly one tuned surface: the QuickAdd entry-form input.
 // The values below were tuned in the dev panel and exported. Only
 // surfaces that should be *on* by default for a fresh install appear
 // here — surfaces the user hasn't asked for stay at the default-off
