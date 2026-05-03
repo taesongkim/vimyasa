@@ -185,7 +185,34 @@ export function ItemRow({
   return (
     <motion.div
       ref={setNodeRef}
-      style={style}
+      // Inline opacity via style + Tailwind's transition-opacity on
+      // className for the fade. Do NOT switch this back to Framer's
+      // animate.opacity (see history below).
+      //
+      // Hide the source ItemRow during active drag (opacity 0). The
+      // visible representation is the ghost rendered via DragOverlay
+      // in ListWindow. Hiding the source completely (rather than
+      // dimming) means the slot still takes layout space (siblings
+      // shift correctly during sortable preview), but nothing
+      // visually competes with the ghost.
+      //
+      // After drop, isDragging flips false. dnd-kit's
+      // dropAnimation.sideEffects (configured on the DragOverlay in
+      // ListWindow) keeps the source hidden via inline opacity:0
+      // throughout the drop animation, then removes the inline style
+      // when the animation completes. At that point this React-driven
+      // opacity (now 1, since isDragging is false) takes over and the
+      // source is visible. Tight coupling between dnd-kit's drop
+      // animation timing and the source's reveal — no setTimeout.
+      //
+      // History: previously used Framer's animate.opacity. Bug: after
+      // dragging an item DOWN, Framer's opacity animation got frozen
+      // at random mid-transition values and the dragged item stayed
+      // dim until remount. Bisected to a Framer + dnd-kit transform
+      // interaction — Framer's opacity engine clashes with dnd-kit's
+      // style.transform on the same element. Inline CSS opacity is
+      // unaffected, hence this approach.
+      style={{ ...style, opacity: isDragging ? 0 : 1 }}
       // No `layout` prop — Framer Motion's layout system was leaving
       // stale state on surviving siblings after sequential AnimatePresence
       // exits, producing visible "frozen" rows and phantom scroll space
@@ -202,13 +229,26 @@ export function ItemRow({
       // and no horizontal slide — matches the in-place feel of
       // entering/exiting edit mode on an existing item.
       initial={false}
-      animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
+      // animate prop intentionally absent — opacity is now CSS-driven
+      // via the inline style above. exit still animates because
+      // AnimatePresence handles it independently of animate.
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.15 }}
+      // No transition-opacity class. With DragOverlay handling the
+      // visual continuity (ghost smoothly snaps to target via dnd-kit's
+      // drop animation), the source ItemRow's reveal at the end of the
+      // drop is best as an instant pop — fading in over 150ms while
+      // the ghost is mid-snap reintroduces the overlap flash we're
+      // explicitly avoiding. The ghost arrives, source instantly
+      // appears, all in one motion.
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
       data-index={dataIndex}
+      // Tag for useUpwardFlip in ListWindow. The hook measures these
+      // elements' positions before/after each render and animates
+      // upward shifts (archive, delete, editing-row-shrink).
+      data-flip-id={item.id}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onFocus}

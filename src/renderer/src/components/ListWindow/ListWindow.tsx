@@ -2,24 +2,30 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
+  defaultDropAnimationSideEffects,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type DragEndEvent,
+  type DragStartEvent
 } from '@dnd-kit/core'
 import {
   SortableContext,
   verticalListSortingStrategy,
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useStore } from '../../store/useStore'
 import { useKeyboard } from '../../hooks/useKeyboard'
+import { useUpwardFlip } from '../../hooks/useUpwardFlip'
 import { TitleBar } from './TitleBar'
 import { type FilterType } from './FilterBar'
 import { ItemRow } from './ItemRow'
 import { DraftItemRow } from './DraftItemRow'
+import { DragGhost } from './DragGhost'
 import type { Item, ItemStatus } from '../../../../../shared/types'
 
 export function ListWindow({ listId: initialListId }: { listId: string }) {
@@ -39,6 +45,11 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const focusedItemCopyFnRef = useRef<(() => void) | null>(null)
   const cycleTargetRef = useRef<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // Container holding the items themselves (inside the scroll container,
+  // outside DndContext/SortableContext). Passed to useUpwardFlip so it
+  // can find rows tagged with data-flip-id and animate ones moving up.
+  const itemsContainerRef = useRef<HTMLDivElement>(null)
+  useUpwardFlip(itemsContainerRef, '[data-flip-id]')
 
   // Custom scrollbar state
   const [scrollbarVisible, setScrollbarVisible] = useState(false)
@@ -289,27 +300,52 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  // Track which item is currently being dragged so DragOverlay can
+  // render its ghost. The source ItemRow's visibility during active
+  // drag is controlled by `isDragging` from useSortable directly
+  // (opacity: isDragging ? 0 : 1). During the drop animation,
+  // dnd-kit's `dropAnimation.sideEffects` applies an inline opacity:0
+  // to the source, then removes it when the animation completes —
+  // perfectly synced with the ghost's animation duration. No setTimeout
+  // dance, no risk of mismatch.
+  const DROP_ANIMATION_MS = 250
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const activeDragItem = activeDragId
+    ? listItems.find((i) => i.id === activeDragId) ?? null
+    : null
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string)
+  }, [])
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event
-      if (!over || active.id === over.id) return
-
-      const oldIndex = listItems.findIndex((i) => i.id === active.id)
-      const newIndex = listItems.findIndex((i) => i.id === over.id)
-
-      if (oldIndex === -1 || newIndex === -1) return
-
-      const newOrder = [...listItems]
-      const [moved] = newOrder.splice(oldIndex, 1)
-      newOrder.splice(newIndex, 0, moved)
-
-      reorder(
-        activeListId,
-        newOrder.map((i) => i.id)
-      )
+      // Reorder synchronously (optimistic).
+      if (over && active.id !== over.id) {
+        const oldIndex = listItems.findIndex((i) => i.id === active.id)
+        const newIndex = listItems.findIndex((i) => i.id === over.id)
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newOrder = [...listItems]
+          const [moved] = newOrder.splice(oldIndex, 1)
+          newOrder.splice(newIndex, 0, moved)
+          reorder(
+            activeListId,
+            newOrder.map((i) => i.id)
+          )
+        }
+      }
+      // Clear activeDragId immediately — the source's visibility
+      // through the drop animation is now handled by dnd-kit's
+      // dropAnimation.sideEffects (see DragOverlay below).
+      setActiveDragId(null)
     },
     [listItems, activeListId, reorder]
   )
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null)
+  }, [])
 
   // List-cycle helper. Used by Tab in the empty list area and Tab inside
   // the draft row's textarea (where the parent's keyboard listener doesn't
@@ -589,11 +625,19 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
-        <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
+        <div ref={itemsContainerRef} className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          // restrictToVerticalAxis: zeros the X component of the drag
+          // transform so the dragged item can only travel up/down.
+          // Without this, dragging sideways triggers dnd-kit's auto-scroll
+          // horizontally — clipping on the left edge and infinite scroll
+          // on the right.
+          modifiers={[restrictToVerticalAxis]}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <SortableContext items={listItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             <AnimatePresence mode="popLayout">
@@ -611,6 +655,24 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
               ))}
             </AnimatePresence>
           </SortableContext>
+          {/* DragOverlay portal-renders the ghost. dropAnimation.sideEffects
+              applies inline opacity: 0 to the source (active draggable)
+              for the duration of the drop animation, then removes it
+              when complete. This means the source stays hidden through
+              the entire ghost-snap-to-target animation and reveals on
+              the same frame the ghost unmounts. Tighter coupling than
+              setTimeout-based syncing — dnd-kit owns the timing. */}
+          <DragOverlay
+            dropAnimation={{
+              duration: DROP_ANIMATION_MS,
+              easing: 'ease-out',
+              sideEffects: defaultDropAnimationSideEffects({
+                styles: { active: { opacity: '0' } }
+              })
+            }}
+          >
+            {activeDragItem ? <DragGhost item={activeDragItem} /> : null}
+          </DragOverlay>
         </DndContext>
 
         {/* Draft row for new-item creation. Rendered at the end of the
