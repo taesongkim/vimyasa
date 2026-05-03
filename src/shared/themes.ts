@@ -238,8 +238,13 @@ export interface ParticleLayerConfig {
 
 export type ThemeId = 'border-beam'
 
+/** Bumped from 1 → 2 when the v0.2 ship baked Theme 1 (border-beam) into
+ *  the surface defaults: `quickadd-input` got the tuned config below, and
+ *  the master switch flips on. v1 stores get migrated in `getThemesState`. */
+export const CURRENT_SCHEMA_VERSION = 2 as const
+
 export interface ThemesState {
-  schemaVersion: 1
+  schemaVersion: number
   /** Master switch. When false, no surface renders any glow regardless of per-surface flags. */
   masterEnabled: boolean
   activeTheme: ThemeId
@@ -303,23 +308,98 @@ export const DEFAULT_BURST_CONFIG: BurstConfig = {
   offMs: 800
 }
 
-export function defaultSurfaceConfig(): SurfaceConfig {
+// ─── Theme 1 (Border Beam) baked-in surface overrides ─────────────
+//
+// v0.2 ships exactly one tuned surface: the QuickAdd entry-form input.
+// The values below were tuned in the dev panel and exported. Only
+// surfaces that should be *on* by default for a fresh install appear
+// here — surfaces the user hasn't asked for stay at the default-off
+// baseline (DEFAULT_BORDER_BEAM_CONFIG + everything disabled).
+//
+// To bake another surface later: add an entry here with `enabled: true`
+// plus the tuned partial config. To bake another *theme*, introduce a
+// separate map and switch on `activeTheme` in `defaultSurfaceConfig`.
+//
+// Convention: only include partial overrides for fields that diverge
+// from the global defaults — anything omitted falls through. Spreads
+// in `defaultSurfaceConfig` deep-merge against DEFAULT_BORDER_BEAM_CONFIG
+// etc. so future schema additions backfill cleanly.
+const THEME_1_SURFACE_OVERRIDES: Partial<
+  Record<SurfaceId, Partial<Omit<SurfaceConfig, 'borderBeam' | 'particles' | 'burst' | 'triggers'>> & {
+    borderBeam?: Partial<BorderBeamConfig>
+    particles?: Partial<ParticleConfig>
+    burst?: Partial<BurstConfig>
+    triggers?: Partial<TriggerConfig>
+  }>
+> = {
+  'quickadd-input': {
+    enabled: true,
+    borderBeam: {
+      strength: 0.95,
+      duration: 2.5,
+      brightness: 1.4,
+      saturation: 0.55,
+      hueRange: 198,
+      staticColors: true,
+      borderWidth: 0.5,
+      innerOpacity: 0.16,
+      bloomOpacity: 1.2,
+      beamLength: 43,
+      glowDepth: 0.5,
+      whiteSheen: 0.18,
+      borderRadius: 8,
+      paletteOverride: [
+        '#7a33ff',
+        '#ffde0a',
+        '#ff0a0a',
+        null,
+        '#11bae4',
+        '#001eff',
+        '#ffc629',
+        null,
+        null
+      ]
+      // extraBeams omitted: the tuned dump had one extra at enabled:false,
+      // which by the "don't bake disabled bits" rule means we ship without it.
+    },
+    particles: {
+      enabled: true,
+      count: 5,
+      minSize: 0.25,
+      maxSize: 0.35,
+      minLifetimeMs: 350,
+      maxLifetimeMs: 1000,
+      speed: 11,
+      glowSoftness: 0.7
+    }
+  }
+}
+
+/** Build a fresh surface config for `id`. Merges the global defaults with
+ *  any THEME_1_SURFACE_OVERRIDES entry so baked surfaces ship pre-tuned;
+ *  surfaces with no override return the all-disabled baseline. Pass no id
+ *  to get the bare default (used by tests / backfills where the id is
+ *  unknown). */
+export function defaultSurfaceConfig(id?: SurfaceId): SurfaceConfig {
+  const override = id ? THEME_1_SURFACE_OVERRIDES[id] : undefined
   return {
-    enabled: false,
+    enabled: override?.enabled ?? false,
     effect: 'border-beam',
-    borderBeam: { ...DEFAULT_BORDER_BEAM_CONFIG },
-    particles: { ...DEFAULT_PARTICLE_CONFIG },
-    burst: { ...DEFAULT_BURST_CONFIG },
-    triggers: { ...DEFAULT_TRIGGER_CONFIG, events: [] }
+    borderBeam: { ...DEFAULT_BORDER_BEAM_CONFIG, ...(override?.borderBeam ?? {}) },
+    particles: { ...DEFAULT_PARTICLE_CONFIG, ...(override?.particles ?? {}) },
+    burst: { ...DEFAULT_BURST_CONFIG, ...(override?.burst ?? {}) },
+    triggers: { ...DEFAULT_TRIGGER_CONFIG, events: [], ...(override?.triggers ?? {}) }
   }
 }
 
 export function defaultThemesState(): ThemesState {
   const surfaces = {} as Record<SurfaceId, SurfaceConfig>
-  for (const id of SURFACE_IDS) surfaces[id] = defaultSurfaceConfig()
+  for (const id of SURFACE_IDS) surfaces[id] = defaultSurfaceConfig(id)
+  // Master defaults to ON: Theme 1 ships with the entry-form glow visible
+  // out of the box. Users can flip it off in Settings → Themes.
   return {
-    schemaVersion: 1,
-    masterEnabled: false,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    masterEnabled: true,
     activeTheme: 'border-beam',
     surfaces
   }
