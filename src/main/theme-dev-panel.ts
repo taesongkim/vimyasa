@@ -10,6 +10,7 @@ import { BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { getThemesPreloadArg } from './themes-store'
+import { instrumentWindow } from './window-logging'
 
 const PANEL_WIDTH = 380
 const PANEL_HEIGHT = 640
@@ -78,6 +79,7 @@ export function openThemeDevPanel(): void {
   // Match the pattern in windows.ts — Vimyasa is a menu-bar utility and
   // every window must follow the user across Spaces.
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (is.dev) instrumentWindow(win, 'theme-dev-panel')
 
   panelWindow = win
   loadPanelRoute(win)

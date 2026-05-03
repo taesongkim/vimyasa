@@ -3,6 +3,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import type { Anchor } from '../../shared/onboarding-steps'
 import { getThemesPreloadArg } from '../themes-store'
+import { instrumentWindow } from '../window-logging'
 
 const CALLOUT_DEFAULT_WIDTH = 380
 const CALLOUT_HEIGHT = 240
@@ -114,6 +115,7 @@ export class CalloutWindow {
     // they Mission Control.
     this.win.setAlwaysOnTop(true, 'floating')
     this.win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+    if (is.dev) instrumentWindow(this.win, 'onboarding-callout')
 
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
       this.win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/onboarding`)

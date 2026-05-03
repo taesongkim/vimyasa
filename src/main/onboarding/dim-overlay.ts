@@ -2,6 +2,7 @@ import { BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { getThemesPreloadArg } from '../themes-store'
+import { instrumentWindow } from '../window-logging'
 
 // Full-screen dimming overlay shown during the onboarding tour. Sits in
 // the window stack ABOVE other apps' normal-level windows but BELOW
@@ -71,6 +72,7 @@ export class DimOverlay {
     // 'floating' — that would put the dim ON TOP of Vimyasa.
     this.win.setAlwaysOnTop(true, 'normal')
     this.win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false })
+    if (is.dev) instrumentWindow(this.win, 'onboarding-dim')
 
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
       this.win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/onboarding-dim`)

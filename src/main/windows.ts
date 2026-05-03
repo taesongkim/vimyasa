@@ -3,6 +3,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { orchestrator } from './onboarding'
 import { getThemesPreloadArg } from './themes-store'
+import { instrumentWindow } from './window-logging'
 
 // Re-run onboarding callout positioning whenever a host window moves /
 // resizes / shows / hides / closes — keeps the callout glued to the host.
@@ -94,7 +95,7 @@ function calculateStackedPosition(): { x: number; y: number } {
   return { x, y }
 }
 
-function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWindow {
+function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions): BrowserWindow {
   // Snapshot the themes state into an argv flag so the preload script can
   // expose it synchronously to the renderer. This lets the themes store
   // initialize on first render with the user's actual config — no async
@@ -129,6 +130,7 @@ function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWind
   // call setVisibleOnAllWorkspaces themselves — keep that in sync if
   // the invariant ever changes here.
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (is.dev) instrumentWindow(win, tag)
   return win
 }
 
@@ -148,7 +150,7 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
   const workArea = screen.getPrimaryDisplay().workArea
   const listWindowHeight = Math.round(workArea.height * 0.97)
   const { x, y } = position || calculateStackedPosition()
-  const win = makeWindow({
+  const win = makeWindow(`list:${listId}`, {
     width: LIST_WINDOW_WIDTH,
     height: listWindowHeight,
     minWidth: 320,
@@ -189,7 +191,7 @@ export function ensureQuickAddPrewarmed(): void {
   if (quickAddWindow && !quickAddWindow.isDestroyed()) return
 
   const { x, y } = getCenteredPosition(QUICKADD_WIDTH, QUICKADD_HEIGHT)
-  const win = makeWindow({
+  const win = makeWindow('quickadd', {
     width: QUICKADD_WIDTH,
     height: QUICKADD_HEIGHT,
     x,
@@ -257,7 +259,7 @@ export function createCommentsWindow(itemId: string): BrowserWindow {
   }
 
   const { x, y } = getCenteredPosition(COMMENTS_WIDTH, COMMENTS_HEIGHT)
-  const win = makeWindow({
+  const win = makeWindow(`comments:${itemId}`, {
     width: COMMENTS_WIDTH,
     height: COMMENTS_HEIGHT,
     x,
@@ -290,7 +292,7 @@ export function createSettingsWindow(initialTab?: SettingsTab): BrowserWindow {
   }
 
   const { x, y } = getCenteredPosition(SETTINGS_WIDTH, SETTINGS_HEIGHT)
-  const win = makeWindow({
+  const win = makeWindow('settings', {
     width: SETTINGS_WIDTH,
     height: SETTINGS_HEIGHT,
     x,
@@ -319,7 +321,7 @@ export function createShortcutsOverviewWindow(): BrowserWindow {
 
   const shortcutsHeight = Math.round(screen.getPrimaryDisplay().workArea.height * 0.97)
   const { x, y } = getRightEdgePosition(SHORTCUTS_OVERVIEW_WIDTH, shortcutsHeight)
-  const win = makeWindow({
+  const win = makeWindow('shortcuts-overview', {
     width: SHORTCUTS_OVERVIEW_WIDTH,
     height: shortcutsHeight,
     x,
@@ -345,7 +347,7 @@ export function createArchiveWindow(listId?: string): BrowserWindow {
 
   const archiveHeight = Math.round(screen.getPrimaryDisplay().workArea.height * 0.97)
   const { x, y } = getCenteredPosition(LIST_WINDOW_WIDTH, archiveHeight)
-  const win = makeWindow({
+  const win = makeWindow(`archive:${listId ?? 'all'}`, {
     width: LIST_WINDOW_WIDTH,
     height: archiveHeight,
     x,
