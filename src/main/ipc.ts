@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, shell } from 'electron'
 import { v4 as uuid } from 'uuid'
 import { store } from './store'
 import { createListInStore } from './lists'
@@ -6,9 +6,35 @@ import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, re
 import { updateTrayMenu } from './tray'
 import { orchestrator } from './onboarding'
 import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
+import {
+  getThemesState,
+  setThemesState,
+  resetThemesState,
+  listDevPresets,
+  setDevPresets
+} from './themes-store'
+import type {
+  SurfaceConfig,
+  SurfaceId,
+  ThemesState,
+  ThemeDevPreset,
+  ThemeEventName,
+  ThemeEventPayload
+} from '../shared/themes'
 
 function now(): string {
   return new Date().toISOString()
+}
+
+/** Notify every renderer window that the themes state changed.
+ *  Includes the sender — every window converges on the new state via the
+ *  same broadcast path, which keeps the dev panel and main app in sync. */
+function broadcastThemesChanged(state: ThemesState): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('themes:changed', state)
+    }
+  }
 }
 
 /** Notify all renderer windows that data has changed so they can refresh */
@@ -16,6 +42,24 @@ function broadcastDataChanged(senderWebContentsId?: number): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed() && win.webContents.id !== senderWebContentsId) {
       win.webContents.send('data-changed')
+    }
+  }
+}
+
+/** Fan a theme trigger event out to every renderer (including the sender) so
+ *  GlowSurface instances on any window can pulse in response — e.g.,
+ *  QuickAdd submitting fires on the list window too. Sender included so a
+ *  surface in the SAME window as the action can also respond. Metadata
+ *  (e.g. itemId) lets per-row GlowSurface filter to its own item rather
+ *  than firing on every change in the list. */
+function broadcastThemeEvent(
+  name: ThemeEventName,
+  metadata?: Omit<ThemeEventPayload, 'name'>
+): void {
+  const payload: ThemeEventPayload = { name, ...metadata }
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('theme:event', payload)
     }
   }
 }
@@ -140,7 +184,7 @@ export function registerIpcHandlers(): void {
   })
 
   // ── Items ───────────────────────────────────────────────────────
-  ipcMain.handle('createItem', (e, listId: string, text: string): Item => {
+  ipcMain.handle('createItem', (e, listId: string, text: string, clientId?: string): Item => {
     const items = store.get('items')
     // Use max(sortOrder) + 1 over *all* items in the list (including
     // archived) rather than the visible count. Archived items keep their
@@ -151,7 +195,13 @@ export function registerIpcHandlers(): void {
     const nextSortOrder =
       allInList.length > 0 ? Math.max(...allInList.map((i) => i.sortOrder)) + 1 : 0
     const item: Item = {
-      id: uuid(),
+      // Accept the renderer's client-side id when present. The optimistic
+      // addItem in useStore generates a uuid so the new ItemRow can mount
+      // immediately; reusing it here means the persisted item ends up
+      // with the same id, so React's reconciliation doesn't see a
+      // temp-id-→-real-id swap (which would otherwise cause an
+      // AnimatePresence exit/enter flash on the optimistic row).
+      id: clientId ?? uuid(),
       listId,
       text,
       status: 'active',
@@ -163,6 +213,7 @@ export function registerIpcHandlers(): void {
     store.set('items', [...items, item])
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    broadcastThemeEvent('item-added', { itemId: item.id })
     // Notify the onboarding orchestrator — its 'capture-add' step counts
     // up to 3 successful adds before auto-advancing. Cheap when no tour is
     // active.
@@ -174,10 +225,17 @@ export function registerIpcHandlers(): void {
     const items = store.get('items')
     const idx = items.findIndex((i) => i.id === id)
     if (idx === -1) throw new Error(`Item not found: ${id}`)
-    items[idx] = { ...items[idx], ...updates, updatedAt: now() }
+    const prev = items[idx]
+    items[idx] = { ...prev, ...updates, updatedAt: now() }
     store.set('items', items)
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    // Distinguish edits-of-text from other updates so the trigger config
+    // can target text edits specifically. Status changes flow through
+    // setItemStatus and emit their own event there.
+    if (typeof updates.text === 'string' && updates.text !== prev.text) {
+      broadcastThemeEvent('item-edit-committed', { itemId: id })
+    }
     return items[idx]
   })
 
@@ -202,6 +260,7 @@ export function registerIpcHandlers(): void {
     store.set('items', items)
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
+    broadcastThemeEvent('item-status-changed', { itemId: id })
     return items[idx]
   })
 
@@ -391,4 +450,133 @@ export function registerIpcHandlers(): void {
   )
   // Dim overlay's dismiss button — tears down the dim only, not the tour.
   ipcMain.handle('onboarding:dismiss-dim', () => orchestrator.dismissDim())
+
+  // ── Themes (production) ─────────────────────────────────────────
+  ipcMain.handle('themes:get', (): ThemesState => getThemesState())
+
+  ipcMain.handle('themes:setMasterEnabled', (_e, enabled: boolean): ThemesState => {
+    const next = { ...getThemesState(), masterEnabled: enabled }
+    const saved = setThemesState(next)
+    broadcastThemesChanged(saved)
+    return saved
+  })
+
+  ipcMain.handle(
+    'themes:setSurfaceEnabled',
+    (_e, surfaceId: SurfaceId, enabled: boolean): ThemesState => {
+      const cur = getThemesState()
+      const next: ThemesState = {
+        ...cur,
+        surfaces: {
+          ...cur.surfaces,
+          [surfaceId]: { ...cur.surfaces[surfaceId], enabled }
+        }
+      }
+      const saved = setThemesState(next)
+      broadcastThemesChanged(saved)
+      return saved
+    }
+  )
+
+  ipcMain.handle(
+    'themes:setSurfaceConfig',
+    (_e, surfaceId: SurfaceId, config: SurfaceConfig): ThemesState => {
+      const cur = getThemesState()
+      const next: ThemesState = {
+        ...cur,
+        surfaces: { ...cur.surfaces, [surfaceId]: config }
+      }
+      const saved = setThemesState(next)
+      broadcastThemesChanged(saved)
+      return saved
+    }
+  )
+
+  ipcMain.handle('themes:reset', (): ThemesState => {
+    const saved = resetThemesState()
+    broadcastThemesChanged(saved)
+    return saved
+  })
+
+  // ── Theme dev panel — preset library ────────────────────────────
+  // Window plumbing (open/close/isOpen) is registered separately by
+  // theme-dev-panel.ts. Preset CRUD lives here because it's pure storage.
+  ipcMain.handle('themeDev:listPresets', (): ThemeDevPreset[] => listDevPresets())
+
+  ipcMain.handle(
+    'themeDev:savePreset',
+    (_e, surfaceId: SurfaceId, label: string, config: SurfaceConfig): ThemeDevPreset => {
+      const ts = now()
+      const preset: ThemeDevPreset = {
+        id: uuid(),
+        surfaceId,
+        label,
+        config,
+        createdAt: ts,
+        updatedAt: ts
+      }
+      setDevPresets([...listDevPresets(), preset])
+      return preset
+    }
+  )
+
+  ipcMain.handle(
+    'themeDev:updatePreset',
+    (
+      _e,
+      id: string,
+      updates: Partial<Pick<ThemeDevPreset, 'label' | 'config'>>
+    ): ThemeDevPreset => {
+      const presets = listDevPresets()
+      const idx = presets.findIndex((p) => p.id === id)
+      if (idx === -1) throw new Error(`Preset not found: ${id}`)
+      const updated: ThemeDevPreset = {
+        ...presets[idx],
+        ...updates,
+        updatedAt: now()
+      }
+      const next = [...presets]
+      next[idx] = updated
+      setDevPresets(next)
+      return updated
+    }
+  )
+
+  ipcMain.handle('themeDev:deletePreset', (_e, id: string): void => {
+    setDevPresets(listDevPresets().filter((p) => p.id !== id))
+  })
+
+  // Window control handlers — overridden by theme-dev-panel.ts when it
+  // initializes. Until then they throw, which is the correct failure
+  // mode in production builds (the panel is dev-only).
+  ipcMain.handle('themeDev:openPanel', () => {
+    throw new Error('Theme dev panel is not available in this build.')
+  })
+  ipcMain.handle('themeDev:closePanel', () => {
+    throw new Error('Theme dev panel is not available in this build.')
+  })
+  ipcMain.handle('themeDev:isPanelOpen', (): boolean => false)
+
+  // ── Theme events: manual fire from dev panel ────────────────────
+  // Renderer can ask main to broadcast a named theme event to all
+  // windows. Used by the dev panel's "Test fire" button so the user
+  // can verify trigger config without performing the underlying app
+  // action (e.g., adding an item).
+  ipcMain.handle('themeEvent:fire', (_e, name: ThemeEventName): void => {
+    broadcastThemeEvent(name)
+  })
+
+  // ── System: external links ──────────────────────────────────────
+  // Used by attribution links in the Themes tab. Validates the URL
+  // protocol so a renderer can never coerce us into opening file:// or
+  // an unknown scheme, even if the URL is dynamic.
+  ipcMain.handle('openExternal', (_e, url: string): void => {
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return
+      shell.openExternal(url)
+    } catch {
+      // Malformed URL — ignore.
+    }
+  })
 }

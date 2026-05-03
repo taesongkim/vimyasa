@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { StatusDot } from '../shared/StatusDot'
+import { GlowSurface } from '../shared/GlowSurface'
 import { useStore } from '../../store/useStore'
 import type { Item, ItemStatus, List } from '../../../../../shared/types'
 
@@ -35,7 +36,8 @@ export function ItemRow({
   lists,
   index = 0,
   dataIndex,
-  onCopyRequest
+  onCopyRequest,
+  onEditRequest
 }: {
   item: Item
   isFocused: boolean
@@ -44,12 +46,32 @@ export function ItemRow({
   index?: number
   dataIndex?: number
   onCopyRequest?: (copyFn: () => void) => void
+  onEditRequest?: (editFn: () => void) => void
 }) {
   const { editItem, removeItem, changeItemStatus, sendItemToList, archiveItem } = useStore()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(item.text)
   const [hovered, setHovered] = useState(false)
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false)
+  // Save-confirmation flash. The flash is rendered as an overlay sibling
+  // inside the row container with a unique `key` per save event — React
+  // mounts a fresh element each time, so the CSS animation runs from
+  // scratch (re-adding a class to the same element wouldn't replay it).
+  // onAnimationEnd unmounts the overlay. flashId === null means no flash.
+  //
+  // Two triggers feed setFlashId:
+  //   1. New-item appearance (lazy useState init below): if this row is
+  //      mounting for an item created in the last second, set an initial
+  //      flashId. Catches in-list-draft commits (DraftItemRow unmounts →
+  //      new ItemRow mounts) AND QuickAdd-into-this-list (IPC arrives →
+  //      list re-renders → new ItemRow mounts).
+  //   2. Rename commit (in commitEdit below): if the text actually
+  //      changed, set a new flashId. The same row stays mounted — the
+  //      keyed overlay is what makes the flash replay.
+  const [flashId, setFlashId] = useState<string | null>(() => {
+    const ageMs = Date.now() - new Date(item.createdAt).getTime()
+    return ageMs < 1000 ? `mount-${item.id}` : null
+  })
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const copyFunctionRef = useRef<() => void>()
@@ -112,10 +134,27 @@ export function ItemRow({
     setEditing(true)
   }, [item.text])
 
+  // Register the edit-trigger with the parent when focused, mirroring the
+  // copy-fn registration above. Lets ListWindow's context-menu handler
+  // call into this row's local editing state without needing a ref map
+  // or lifted state. Right-click → ItemRow.handleContextMenu calls
+  // onFocus first, so by the time the menu's "Edit" action fires this
+  // row is the focused one.
+  useEffect(() => {
+    if (onEditRequest && isFocused) {
+      onEditRequest(startEditing)
+    }
+  }, [isFocused, onEditRequest, startEditing])
+
   const commitEdit = useCallback(async () => {
     const trimmed = text.trim()
     if (trimmed && trimmed !== item.text) {
       await editItem(item.id, { text: trimmed })
+      // Same flash users see on QuickAdd submit + new-item appearance —
+      // the row didn't unmount (rename keeps the same item.id), so we
+      // mint a fresh flashId to remount the keyed overlay and replay
+      // the animation. No-op if text didn't actually change.
+      setFlashId(`edit-${Date.now()}`)
     }
     setEditing(false)
   }, [text, item.id, item.text, editItem])
@@ -185,33 +224,106 @@ export function ItemRow({
   return (
     <motion.div
       ref={setNodeRef}
-      style={style}
-      // Keep layout=true so reorder/archive/delete still animate smoothly.
-      // While editing, override the layout-transition duration to 0 — the
-      // textarea grows/shrinks with content via useLayoutEffect, and we
-      // don't want Framer's 150ms spring on the row to lag behind the
-      // textarea (which produced the visible squish on growth and stretch
-      // on shrink). layout="position" alone wasn't enough; some height
-      // animation slipped through. Explicit duration:0 on layout closes it.
-      layout
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: isDragging ? 0.5 : 1, x: 0 }}
+      // Inline opacity via style + Tailwind's transition-opacity on
+      // className for the fade. Do NOT switch this back to Framer's
+      // animate.opacity (see history below).
+      //
+      // Hide the source ItemRow during active drag (opacity 0). The
+      // visible representation is the ghost rendered via DragOverlay
+      // in ListWindow. Hiding the source completely (rather than
+      // dimming) means the slot still takes layout space (siblings
+      // shift correctly during sortable preview), but nothing
+      // visually competes with the ghost.
+      //
+      // After drop, isDragging flips false. dnd-kit's
+      // dropAnimation.sideEffects (configured on the DragOverlay in
+      // ListWindow) keeps the source hidden via inline opacity:0
+      // throughout the drop animation, then removes the inline style
+      // when the animation completes. At that point this React-driven
+      // opacity (now 1, since isDragging is false) takes over and the
+      // source is visible. Tight coupling between dnd-kit's drop
+      // animation timing and the source's reveal — no setTimeout.
+      //
+      // History: previously used Framer's animate.opacity. Bug: after
+      // dragging an item DOWN, Framer's opacity animation got frozen
+      // at random mid-transition values and the dragged item stayed
+      // dim until remount. Bisected to a Framer + dnd-kit transform
+      // interaction — Framer's opacity engine clashes with dnd-kit's
+      // style.transform on the same element. Inline CSS opacity is
+      // unaffected, hence this approach.
+      style={{ ...style, opacity: isDragging ? 0 : 1 }}
+      // No `layout` prop — Framer Motion's layout system was leaving
+      // stale state on surviving siblings after sequential AnimatePresence
+      // exits, producing visible "frozen" rows and phantom scroll space
+      // after the second+ archive on a window. The exit animation
+      // (slide+fade on the archived item) still runs because it's
+      // driven by `exit` below, not `layout`. Sibling reflow on
+      // archive/delete now happens via natural CSS flow — items snap
+      // to their new positions instead of springing. Reorder via drag
+      // is still animated because @dnd-kit/sortable applies its own
+      // CSS transition through the `style` prop above.
+      //
+      // initial={false} skips Framer's initial → animate transition
+      // entirely. Items appear in their final position with no fade-in
+      // and no horizontal slide — matches the in-place feel of
+      // entering/exiting edit mode on an existing item.
+      initial={false}
+      // animate prop intentionally absent — opacity is now CSS-driven
+      // via the inline style above. exit still animates because
+      // AnimatePresence handles it independently of animate.
       exit={{ opacity: 0, x: -8 }}
-      transition={{
-        duration: 0.15,
-        delay: index * 0.02,
-        layout: editing ? { duration: 0 } : undefined
-      }}
+      transition={{ duration: 0.15 }}
+      // No transition-opacity class. With DragOverlay handling the
+      // visual continuity (ghost smoothly snaps to target via dnd-kit's
+      // drop animation), the source ItemRow's reveal at the end of the
+      // drop is best as an instant pop — fading in over 150ms while
+      // the ghost is mid-snap reintroduces the overlap flash we're
+      // explicitly avoiding. The ghost arrives, source instantly
+      // appears, all in one motion.
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
       }`}
       data-index={dataIndex}
+      // Tag for useUpwardFlip in ListWindow. The hook measures these
+      // elements' positions before/after each render and animates
+      // upward shifts (archive, delete, editing-row-shrink).
+      data-flip-id={item.id}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onFocus}
       onDoubleClick={startEditing}
       onContextMenu={handleContextMenu}
     >
+      {/* Save-confirmation flash overlay. Mounts with a fresh key per
+          flash event (new-item appearance, rename commit) so the CSS
+          animation runs from scratch. Unmounts itself via onAnimationEnd.
+          Renders ABOVE the list-item GlowSurface in DOM order so the
+          flash visually stacks on top of the Magic Colors glow during
+          the brief moment they overlap. */}
+      {flashId && (
+        <div
+          key={flashId}
+          className="absolute inset-0 pointer-events-none item-row-save-flash"
+          style={{ borderRadius: 'inherit' }}
+          onAnimationEnd={() => setFlashId(null)}
+        />
+      )}
+      {/* `list-item` glow uses overlay mode so the beam runs around the
+          motion.div outer edge (where the focus highlight lives) without
+          inserting a wrapper div that would break dnd-kit's setNodeRef
+          chain or AnimatePresence's exit animations. The overlay is a
+          pointer-events:none sibling — it never intercepts clicks. */}
+      <GlowSurface surface="list-item" mode="overlay" eventFilter={{ itemId: item.id }} />
+      {/* `list-item-edit` glow — same row container as `list-item`, but
+          gated on `editing` so it only renders during inline edit. Both
+          overlays compose on top of each other (intentional layered
+          behavior — the row is "highlighted" + "in edit"). The user's
+          mental model is the highlight space of the item being acted on,
+          not the textarea — wrap-mode around the textarea was the wrong
+          abstraction (see project_theme_merge_plan_with_pr_c memory). */}
+      {editing && (
+        <GlowSurface surface="list-item-edit" mode="overlay" eventFilter={{ itemId: item.id }} />
+      )}
       {/* Content with baseline alignment */}
       <div className="flex items-baseline gap-1 flex-1 transition-opacity duration-150"
            style={{ opacity: showCopyConfirmation ? 0.2 : 1 }}>
@@ -235,7 +347,7 @@ export function ItemRow({
           <textarea
             ref={inputRef}
             rows={1}
-            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none border-b border-[var(--color-accent)] resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
+            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
             style={{ lineHeight: '1.5rem' }}
             value={text}
             onChange={(e) => setText(e.target.value.replace(/\n/g, ' '))}
@@ -267,11 +379,20 @@ export function ItemRow({
         )}
       </div>
 
-      {/* Hover actions — always rendered, opacity-reveal on hover */}
+      {/* Hover actions — always rendered, opacity-reveal on hover.
+          During edit, hold them at a slightly higher dim than the
+          resting state (0.55 vs 0.3) so the user can still see them
+          alongside the textarea without them competing with the focus. */}
       <div
         className="flex items-center gap-1 shrink-0 transition-default"
         style={{
-          opacity: showCopyConfirmation ? 0.2 : (hovered && !editing ? 1 : 0.3),
+          opacity: showCopyConfirmation
+            ? 0.2
+            : hovered && !editing
+              ? 1
+              : editing
+                ? 0.55
+                : 0.3,
           pointerEvents: hovered && !editing ? 'auto' : 'none'
         }}
       >
@@ -314,11 +435,19 @@ export function ItemRow({
         </button>
       </div>
 
-      {/* Drag handle — opacity-reveal */}
+      {/* Drag handle — opacity-reveal. Same idea as the actions: bumped
+          slightly higher during edit (0.45 vs 0.2) so the user can see
+          it without it being a focal element. */}
       <div
         className="no-drag cursor-grab active:cursor-grabbing text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-default self-center"
         style={{
-          opacity: showCopyConfirmation ? 0.2 : (hovered && !editing ? 1 : 0.2),
+          opacity: showCopyConfirmation
+            ? 0.2
+            : hovered && !editing
+              ? 1
+              : editing
+                ? 0.45
+                : 0.2,
           pointerEvents: hovered && !editing ? 'auto' : 'none'
         }}
         {...attributes}

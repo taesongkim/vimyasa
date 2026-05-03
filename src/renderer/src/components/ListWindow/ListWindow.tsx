@@ -2,28 +2,34 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
+  defaultDropAnimationSideEffects,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type DragEndEvent,
+  type DragStartEvent
 } from '@dnd-kit/core'
 import {
   SortableContext,
   verticalListSortingStrategy,
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useStore } from '../../store/useStore'
 import { useKeyboard } from '../../hooks/useKeyboard'
+import { useUpwardFlip } from '../../hooks/useUpwardFlip'
 import { TitleBar } from './TitleBar'
 import { type FilterType } from './FilterBar'
 import { ItemRow } from './ItemRow'
-import { AddRow, type AddRowHandle } from './AddRow'
+import { DraftItemRow } from './DraftItemRow'
+import { DragGhost } from './DragGhost'
 import type { Item, ItemStatus } from '../../../../../shared/types'
 
 export function ListWindow({ listId: initialListId }: { listId: string }) {
-  const { items, lists, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
+  const { items, lists, addItem, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
     useStore()
 
   const [activeListId, setActiveListId] = useState(initialListId)
@@ -31,10 +37,25 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const [focusIndex, setFocusIndex] = useState(-1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
+  // Whether a new-item draft row is currently active at the bottom of the
+  // list. Toggled by the `n` shortcut and the "+ Add item" toolbar button.
+  // Save-vs-discard is handled inside DraftItemRow on Enter / blur / Esc /
+  // Tab; this flag just controls whether the row is rendered.
+  const [isAddingItem, setIsAddingItem] = useState(false)
   const focusedItemCopyFnRef = useRef<(() => void) | null>(null)
+  // Same pattern as copy: the focused ItemRow registers its
+  // startEditing callback here, so the context menu's "Edit" action
+  // (which fires on the item the user right-clicked → that item gets
+  // focused before the menu pops, see ItemRow.handleContextMenu)
+  // can trigger the row's local editing state from this scope.
+  const focusedItemEditFnRef = useRef<(() => void) | null>(null)
   const cycleTargetRef = useRef<string | null>(null)
-  const addRowRef = useRef<AddRowHandle>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // Container holding the items themselves (inside the scroll container,
+  // outside DndContext/SortableContext). Passed to useUpwardFlip so it
+  // can find rows tagged with data-flip-id and animate ones moving up.
+  const itemsContainerRef = useRef<HTMLDivElement>(null)
+  useUpwardFlip(itemsContainerRef, '[data-flip-id]')
 
   // Custom scrollbar state
   const [scrollbarVisible, setScrollbarVisible] = useState(false)
@@ -45,13 +66,10 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const scrollbarRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Track whether the onboarding tour is running, so Escape can exit it
-  // directly from this window. Subscribed to the broadcast in main.
-  const [tourActive, setTourActive] = useState(false)
-  useEffect(() => {
-    return window.api.onboarding.onState((s) => setTourActive(s.active))
-  }, [])
-
+  // Note: Escape used to exit the tour from this window, but the
+  // 'escape' step's prompt teaches users to try Esc — and they were
+  // accidentally exiting the tour by following the lesson. Tour exit
+  // now lives only on the callout's dismiss X.
 
   // Lists in canonical display order. `lists` from the store is in insertion
   // order; the user-facing order is governed by `sortOrder`, which the
@@ -158,20 +176,41 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   //      at the time this runs — the React re-render that filters out the removed
   //      item happens after the current event handler returns.
   //   2. Force DOM focus back to body. When the focused row unmounts, Electron
-  //      sometimes hands DOM focus to the next focusable sibling (typically the
-  //      AddRow input) instead of falling back to body. If that happens, the
-  //      window-level keyboard handler bails out on every subsequent keypress
-  //      because it ignores keys when an input/textarea/contentEditable is focused
-  //      — meaning j/k/a appear to silently stop working.
+  //      sometimes hands DOM focus to the next focusable sibling (e.g. an open
+  //      DraftItemRow textarea or the toolbar's "+ Add item" button) instead
+  //      of falling back to body. If that happens, the window-level keyboard
+  //      handler bails out on every subsequent keypress because it ignores
+  //      keys when an input/textarea/contentEditable is focused — meaning
+  //      j/k/a appear to silently stop working.
   const handlePostDestructive = useCallback(() => {
     setFocusIndex((i) => Math.min(i, listItems.length - 2))
     ;(document.activeElement as HTMLElement | null)?.blur?.()
   }, [listItems.length])
 
-  // Clear copy function when focus changes
+  // After the visible list shrinks (archive, delete, filter change), if
+  // the scroll position now points past the bottom of the content,
+  // smooth-scroll up to compact the view. Without this, the user is
+  // left with empty scrollable space below the last item — annoying
+  // when they archive several items at the bottom and the viewport
+  // doesn't follow. Smooth (vs instant) so the adjustment feels like a
+  // deliberate pull-up rather than a snap.
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const maxScrollTop = Math.max(0, el.scrollHeight - el.clientHeight)
+    if (el.scrollTop > maxScrollTop) {
+      el.scrollTo({ top: maxScrollTop, behavior: 'smooth' })
+    }
+  }, [listItems.length])
+
+  // Clear focus-scoped action refs when nothing's focused, so a stale
+  // copy/edit fn can't fire on whatever was last focused. Refs get
+  // re-populated on the next focus by ItemRow's onCopyRequest /
+  // onEditRequest effects.
   useEffect(() => {
     if (focusIndex === -1) {
       focusedItemCopyFnRef.current = null
+      focusedItemEditFnRef.current = null
     }
   }, [focusIndex])
 
@@ -215,52 +254,50 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [focusIndex])
 
-  // Listen for context menu actions from main process
+  // Listen for context menu actions from main process. Subscribed via
+  // window.api.onContextMenuAction — an earlier version reached for
+  // window.electron?.ipcRenderer?.on(...) which silently no-op'd
+  // because nothing in preload exposes window.electron, and every
+  // context-menu click was being thrown away.
   useEffect(() => {
-    const handleContextAction = (_e: any, data: any) => {
+    return window.api.onContextMenuAction((data) => {
       switch (data.action) {
         case 'edit':
-          // Start editing via double-click simulation — handled in ItemRow
+          // ItemRow registers its startEditing fn into focusedItemEditFnRef
+          // when focused. handleContextMenu in ItemRow calls onFocus()
+          // before popping the menu, so the right-clicked row is the
+          // focused row by the time this fires.
+          focusedItemEditFnRef.current?.()
           break
         case 'copy':
-          {
-            // Use the centralized copy function which includes feedback
-            if (focusedItemCopyFnRef.current) {
-              focusedItemCopyFnRef.current()
-            }
-          }
+          // Centralized copy fn (includes feedback overlay).
+          focusedItemCopyFnRef.current?.()
           break
         case 'setStatus':
-          changeItemStatus(data.itemId, data.status)
+          if (data.itemId && data.status) {
+            changeItemStatus(data.itemId, data.status as ItemStatus)
+          }
           break
         case 'sendTo':
-          sendItemToList(data.itemId, data.listId)
+          if (data.itemId && data.listId) {
+            sendItemToList(data.itemId, data.listId)
+          }
           break
         case 'archive':
-          archiveItem(data.itemId)
-          handlePostDestructive()
+          if (data.itemId) {
+            archiveItem(data.itemId)
+            handlePostDestructive()
+          }
           break
         case 'delete':
-          removeItem(data.itemId)
-          handlePostDestructive()
+          if (data.itemId) {
+            removeItem(data.itemId)
+            handlePostDestructive()
+          }
           break
       }
-    }
-
-    // Use window.api pattern instead of direct ipcRenderer
-    // Context menu events come through electron's IPC
-    if (typeof window !== 'undefined' && 'electron' in window) {
-      // @ts-ignore
-      window.electron?.ipcRenderer?.on('context-menu-action', handleContextAction)
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && 'electron' in window) {
-        // @ts-ignore
-        window.electron?.ipcRenderer?.removeListener('context-menu-action', handleContextAction)
-      }
-    }
-  }, [items, changeItemStatus, sendItemToList, archiveItem, removeItem, handlePostDestructive])
+    })
+  }, [changeItemStatus, sendItemToList, archiveItem, removeItem, handlePostDestructive])
 
   // DnD sensors
   const sensors = useSensors(
@@ -268,26 +305,110 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  // Track which item is currently being dragged so DragOverlay can
+  // render its ghost. The source ItemRow's visibility during active
+  // drag is controlled by `isDragging` from useSortable directly
+  // (opacity: isDragging ? 0 : 1). During the drop animation,
+  // dnd-kit's `dropAnimation.sideEffects` applies an inline opacity:0
+  // to the source, then removes it when the animation completes —
+  // perfectly synced with the ghost's animation duration. No setTimeout
+  // dance, no risk of mismatch.
+  const DROP_ANIMATION_MS = 250
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const activeDragItem = activeDragId
+    ? listItems.find((i) => i.id === activeDragId) ?? null
+    : null
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string)
+  }, [])
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event
-      if (!over || active.id === over.id) return
-
-      const oldIndex = listItems.findIndex((i) => i.id === active.id)
-      const newIndex = listItems.findIndex((i) => i.id === over.id)
-
-      if (oldIndex === -1 || newIndex === -1) return
-
-      const newOrder = [...listItems]
-      const [moved] = newOrder.splice(oldIndex, 1)
-      newOrder.splice(newIndex, 0, moved)
-
-      reorder(
-        activeListId,
-        newOrder.map((i) => i.id)
-      )
+      // Reorder synchronously (optimistic).
+      if (over && active.id !== over.id) {
+        const oldIndex = listItems.findIndex((i) => i.id === active.id)
+        const newIndex = listItems.findIndex((i) => i.id === over.id)
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newOrder = [...listItems]
+          const [moved] = newOrder.splice(oldIndex, 1)
+          newOrder.splice(newIndex, 0, moved)
+          reorder(
+            activeListId,
+            newOrder.map((i) => i.id)
+          )
+        }
+      }
+      // Clear activeDragId immediately — the source's visibility
+      // through the drop animation is now handled by dnd-kit's
+      // dropAnimation.sideEffects (see DragOverlay below).
+      setActiveDragId(null)
     },
     [listItems, activeListId, reorder]
+  )
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null)
+  }, [])
+
+  // List-cycle helper. Used by Tab in the empty list area and Tab inside
+  // the draft row's textarea (where the parent's keyboard listener doesn't
+  // fire because focus is in a text input).
+  const cycleToNextList = useCallback(() => {
+    const idx = sortedLists.findIndex((l) => l.id === activeListId)
+    if (sortedLists.length > 1 && cyclePhase === 'idle') {
+      const nextList = sortedLists[(idx + 1) % sortedLists.length]
+      cycleTargetRef.current = nextList.id
+      setCyclePhase('out')
+    }
+  }, [sortedLists, activeListId, cyclePhase])
+
+  // Draft handlers. The DraftItemRow owns the textarea + UX; the list
+  // window owns persistence (addItem) and the visibility flag.
+  const startDraft = useCallback(() => {
+    setIsAddingItem(true)
+  }, [])
+
+  const commitDraft = useCallback(
+    (text: string) => {
+      // Empty text reaches here when DraftItemRow's commit logic decided
+      // there's nothing to save (e.g. blur with empty content). DraftItemRow
+      // calls onDiscard in that path, not onSave; this guard is a belt
+      // against any future caller that forgets to trim.
+      //
+      // addItem is optimistic — it inserts the new Item synchronously
+      // before awaiting IPC. Together with the synchronous
+      // setIsAddingItem(false) below, React batches both state changes
+      // into a single render: the draft unmounts AND the new item
+      // appears in the same frame, so there's no intermediate "draft
+      // gone, new item not yet rendered" state for the browser to
+      // clamp scrollTop on or for Framer Motion to read as a layout
+      // change.
+      if (text) {
+        void addItem(activeListId, text)
+      }
+      setIsAddingItem(false)
+    },
+    [addItem, activeListId]
+  )
+
+  const discardDraft = useCallback(() => {
+    setIsAddingItem(false)
+  }, [])
+
+  // Tab from inside the draft textarea: commit-or-discard, then cycle to
+  // the next list. The parent's onTab in useKeyboard doesn't fire while
+  // focus is in a text input, so we route Tab through here explicitly.
+  const handleDraftTab = useCallback(
+    (text: string) => {
+      if (text) {
+        void addItem(activeListId, text)
+      }
+      setIsAddingItem(false)
+      cycleToNextList()
+    },
+    [addItem, activeListId, cycleToNextList]
   )
 
   // Keyboard navigation
@@ -360,16 +481,8 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         handlePostDestructive()
       }
     },
-    onN: () => addRowRef.current?.focus(),
+    onN: startDraft,
     onEscape: () => {
-      // While the onboarding tour is running, Escape is a one-shot exit
-      // for the tour itself — easier than hunting for the dismiss X on
-      // whichever step is active. Wins over the normal hierarchical
-      // logic because the tour wraps the whole experience.
-      if (tourActive) {
-        void window.api.onboarding.close()
-        return
-      }
       // Hierarchical Escape — step back exactly one focus level per press:
       //   input focus  → blur the input             (lands in item or window focus)
       //   item focus   → clear focusIndex            (lands in window focus)
@@ -403,14 +516,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     onNumber7: () => switchToListByNumber(7),
     onNumber8: () => switchToListByNumber(8),
     onNumber9: () => switchToListByNumber(9),
-    onTab: () => {
-      const idx = sortedLists.findIndex((l) => l.id === activeListId)
-      if (sortedLists.length > 1 && cyclePhase === 'idle') {
-        const nextList = sortedLists[(idx + 1) % sortedLists.length]
-        cycleTargetRef.current = nextList.id
-        setCyclePhase('out')
-      }
-    }
+    onTab: cycleToNextList
   })
 
   // Custom scrollbar event listeners
@@ -516,11 +622,19 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
-        <div className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
+        <div ref={itemsContainerRef} className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          // restrictToVerticalAxis: zeros the X component of the drag
+          // transform so the dragged item can only travel up/down.
+          // Without this, dragging sideways triggers dnd-kit's auto-scroll
+          // horizontally — clipping on the left edge and infinite scroll
+          // on the right.
+          modifiers={[restrictToVerticalAxis]}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <SortableContext items={listItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             <AnimatePresence mode="popLayout">
@@ -534,14 +648,45 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   index={idx}
                   dataIndex={idx}
                   onCopyRequest={(fn) => { focusedItemCopyFnRef.current = fn }}
+                  onEditRequest={(fn) => { focusedItemEditFnRef.current = fn }}
                 />
               ))}
             </AnimatePresence>
           </SortableContext>
+          {/* DragOverlay portal-renders the ghost. dropAnimation.sideEffects
+              applies inline opacity: 0 to the source (active draggable)
+              for the duration of the drop animation, then removes it
+              when complete. This means the source stays hidden through
+              the entire ghost-snap-to-target animation and reveals on
+              the same frame the ghost unmounts. Tighter coupling than
+              setTimeout-based syncing — dnd-kit owns the timing. */}
+          <DragOverlay
+            dropAnimation={{
+              duration: DROP_ANIMATION_MS,
+              easing: 'ease-out',
+              sideEffects: defaultDropAnimationSideEffects({
+                styles: { active: { opacity: '0' } }
+              })
+            }}
+          >
+            {activeDragItem ? <DragGhost item={activeDragItem} /> : null}
+          </DragOverlay>
         </DndContext>
+
+        {/* Draft row for new-item creation. Rendered at the end of the
+            list (inside the scroll area) so it scrolls into view as it
+            grows. Lives outside SortableContext because it has no id-on-
+            disk to reorder against. */}
+        {isAddingItem && (
+          <DraftItemRow
+            onSave={commitDraft}
+            onDiscard={discardDraft}
+            onTab={handleDraftTab}
+          />
+        )}
         </div>
 
-        {listItems.length === 0 && (
+        {listItems.length === 0 && !isAddingItem && (
           <div className="flex items-center justify-center h-20 text-[color:var(--color-text-muted)] text-[length:var(--font-size-base)]">
             {filter === 'all' ? 'No items yet. Press N to add one.' : `No ${filter} items.`}
           </div>
@@ -549,7 +694,19 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
       </div>
 
-      <AddRow ref={addRowRef} listId={activeListId} />
+      {/* Bottom toolbar — replaces the old AddRow input field. Designed
+          as a flex container so future actions can sit alongside the
+          add-item button without restructuring. */}
+      <div className="flex items-center gap-1 px-2 py-1.5 border-t border-[var(--color-border)]">
+        <button
+          className="no-drag flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          onClick={startDraft}
+          title="Add item (N)"
+        >
+          <span className="text-[length:var(--font-size-md)]">+</span>
+          <span>Add item</span>
+        </button>
+      </div>
 
       {/* Custom scrollbar - positioned outside scroll container but aligned to it */}
       {scrollbarVisible && (

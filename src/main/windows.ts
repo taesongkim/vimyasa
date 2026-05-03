@@ -2,6 +2,8 @@ import { BrowserWindow, screen, ipcMain, Menu, shell, app } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { orchestrator } from './onboarding'
+import { getThemesPreloadArg } from './themes-store'
+import { instrumentWindow } from './window-logging'
 
 // Re-run onboarding callout positioning whenever a host window moves /
 // resizes / shows / hides / closes — keeps the callout glued to the host.
@@ -93,7 +95,13 @@ function calculateStackedPosition(): { x: number; y: number } {
   return { x, y }
 }
 
-function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWindow {
+function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions): BrowserWindow {
+  // Snapshot the themes state into an argv flag so the preload script can
+  // expose it synchronously to the renderer. This lets the themes store
+  // initialize on first render with the user's actual config — no async
+  // hydration roundtrip, no GlowSurface flip-and-remount that would
+  // restart the fade-up animation. See themes-store.ts:getThemesPreloadArg.
+  const themesArg = getThemesPreloadArg()
   const win = new BrowserWindow({
     frame: false,
     transparent: true,
@@ -104,7 +112,8 @@ function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWind
       preload: getPreloadPath(),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      additionalArguments: [themesArg]
     },
     ...opts
   })
@@ -121,6 +130,7 @@ function makeWindow(opts: Electron.BrowserWindowConstructorOptions): BrowserWind
   // call setVisibleOnAllWorkspaces themselves — keep that in sync if
   // the invariant ever changes here.
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (is.dev) instrumentWindow(win, tag)
   return win
 }
 
@@ -140,7 +150,7 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
   const workArea = screen.getPrimaryDisplay().workArea
   const listWindowHeight = Math.round(workArea.height * 0.97)
   const { x, y } = position || calculateStackedPosition()
-  const win = makeWindow({
+  const win = makeWindow(`list:${listId}`, {
     width: LIST_WINDOW_WIDTH,
     height: listWindowHeight,
     minWidth: 320,
@@ -159,12 +169,6 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
     // Let the Framer Motion slide handle the visual entrance
     setTimeout(() => win.setOpacity(1), 10)
     orchestrator.refreshPosition()
-    // Auto-open DevTools on the list window in dev so visual debugging
-    // doesn't require knowing the keyboard shortcut. Detached mode keeps
-    // it in a separate window so it doesn't crowd the small list pane.
-    if (is.dev) {
-      win.webContents.openDevTools({ mode: 'detach' })
-    }
   })
   win.on('closed', () => listWindows.delete(listId))
   trackForOnboarding(win)
@@ -173,38 +177,77 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
 
 // ── Quick-Add Window ────────────────────────────────────────────
 
-export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?: string): BrowserWindow {
-  if (quickAddWindow && !quickAddWindow.isDestroyed()) {
-    if (quickAddWindow.isFocused()) {
-      quickAddWindow.close()
-      return quickAddWindow
-    }
-    quickAddWindow.focus()
-    return quickAddWindow
-  }
+/** Pre-warm the QuickAdd window at app startup. Creates the BrowserWindow
+ *  once with show:false, loads the renderer route, and parks it hidden so
+ *  every user summon is just a `win.show()` + IPC state-reset — no cold
+ *  renderer process spawn, no JS bundle parse, no React mount, no theme
+ *  hydration. The window stays alive for the app's lifetime; on user
+ *  close it `hide()`s instead of `close()`-ing.
+ *
+ *  Idempotent: if already pre-warmed, no-op. Called from main/index.ts on
+ *  app ready and re-callable defensively if the window gets destroyed
+ *  unexpectedly. */
+export function ensureQuickAddPrewarmed(): void {
+  if (quickAddWindow && !quickAddWindow.isDestroyed()) return
 
-  const height = QUICKADD_HEIGHT
-  const { x, y } = getCenteredPosition(QUICKADD_WIDTH, height)
-  const win = makeWindow({
+  const { x, y } = getCenteredPosition(QUICKADD_WIDTH, QUICKADD_HEIGHT)
+  const win = makeWindow('quickadd', {
     width: QUICKADD_WIDTH,
-    height,
+    height: QUICKADD_HEIGHT,
     x,
     y,
     resizable: false,
     alwaysOnTop: true
   })
-
   quickAddWindow = win
-  const hash = `/quickadd/fixed/${targetListId || ''}`
-  loadRoute(win, hash)
+
+  // Load with empty listId — actual target is supplied via the
+  // 'quickadd:show' IPC on each summon, so we don't need to recreate the
+  // window when the target list changes.
+  loadRoute(win, '/quickadd/fixed/')
+
   win.once('ready-to-show', () => {
-    win.show()
+    // DO NOT call win.show() here — that's the whole point. We're warming
+    // the renderer, not displaying it.
     orchestrator.refreshPosition()
   })
+
   win.on('closed', () => {
     quickAddWindow = null
   })
+
   trackForOnboarding(win)
+}
+
+/** Show the (pre-warmed or freshly-created) QuickAdd window with the
+ *  given target listId. Sends a 'quickadd:show' IPC ahead of the show
+ *  call so the renderer can reset its state and trigger the fade-up
+ *  remount before the window paints. */
+export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?: string): BrowserWindow {
+  // If the QuickAdd window is currently visible AND focused, treat the
+  // shortcut as a toggle and hide it. Send 'quickadd:hidden' first so
+  // the renderer unmounts the form before the next show, otherwise stale
+  // content can flash visible during the brief gap between win.show()
+  // and the 'quickadd:show' IPC arriving.
+  if (quickAddWindow && !quickAddWindow.isDestroyed() && quickAddWindow.isVisible() && quickAddWindow.isFocused()) {
+    quickAddWindow.webContents.send('quickadd:hidden')
+    quickAddWindow.hide()
+    return quickAddWindow
+  }
+
+  // Defensive: if the prewarmed window got destroyed (e.g., GC under
+  // memory pressure or a never-prewarmed startup race), recreate.
+  if (!quickAddWindow || quickAddWindow.isDestroyed()) {
+    ensureQuickAddPrewarmed()
+  }
+
+  const win = quickAddWindow!
+  // Send the show event with target listId BEFORE win.show() so the
+  // renderer's state is reset (text cleared, listId set, motion.div
+  // re-keyed for fade-up) before the user sees a frame paint.
+  win.webContents.send('quickadd:show', { listId: targetListId ?? '' })
+  win.show()
+  orchestrator.refreshPosition()
   return win
 }
 
@@ -216,7 +259,7 @@ export function createCommentsWindow(itemId: string): BrowserWindow {
   }
 
   const { x, y } = getCenteredPosition(COMMENTS_WIDTH, COMMENTS_HEIGHT)
-  const win = makeWindow({
+  const win = makeWindow(`comments:${itemId}`, {
     width: COMMENTS_WIDTH,
     height: COMMENTS_HEIGHT,
     x,
@@ -249,7 +292,7 @@ export function createSettingsWindow(initialTab?: SettingsTab): BrowserWindow {
   }
 
   const { x, y } = getCenteredPosition(SETTINGS_WIDTH, SETTINGS_HEIGHT)
-  const win = makeWindow({
+  const win = makeWindow('settings', {
     width: SETTINGS_WIDTH,
     height: SETTINGS_HEIGHT,
     x,
@@ -278,7 +321,7 @@ export function createShortcutsOverviewWindow(): BrowserWindow {
 
   const shortcutsHeight = Math.round(screen.getPrimaryDisplay().workArea.height * 0.97)
   const { x, y } = getRightEdgePosition(SHORTCUTS_OVERVIEW_WIDTH, shortcutsHeight)
-  const win = makeWindow({
+  const win = makeWindow('shortcuts-overview', {
     width: SHORTCUTS_OVERVIEW_WIDTH,
     height: shortcutsHeight,
     x,
@@ -304,7 +347,7 @@ export function createArchiveWindow(listId?: string): BrowserWindow {
 
   const archiveHeight = Math.round(screen.getPrimaryDisplay().workArea.height * 0.97)
   const { x, y } = getCenteredPosition(LIST_WINDOW_WIDTH, archiveHeight)
-  const win = makeWindow({
+  const win = makeWindow(`archive:${listId ?? 'all'}`, {
     width: LIST_WINDOW_WIDTH,
     height: archiveHeight,
     x,
@@ -355,6 +398,22 @@ export function registerWindowIpcHandlers(): void {
     if (win) win.close()
   })
 
+  // QuickAdd is pre-warmed and stays alive — its "close" is really a hide
+  // so the renderer process doesn't have to cold-start on the next summon.
+  // We send 'quickadd:hidden' to the renderer BEFORE hiding the window so
+  // the form's motion.div unmounts synchronously — that prevents a flash
+  // of stale content on the next summon (window paints faster than the
+  // 'quickadd:show' IPC arrives, so any content still in the DOM at
+  // hide time would be visible briefly until the show event remounts it).
+  // document.visibilitychange in the renderer is also wired but can fire
+  // late; this IPC is authoritative.
+  ipcMain.handle('quickAddHide', () => {
+    if (quickAddWindow && !quickAddWindow.isDestroyed()) {
+      quickAddWindow.webContents.send('quickadd:hidden')
+      quickAddWindow.hide()
+    }
+  })
+
   ipcMain.handle('openListWindow', (_e, listId: string, position?: { x: number; y: number }) => {
     createListWindow(listId, position)
   })
@@ -396,14 +455,21 @@ export function registerWindowIpcHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return
 
-    const menu = Menu.buildFromTemplate(
-      template.map((item) => ({
+    // Recursive — Menu.buildFromTemplate does walk `submenu` trees, but
+    // it expects each entry's `click` callback to already be attached.
+    // Earlier this only mapped the top level, so nested items in
+    // Status / Send-to-List submenus had ipcEvent + ipcData set but no
+    // click handler — submenus appeared to do nothing on click.
+    const attachClicks = (entries: any[]): any[] =>
+      entries.map((item) => ({
         ...item,
         click: item.ipcEvent
-          ? () => { event.sender.send(item.ipcEvent, item.ipcData) }
-          : undefined
+          ? () => event.sender.send(item.ipcEvent, item.ipcData)
+          : undefined,
+        submenu: Array.isArray(item.submenu) ? attachClicks(item.submenu) : item.submenu
       }))
-    )
+
+    const menu = Menu.buildFromTemplate(attachClicks(template))
     menu.popup({ window: win })
   })
 }

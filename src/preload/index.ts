@@ -1,6 +1,26 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { VimyasaAPI } from '../shared/types'
 
+// Sync hand-off of the persisted themes state from main → renderer. Main
+// passes a `--themes-initial=<json>` argv flag when creating each
+// BrowserWindow; we parse it here (preload runs before the renderer's JS)
+// and expose the parsed snapshot so the themes store can initialize on
+// first render without an async IPC roundtrip. See themes-store.ts:
+// getThemesPreloadArg.
+function readThemesInitial(): unknown {
+  const flag = process.argv.find((a) => a.startsWith('--themes-initial='))
+  if (!flag) return null
+  try {
+    return JSON.parse(flag.slice('--themes-initial='.length))
+  } catch {
+    // Malformed JSON — fall back to null. The renderer will use its
+    // built-in defaults and the existing onChanged subscription will
+    // catch up once main re-broadcasts.
+    return null
+  }
+}
+contextBridge.exposeInMainWorld('themesInitial', readThemesInitial())
+
 const api: VimyasaAPI = {
   // Lifecycle
   ping: () => ipcRenderer.invoke('ping'),
@@ -19,7 +39,7 @@ const api: VimyasaAPI = {
   deleteList: (id) => ipcRenderer.invoke('deleteList', id),
 
   // Items
-  createItem: (listId, text) => ipcRenderer.invoke('createItem', listId, text),
+  createItem: (listId, text, clientId) => ipcRenderer.invoke('createItem', listId, text, clientId),
   updateItem: (id, updates) => ipcRenderer.invoke('updateItem', id, updates),
   deleteItem: (id) => ipcRenderer.invoke('deleteItem', id),
   setItemStatus: (id, status) => ipcRenderer.invoke('setItemStatus', id, status),
@@ -68,6 +88,14 @@ const api: VimyasaAPI = {
       ipcRenderer.removeListener('data-changed', listener)
     }
   },
+  onContextMenuAction: (callback) => {
+    const listener = (_event: unknown, data: Parameters<typeof callback>[0]): void =>
+      callback(data)
+    ipcRenderer.on('context-menu-action', listener)
+    return () => {
+      ipcRenderer.removeListener('context-menu-action', listener)
+    }
+  },
 
   // System
   revealDataFile: () => ipcRenderer.invoke('revealDataFile'),
@@ -106,6 +134,68 @@ const api: VimyasaAPI = {
       ipcRenderer.on('onboarding:dim-shown', listener)
       return () => ipcRenderer.removeListener('onboarding:dim-shown', listener)
     }
+  },
+
+  // System
+  openExternal: (url) => ipcRenderer.invoke('openExternal', url),
+
+  // Themes (production)
+  themes: {
+    get: () => ipcRenderer.invoke('themes:get'),
+    setMasterEnabled: (enabled) => ipcRenderer.invoke('themes:setMasterEnabled', enabled),
+    setSurfaceEnabled: (surfaceId, enabled) =>
+      ipcRenderer.invoke('themes:setSurfaceEnabled', surfaceId, enabled),
+    setSurfaceConfig: (surfaceId, config) =>
+      ipcRenderer.invoke('themes:setSurfaceConfig', surfaceId, config),
+    reset: () => ipcRenderer.invoke('themes:reset'),
+    onChanged: (callback) => {
+      const listener = (_e: unknown, state: unknown): void => callback(state as never)
+      ipcRenderer.on('themes:changed', listener)
+      return () => ipcRenderer.removeListener('themes:changed', listener)
+    }
+  },
+
+  // Pre-warmed QuickAdd window
+  quickAdd: {
+    onShow: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as { listId?: string } | null
+        callback({ listId: p?.listId ?? '' })
+      }
+      ipcRenderer.on('quickadd:show', listener)
+      return () => ipcRenderer.removeListener('quickadd:show', listener)
+    },
+    onHidden: (callback) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('quickadd:hidden', listener)
+      return () => ipcRenderer.removeListener('quickadd:hidden', listener)
+    },
+    hide: () => ipcRenderer.invoke('quickAddHide')
+  },
+
+  // Theme event triggers
+  themeEvents: {
+    onEvent: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as { name?: string; itemId?: string } | null
+        if (p && typeof p.name === 'string') callback(p as never)
+      }
+      ipcRenderer.on('theme:event', listener)
+      return () => ipcRenderer.removeListener('theme:event', listener)
+    },
+    fire: (name) => ipcRenderer.invoke('themeEvent:fire', name)
+  },
+
+  // Theme dev panel (gated by is.dev — never call from production builds)
+  themeDev: {
+    openPanel: () => ipcRenderer.invoke('themeDev:openPanel'),
+    closePanel: () => ipcRenderer.invoke('themeDev:closePanel'),
+    isPanelOpen: () => ipcRenderer.invoke('themeDev:isPanelOpen'),
+    listPresets: () => ipcRenderer.invoke('themeDev:listPresets'),
+    savePreset: (surfaceId, label, config) =>
+      ipcRenderer.invoke('themeDev:savePreset', surfaceId, label, config),
+    updatePreset: (id, updates) => ipcRenderer.invoke('themeDev:updatePreset', id, updates),
+    deletePreset: (id) => ipcRenderer.invoke('themeDev:deletePreset', id)
   }
 }
 

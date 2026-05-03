@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from './store/useStore'
+import { useThemesStore } from './store/themesStore'
 import { ListWindow } from './components/ListWindow/ListWindow'
 import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
 import { CommentsWindow } from './components/Comments/CommentsWindow'
@@ -8,6 +9,8 @@ import { ArchiveWindow } from './components/Archive/ArchiveWindow'
 import { ShortcutsOverview } from './components/ShortcutsOverview'
 import { CalloutWindow } from './components/Onboarding/CalloutWindow'
 import { DimOverlay } from './components/Onboarding/DimOverlay'
+import { GlowSurface } from './components/shared/GlowSurface'
+import { ThemeDevPanel } from './components/ThemeDevPanel/ThemeDevPanel'
 
 interface RouteInfo {
   route: string
@@ -42,6 +45,9 @@ function parseHash(): RouteInfo {
   if (parts[1] === 'onboarding') {
     return { route: 'onboarding', params: {} }
   }
+  if (parts[1] === 'themedev') {
+    return { route: 'themedev', params: {} }
+  }
   if (parts[1] === 'onboarding-dim') {
     return { route: 'onboarding-dim', params: {} }
   }
@@ -60,6 +66,12 @@ export default function App() {
       console.error('Failed to hydrate store:', err)
       setError(String(err))
     })
+    // Themes hydration runs in parallel — failures are non-fatal (UI just
+    // renders without glow effects rather than blocking the whole window).
+    useThemesStore
+      .getState()
+      .hydrate()
+      .catch((err) => console.error('Failed to hydrate themes store:', err))
   }, [hydrate])
 
   // Listen for cross-window data changes
@@ -89,10 +101,19 @@ export default function App() {
   // they're driven entirely by the main-process orchestrator over IPC.
   // Skip the hydration gate so they can render before the store loads.
   if (route.route === 'onboarding') {
-    return <CalloutWindow />
+    return (
+      <GlowSurface surface="welcome-callout-window" style={{ height: '100%', width: '100%' }}>
+        <CalloutWindow />
+      </GlowSurface>
+    )
   }
   if (route.route === 'onboarding-dim') {
     return <DimOverlay />
+  }
+  // Theme dev panel needs no data hydration — it reads from the themes
+  // store only (which hydrates from main on its own).
+  if (route.route === 'themedev') {
+    return <ThemeDevPanel />
   }
 
   if (!hydrated) {
@@ -105,17 +126,29 @@ export default function App() {
 
   switch (route.route) {
     case 'list':
-      return <ListWindow listId={route.params.listId} />
+      return (
+        <GlowSurface surface="list-window" style={{ height: '100%', width: '100%' }}>
+          <ListWindow listId={route.params.listId} />
+        </GlowSurface>
+      )
     case 'quickadd-fixed': {
       const listId = route.params.listId || lists[0]?.id || ''
-      return <QuickAddFixed listId={listId} />
+      return (
+        <GlowSurface surface="quickadd-window" style={{ height: '100%', width: '100%' }}>
+          <QuickAddFixed listId={listId} />
+        </GlowSurface>
+      )
     }
     case 'comments':
       return <CommentsWindow itemId={route.params.itemId} />
     case 'settings': {
       const tab = route.params.tab as SettingsTab
       const initialTab: SettingsTab | undefined =
-        tab === 'general' || tab === 'lists' || tab === 'shortcuts' || tab === 'data'
+        tab === 'general' ||
+        tab === 'lists' ||
+        tab === 'shortcuts' ||
+        tab === 'themes' ||
+        tab === 'data'
           ? tab
           : undefined
       return <SettingsWindow initialTab={initialTab} />

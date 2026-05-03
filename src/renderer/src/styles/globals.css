@@ -342,6 +342,44 @@ html, body, #root {
   transition: box-shadow 120ms ease;
 }
 
+/* ── Item save confirmation flash ─────────────────────────────────
+   The white-glow shadow stack from `.submit-confirming-white-glow input`
+   above, replayed as a one-shot CSS animation on a freshly-saved item
+   row. ItemRow renders this as an absolute-positioned overlay sibling
+   inside the row container, mounted with a unique key per save event;
+   the overlay unmounts itself via onAnimationEnd. Mounting fresh per
+   trigger is what lets a single mounted ItemRow flash multiple times
+   (new-item + rename + future save events) — re-adding a class to the
+   same element doesn't replay a CSS animation, but mounting a new
+   element does.
+
+   Intentionally NOT routed through useSubmitAnimation — that hook is
+   a JS state machine that didn't auto-reset, which became a real bug
+   when the QuickAdd renderer started persisting across summons. A pure
+   CSS animation has no state to leak.
+
+   Visual must match the QuickAdd flash so users read both as the same
+   "your input was committed" signal across save paths. Keep the
+   box-shadow stack identical to `.submit-confirming-white-glow input`.
+   `border-radius: inherit` lets the overlay match whichever radius the
+   host row uses (currently Tailwind `rounded` = 4px). */
+@keyframes item-row-save-flash {
+  0% {
+    box-shadow:
+      inset 0 0 0 0.25px rgba(255, 255, 255, 0.93),
+      inset 0 0 2px rgba(255, 255, 255, 0.8),
+      0 0 2px rgba(255, 255, 255, 0.8),
+      inset 0 0 8px rgba(255, 255, 255, 0.3),
+      0 0 4px 2px rgba(255, 255, 255, 0.3);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+.item-row-save-flash {
+  animation: item-row-save-flash 400ms ease-out;
+}
+
 /* ── Copy confirmation animations ─────────────────────────────── */
 
 @keyframes fadeIn {
@@ -825,6 +863,21 @@ html, body, #root {
 .onb-btn-primary:hover:not(:disabled) {
   background: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
+}
+/* Variant for the welcome-callout Start Tour button. The wrapping
+   GlowSurface provides all the visual emphasis (rotating beam + dust)
+   so the button itself stays neutral — the blue accent of onb-btn-
+   primary muted the animation's palette and read as competing visual
+   noise. Skip + Start Tour now look similar at rest; the glow is what
+   tells the user which one is the primary action. */
+.onb-btn-glow {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.onb-btn-glow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 .onb-btn:disabled {
   opacity: 0.35;

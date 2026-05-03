@@ -10,6 +10,11 @@ import {
   createArchiveWindow
 } from './windows'
 import { orchestrator } from './onboarding'
+import {
+  isThemeDevPanelOpen,
+  openThemeDevPanel,
+  closeThemeDevPanel
+} from './theme-dev-panel'
 
 let tray: Tray | null = null
 
@@ -143,6 +148,27 @@ export function updateTrayMenu(): void {
       label: 'Replay Onboarding Tour',
       click: () => orchestrator.replay()
     },
+    // Dev-only: toggle the theme dev panel for tuning glow effects.
+    // The panel is gated by is.dev in main/index.ts and ipc.ts; the
+    // menu entry only appears in dev builds so production users never
+    // see it.
+    ...(is.dev
+      ? ([
+          { type: 'separator' as const },
+          {
+            label: isThemeDevPanelOpen() ? 'Close Theme Dev Panel' : 'Open Theme Dev Panel',
+            click: () => {
+              if (isThemeDevPanelOpen()) {
+                closeThemeDevPanel()
+              } else {
+                openThemeDevPanel()
+              }
+              // Rebuild the menu so the label flips on next open.
+              updateTrayMenu()
+            }
+          }
+        ] as Electron.MenuItemConstructorOptions[])
+      : []),
     { type: 'separator' },
     {
       label: 'Quit Vimyasa',

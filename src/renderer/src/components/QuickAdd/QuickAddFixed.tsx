@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
+import { GlowSurface } from '../shared/GlowSurface'
 
 export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const { lists, addItem } = useStore()
@@ -24,8 +25,79 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const EXIT_DURATION_MS = 150
   const EXIT_OFFSET_PX = 4
 
+  // Pre-warmed window: the renderer stays alive across summons. We
+  // *unmount* the form contents whenever the window is hidden — that way
+  // there's nothing in the DOM to flicker visible during the brief gap
+  // between win.show() and the 'quickadd:show' IPC arriving. On show,
+  // motion.div mounts fresh and the fade-up animation plays cleanly.
+  //
+  // hiddenState starts true so the pre-warmed window has no content
+  // rendered. visibilitychange flips it to true on every hide; the show
+  // event flips it to false. showCount keys motion.div so each summon
+  // gets a fresh mount of the form's visible tree (replays the fade-
+  // up entrance). It does NOT reset useSubmitAnimation — that hook
+  // lives at the component level, outside the keyed subtree, and is
+  // explicitly reset via submitAnim.reset() in the show handler below.
+  const [showCount, setShowCount] = useState(0)
+  const [hiddenState, setHiddenState] = useState(true)
+  // Mirror of `exiting` for the post-submit hide path. After the
+  // await-setTimeout returns, the closure can't read live state — we read
+  // this ref to detect whether a 'quickadd:show' event cancelled the
+  // pending hide (by setting exiting back to false).
+  const exitingRef = useRef(false)
+
   useEffect(() => {
-    inputRef.current?.focus()
+    const onHidden = (): void => {
+      // Window is hiding — drop content from DOM so the next show starts
+      // clean. Authoritative path is the IPC from main (sent BEFORE
+      // win.hide()). The visibilitychange fallback below catches any
+      // edge case where main forgets / a different code path hides.
+      setHiddenState(true)
+      setExiting(false)
+      exitingRef.current = false
+    }
+    const offIpc = window.api.quickAdd.onHidden(onHidden)
+    const onVis = (): void => {
+      if (document.hidden) onHidden()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      offIpc()
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [])
+
+  useEffect(() => {
+    return window.api.quickAdd.onShow((payload) => {
+      // Reset form state. Runs synchronously before the next paint, so
+      // when motion.div mounts (next render) it has the right listId and
+      // no stale text.
+      setText('')
+      setSelectedListId(payload.listId || lists[0]?.id || initialListId)
+      setDropdownOpen(false)
+      setExiting(false)
+      exitingRef.current = false
+      // Clear any stuck submit-confirmation state from the previous
+      // summon. play() intentionally doesn't auto-reset (resetting
+      // mid-flow would visibly snap the faded siblings + glowing
+      // input back to normal before the exit animation can hide
+      // them — see useSubmitAnimation.ts). On the next summon this
+      // is the natural fresh-start point.
+      submitAnim.reset()
+      setShowCount((c) => c + 1)
+      setHiddenState(false) // re-mounts motion.div, fade-up plays
+    })
+  }, [lists, initialListId, submitAnim])
+
+  // Focus on every mount via a ref callback rather than a one-shot
+  // useEffect. Reason: when the user has the quickadd-input GlowSurface
+  // enabled, themes hydration flips us from "children rendered bare" to
+  // "<BorderBeam>children</BorderBeam>", which remounts the input — a
+  // mount-time useEffect would run on the OLD instance and lose focus.
+  // The ref callback fires on every (re)mount and re-applies focus.
+  const handleInputRef = useCallback((el: HTMLInputElement | null) => {
+    inputRef.current = el
+    if (el) el.focus()
   }, [])
 
   // If the targeted list is deleted while this form is open, the dropdown
@@ -38,32 +110,25 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     }
   }, [lists, selectedListId])
 
-  // Track whether the onboarding tour is running, so Escape can exit it
-  // directly from QuickAdd (which is the focused window during step 01).
-  const [tourActive, setTourActive] = useState(false)
-  useEffect(() => {
-    return window.api.onboarding.onState((s) => setTourActive(s.active))
-  }, [])
+  // Note: Escape used to exit the onboarding tour from QuickAdd, but
+  // the 'escape' step's prompt teaches users to try Esc — and they were
+  // accidentally exiting the tour by following the lesson. Tour exit
+  // now lives only on the callout's dismiss X.
 
   // Global Escape handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        if (tourActive) {
-          // Tour-wide Escape: exit the whole onboarding flow.
-          void window.api.onboarding.close()
-          return
-        }
         if (dropdownOpen) {
           setDropdownOpen(false)
         } else {
-          window.api.closeWindow()
+          void window.api.quickAdd.hide()
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [dropdownOpen, tourActive])
+  }, [dropdownOpen])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -87,14 +152,25 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     const animationPromise = submitAnim.play()
     await addItem(selectedListId, trimmed)
     await animationPromise
-    // Phase 2: form slides up + fades, then we actually close the window.
+    // Phase 2: form slides up + fades, then we hide the (pre-warmed)
+    // window. We mirror `exiting` into a ref so the closure can detect
+    // a re-summon mid-exit (the show handler resets exitingRef.current
+    // to false) and bail without hiding.
     setExiting(true)
+    exitingRef.current = true
     await new Promise<void>((resolve) => setTimeout(resolve, EXIT_DURATION_MS))
-    window.api.closeWindow()
+    if (!exitingRef.current) return // user re-summoned during the exit fade
+    void window.api.quickAdd.hide()
   }
+
+  // While hidden, render nothing — keeps the pre-warmed window's vibrancy
+  // visible without any content that could flicker on summon before the
+  // show IPC arrives and remounts motion.div for the fade-up.
+  if (hiddenState) return null
 
   return (
     <motion.div
+      key={showCount}
       initial={{ opacity: 0, scale: 1, y: 8 }}
       animate={
         exiting
@@ -158,25 +234,27 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       </div>
 
       {/* Input */}
-      <input
-        ref={inputRef}
-        className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
-        placeholder=""
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            handleSubmit()
-          }
-          if (e.key === 'Tab') {
-            e.preventDefault()
-            const idx = lists.findIndex((l) => l.id === selectedListId)
-            const nextIdx = (idx + 1) % lists.length
-            setSelectedListId(lists[nextIdx].id)
-          }
-        }}
-      />
+      <GlowSurface surface="quickadd-input" style={{ display: 'block', width: '100%' }}>
+        <input
+          ref={handleInputRef}
+          className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
+          placeholder=""
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              handleSubmit()
+            }
+            if (e.key === 'Tab') {
+              e.preventDefault()
+              const idx = lists.findIndex((l) => l.id === selectedListId)
+              const nextIdx = (idx + 1) % lists.length
+              setSelectedListId(lists[nextIdx].id)
+            }
+          }}
+        />
+      </GlowSurface>
 
       {/* Help text */}
       <div data-submit-fade className="flex justify-center">

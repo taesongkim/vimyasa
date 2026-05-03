@@ -1,3 +1,5 @@
+import type { ThemesAPI, ThemeDevAPI, ThemeEventsAPI, ThemesState, QuickAddAPI } from './themes'
+
 // ── Data Model Types ──────────────────────────────────────────────
 
 export type ItemStatus = 'active' | 'done' | 'hold'
@@ -90,7 +92,7 @@ export interface VimyasaAPI {
   deleteList: (id: string) => Promise<void>
 
   // Items
-  createItem: (listId: string, text: string) => Promise<Item>
+  createItem: (listId: string, text: string, clientId?: string) => Promise<Item>
   updateItem: (id: string, updates: Partial<Pick<Item, 'text' | 'status' | 'listId' | 'sortOrder' | 'archivedAt'>>) => Promise<Item>
   deleteItem: (id: string) => Promise<void>
   setItemStatus: (id: string, status: ItemStatus) => Promise<Item>
@@ -131,8 +133,14 @@ export interface VimyasaAPI {
 
   // Events
   onDataChanged: (callback: () => void) => () => void
+  /** Subscribe to clicks on items in a previously-shown context menu.
+   *  Main re-broadcasts the chosen action (with the ipcData payload the
+   *  caller attached to the template entry) over `context-menu-action`.
+   *  Returns an unsubscribe function. */
+  onContextMenuAction: (callback: (data: { action: string; itemId?: string; status?: string; listId?: string }) => void) => () => void
 
   // System
+  openExternal: (url: string) => Promise<void>
   revealDataFile: () => Promise<void>
   getLoginItemSettings: () => Promise<{ openAtLogin: boolean }>
   setLoginItemSettings: (openAtLogin: boolean) => Promise<void>
@@ -141,6 +149,18 @@ export interface VimyasaAPI {
 
   // Onboarding
   onboarding: OnboardingAPI
+
+  // Themes (production settings, exposed in Settings → Themes)
+  themes: ThemesAPI
+
+  // Theme dev panel (gated by is.dev — never call from production builds)
+  themeDev: ThemeDevAPI
+
+  // Theme event triggers — IPC-broadcast events fire surface pulses
+  themeEvents: ThemeEventsAPI
+
+  // Pre-warmed QuickAdd window — show/hide replaces the destroy/recreate path
+  quickAdd: QuickAddAPI
 }
 
 export interface OnboardingCalloutPayload {
@@ -184,5 +204,10 @@ export interface OnboardingAPI {
 declare global {
   interface Window {
     api: VimyasaAPI
+    /** Snapshot of the persisted themes state injected by the preload
+     *  script via `additionalArguments`. Available synchronously on first
+     *  render. Null only if main's argv flag was missing or malformed
+     *  (shouldn't happen in normal operation; see preload/index.ts). */
+    themesInitial: ThemesState | null
   }
 }
