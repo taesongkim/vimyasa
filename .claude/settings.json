@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf 'vimyasa repo — multi-lane Claude Code workflow.\\n\\n• Read docs/WORKFLOW.md to identify your lane (features / aesthetics / themes / coordination) and the rules for parallel work.\\n• Read docs/BACKLOG.md for triaged priorities and what is in-flight in other lanes.\\n• Read docs/architecture/ for load-bearing context (theme system, prewarm pattern, vibrancy gotcha, parallel-instance flicker).\\n\\nIf you do not know which lane this session is, ask the human before editing src/.\\n'"
+          }
+        ]
+      }
+    ]
+  }
+}
