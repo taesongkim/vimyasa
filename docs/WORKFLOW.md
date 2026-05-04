@@ -83,6 +83,48 @@ feature lane should:
   finishing), so other lanes don't pick up the same item.
 - Add follow-ups discovered mid-task to `BACKLOG.md` rather than memory.
 
+### When asked to do work outside your lane
+
+This rule exists so the user learns the lane model in real time, instead
+of accidentally bypassing it. The cost of pushing back briefly is much
+less than the cost of unnoticed cross-lane edits.
+
+When the user asks you to do something outside your lane:
+
+1. **Don't refuse.** Refusing is brittle and annoying.
+2. **Don't just do it.** That's the failure mode the lane structure
+   exists to prevent.
+3. **Push back once, in one sentence.** "This is the **<lane>** lane's
+   work because <reason>. Want me to file it in `BACKLOG.md` and let
+   them pick it up, or do you want me to do it anyway?"
+4. **If the user repeats the request, do it and disclose loudly.**
+   Separate commit, mention in PR description, add a `BACKLOG.md` entry
+   noting the cross-lane patch so the owning lane knows to revisit if
+   needed.
+
+The user's *second* ask is the override. No magic phrase required.
+
+#### Edge cases
+
+- **Ambiguous request** ("fix this bug"): identify the most likely lane,
+  ask, don't guess.
+- **Mixed request** ("fix the bug and update the docs"): do the in-lane
+  part, flag the out-of-lane part.
+- **Lane not yet identified**: identifying your lane is the first thing
+  you do on any new task. If context doesn't make it obvious, ask the
+  user.
+- **Genuine emergency** ("everything's broken"): same shape, just
+  compressed — one sentence push-back, then act on confirmation.
+
+#### The user's master override
+
+The user is always the final authority. If a session ever ignores them
+across multiple repeats — or applies this rule when it shouldn't (e.g.
+they're clearly mid-emergency) — the user can short-circuit by saying
+something like "lane override" or "stop blocking, just do it." The
+session does the work and adds a `BACKLOG.md` entry so coordination can
+revisit *whether the rule itself needs adjusting*.
+
 ## Why this shape
 
 Vimyasa is a solo-dev pre-1.0 project. The lanes exist to:
