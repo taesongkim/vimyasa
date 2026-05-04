@@ -59,6 +59,12 @@ talking to coordination.
 
 ## Open entries
 
+*(Add new entries above this line, newest first.)*
+
+---
+
+## Resolved entries
+
 ## 2026-05-04 — features
 **Type:** note
 **Body:** Feedback messenger PR 2 ships the textarea bare (no GlowSurface
@@ -68,12 +74,8 @@ surface and wrap the `<textarea>` in
 `src/renderer/src/components/Feedback/FeedbackWindow.tsx`. Same pattern
 as `quickadd-input` on QuickAddFixed. Skipped here intentionally to
 keep PR 2 strictly features-lane.
-**Status:** open
-
-*(Add new entries above this line, newest first.)*
-
----
-
-## Resolved entries
-
-*(Resolved entries linger here briefly before archiving.)*
+**Status:** resolved
+**Resolved (2026-05-04 — coordination):** captured as a BACKLOG entry
+("Feedback window — themed input surface", P3, themes lane, v0.1.9).
+Themes lane will pick it up when they're in this code for focus-state
+cues anyway.

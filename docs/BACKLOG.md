@@ -17,12 +17,12 @@ iteration · `P3` someday/maybe.
 
 ## Versioning roadmap
 
-Live release: **v0.1.4**. Planned next sequence:
+Live release: **v0.1.5**. Planned next sequence:
 
 | Version | Theme | Primary contents |
 |---|---|---|
-| **v0.1.5** | Feedback messenger | Hotkey + message window → POST to email-forwarding endpoint. Coordination prereq: threat-model proposal. |
-| **v0.1.6** | Hot list — Phase 1 (visible) | Hot-list PR-1 schema, PR-2 shortcut + window + slide animation, PR-3 number-0 wiring. Skip prewarm for now. |
+| ~~**v0.1.5**~~ | ~~Feedback messenger~~ | ✅ Shipped — Cmd+Shift+\\ feedback window, Cloudflare Worker → Resend → email pipeline. |
+| **v0.1.6** | Hot list — Phase 1 (visible) + release-notes-in-update | Hot-list PR-1 schema, PR-2 shortcut + window + slide animation, PR-3 number-0 wiring. Plus: surface GitHub release notes in the auto-update prompt window. |
 | **v0.1.7** | Hot list polish + Undo | Hot list PR-4 (prewarm). Undo with 3–5 step in-memory ring buffer. `Cmd+Z` / `Cmd+Shift+Z`, in-session only, single-list scope. |
 | **v0.1.8** | Move-item flow + small wins | Carry mode (`m` enter / 0–9 send / j/k reorder / Esc land). Auto-scroll to entry-form-added item. Deselect prior item on new-item init. |
 | **v0.1.9** | Focus-state cues + backup | Themes lane: focus-changed event + flash/glow via existing magic-colors infra. Features lane: discover existing export, ship tested import. |
@@ -104,24 +104,51 @@ not silently grab next-priority items.
   may be all that's needed. Pairs cleanly with backup work in v0.1.9
   (different lanes, no overlap).
 
+### Release notes in auto-update prompt
+- **Lane:** features (primary), aesthetics (visual treatment)
+- **Priority:** P2
+- **Version:** v0.1.6
+- **Status:** idea — quick scope only, not yet a proposal
+- **Notes:** When the auto-update flow shows the "update available"
+  message, include the GitHub release notes (markdown body of the
+  release) as a tab or expanded section. `electron-updater` already
+  exposes `releaseNotes` on the `update-downloaded` event. Likely
+  ~half a day if the current update UI is a custom in-app window,
+  +1–2 hours if it's a native dialog (would need migration). Open
+  questions before building:
+  1. Current update UI shape (custom vs. native).
+  2. electron-updater concatenates skipped versions' notes —
+     decide: show all, or just latest?
+  3. Markdown renderer choice (`marked` is ~5kb, plenty).
+  Coordination writes a proper proposal when v0.1.6 is closer.
+
+### Feedback window — themed input surface
+- **Lane:** themes
+- **Priority:** P3
+- **Version:** v0.1.9 (with focus-state cues — same lane, same release)
+- **Status:** idea — spawned from features lane INBOX note (resolved 2026-05-04)
+- **Notes:** Feedback window's `<textarea>` shipped bare in v0.1.5
+  (no `GlowSurface` wrap). To make it participate in Theme 1 (or future
+  themed treatments), register a new `feedback-input` surface in
+  `src/shared/themes.ts` and wrap the textarea in
+  `src/renderer/src/components/Feedback/FeedbackWindow.tsx` — mirror
+  of `quickadd-input` on QuickAddFixed. Schema bump + migration (per
+  the established pattern). Trivial once you're already in the themes
+  code.
+
 ### In-app feedback messenger to dev
-- **Lane:** features (app-side build)
+- **Lane:** features (built); coordination (Worker)
 - **Priority:** P1
-- **Version:** v0.1.5
-- **Status:** proposed → infrastructure live → PR 1 + PR 2 + PR 3's
-  prewarm in-flight (features lane, single branch). PR 3's prewarm was
-  pulled forward to fix a first-summon blank-window race; remaining PR 3
-  scope is visual polish + motion timing pass with aesthetics lane.
+- **Version:** v0.1.5 — **shipped**
+- **Status:** ✅ merged → PR #18. All three proposed PRs (settings +
+  clientId, window + send, prewarm) shipped in one delivery. Worker
+  live at `https://vimyasa-feedback.taesongkim.workers.dev`.
   See [proposals/feedback-messenger.md](./proposals/feedback-messenger.md)
-  for the full design.
-- **Notes:** Cloudflare Worker deployed at
-  `https://vimyasa-feedback.taesongkim.workers.dev` and verified
-  end-to-end (curl → ok → email arrived). Source committed at
-  [`infra/feedback-worker/`](../infra/feedback-worker/). Three app-side
-  PRs phased in the proposal:
-  1. settings + clientId infrastructure (ships invisibly)
-  2. feedback window + send flow (the visible v0.1.5 work)
-  3. prewarm + polish
+  for the design and [`infra/feedback-worker/`](../infra/feedback-worker/)
+  for the deployed Worker source.
+- **Follow-ups in BACKLOG:** see "Feedback window — themed input
+  surface" under Themes (v0.1.9), spawned from features lane's INBOX
+  note that the textarea ships bare without a `GlowSurface` wrap.
 
 ---
 
