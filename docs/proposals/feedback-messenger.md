@@ -1,6 +1,6 @@
 # Proposal: Feedback Messenger
 
-**Status:** approved → infrastructure live, app-side build pending
+**Status:** ✅ shipped in v0.1.5 (PR #18)
 **Lane:** features (app-side build); coordination (this proposal + Worker)
 **Target version:** v0.1.5
 **Author:** coordination lane
@@ -140,13 +140,19 @@ this channel demonstrably not exfiltrating their lists.
 - **Sent successfully:** `"Message sent. Thanks!"` (auto-hide 1.5s)
 - **Daily limit reached:**
 
-  > `"Damn okay, over-achiever — you hit the 30-message daily limit.`
-  > `(I had to put a cap on this to prevent spam attacks. Sorry about`
-  > `it!) The limit resets at midnight your time. If it's urgent, hit`
-  > `me up at justin@taesongkim.com instead. Thanks!"`
+  > `"Damn okay, over-achiever — you hit the {limit}-message daily`
+  > `limit (I had to put a cap on this to prevent spam attacks). The`
+  > `limit resets at midnight your time. If it's urgent, adjust your`
+  > `personal limits in Settings/Feedback."`
 
-  Window stays open with the message preserved, a "Copy email address"
-  button, and a "Copy your message" button so nothing is lost.
+  `{limit}` is templated against the user's configured daily limit
+  (so the number stays accurate if they bump it). `Settings/Feedback`
+  is a click-link that jumps to Settings → Feedback tab, reusing the
+  "Sending as `<name>`" link pattern from the window header.
+
+  Window stays open with the message preserved. Copy-message and
+  Dismiss buttons present; **no Copy-email button** in this state
+  (the path forward is self-service via the link, not email).
 
 - **Network/service error:**
 
@@ -171,9 +177,13 @@ on 2026-05-04 returned `{"ok":true}` and email arrived at
 `justin@taesongkim.com` within seconds). Schema, environment variables,
 and rate-limiting posture documented in the README.
 
-## App-side phasing (next, in features lane)
+## App-side phasing — shipped in v0.1.5
 
-Three PRs (each can ship independently):
+All three PRs landed in a single delivery (PR #18). PR 3's prewarm
+was pulled forward into PR 2 because lazy prewarm raced the renderer
+mount and left the first summon blank.
+
+The phased plan as originally designed (kept here for posterity):
 
 ### PR 1: settings + clientId infrastructure
 - New `feedback` namespace in `electron-store`:
