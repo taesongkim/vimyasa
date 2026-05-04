@@ -104,25 +104,21 @@ not silently grab next-priority items.
   may be all that's needed. Pairs cleanly with backup work in v0.1.9
   (different lanes, no overlap).
 
-### In-app feedback messenger to dev (network-egress feature)
-- **Lane:** features (build); coordination (threat-model proposal first)
-- **Priority:** P1 (promoted — now drives v0.1.5)
+### In-app feedback messenger to dev
+- **Lane:** features (app-side build)
+- **Priority:** P1
 - **Version:** v0.1.5
-- **Status:** idea — threat-model proposal needed before any code
-- **Notes:** Network-egress feature, will ship to testers, will live
-  across multiple of the user's projects. Coordination lane writes
-  `proposals/feedback-messenger.md` first, addressing:
-  - Auth model (anonymous + app-version stamp recommended for v1)
-  - Rate limiting (per-machine token bucket)
-  - What data goes over the wire (message + app version + OS;
-    explicitly NOT list contents or PII)
-  - Receiving end: dedicated endpoint forwarding to email
-    (Formspree / Web3Forms / Resend) vs. in-app inbox. Recommend
-    forwarding endpoint for v1 — zero infra to maintain.
-  - Abuse vectors (testers spamming, scraped binary used for spam
-    relay).
-  - Cross-project reuse: design endpoint to be shared across the
-    user's projects (project tag in payload).
+- **Status:** proposed → infrastructure live → app-side PRs pending.
+  See [proposals/feedback-messenger.md](./proposals/feedback-messenger.md)
+  for the full design.
+- **Notes:** Cloudflare Worker deployed at
+  `https://vimyasa-feedback.taesongkim.workers.dev` and verified
+  end-to-end (curl → ok → email arrived). Source committed at
+  [`infra/feedback-worker/`](../infra/feedback-worker/). Three app-side
+  PRs phased in the proposal:
+  1. settings + clientId infrastructure (ships invisibly)
+  2. feedback window + send flow (the visible v0.1.5 work)
+  3. prewarm + polish
 
 ---
 
@@ -189,6 +185,13 @@ not silently grab next-priority items.
 ---
 
 ## Coordination / infrastructure
+
+### Reference docs (maintained ongoing)
+
+- **[`docs/reference/popular-shortcuts.md`](./reference/popular-shortcuts.md)** —
+  shortcuts used by apps in vimyasa's target demographic. Check before
+  picking a new global hotkey. Update when new conflicts surface in
+  testing or new vimyasa shortcuts ship. Last verified: 2026-05-04.
 
 ### Auto-update integrity audit
 - **Lane:** coordination
