@@ -59,6 +59,17 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-05-04 — features
+**Type:** note
+**Body:** Feedback messenger PR 2 ships the textarea bare (no GlowSurface
+wrap). If themes lane wants the feedback window to participate in Theme
+1 (or a future themed treatment), register a new `feedback-input`
+surface and wrap the `<textarea>` in
+`src/renderer/src/components/Feedback/FeedbackWindow.tsx`. Same pattern
+as `quickadd-input` on QuickAddFixed. Skipped here intentionally to
+keep PR 2 strictly features-lane.
+**Status:** open
+
 *(Add new entries above this line, newest first.)*
 
 ---

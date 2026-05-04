@@ -1,6 +1,11 @@
 import { globalShortcut } from 'electron'
 import { store } from './store'
-import { createListWindow, createQuickAddWindow, createShortcutsOverviewWindow } from './windows'
+import {
+  createFeedbackWindow,
+  createListWindow,
+  createQuickAddWindow,
+  createShortcutsOverviewWindow
+} from './windows'
 import type { BuiltinShortcuts, List } from '../shared/types'
 import { DEFAULT_BUILTIN_SHORTCUTS } from '../shared/types'
 import { orchestrator } from './onboarding'
@@ -63,6 +68,13 @@ function registerBuiltinShortcuts(): void {
   // Shortcuts overview
   tryRegisterBuiltin('CommandOrControl+Shift+\'', () => {
     createShortcutsOverviewWindow()
+  })
+
+  // Feedback messenger — see docs/proposals/feedback-messenger.md.
+  // Hard-coded for now (not in BuiltinShortcuts type) since rebinding
+  // hasn't been requested. If user-rebinding lands, promote it then.
+  tryRegisterBuiltin('CommandOrControl+Shift+\\', () => {
+    createFeedbackWindow()
   })
 
 }

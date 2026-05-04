@@ -75,7 +75,7 @@ const api: VimyasaAPI = {
   openListWindow: (listId, position) => ipcRenderer.invoke('openListWindow', listId, position),
   openQuickAdd: (variant, targetListId) => ipcRenderer.invoke('openQuickAdd', variant, targetListId),
   openComments: (itemId) => ipcRenderer.invoke('openComments', itemId),
-  openSettings: () => ipcRenderer.invoke('openSettings'),
+  openSettings: (tab) => ipcRenderer.invoke('openSettings', tab),
   openArchive: (listId) => ipcRenderer.invoke('openArchive', listId),
   openShortcutsOverview: () => ipcRenderer.invoke('openShortcutsOverview'),
   showContextMenu: (template) => ipcRenderer.invoke('showContextMenu', template),
@@ -184,6 +184,26 @@ const api: VimyasaAPI = {
       return () => ipcRenderer.removeListener('theme:event', listener)
     },
     fire: (name) => ipcRenderer.invoke('themeEvent:fire', name)
+  },
+
+  // Feedback messenger — PR 2 added the send flow + window plumbing.
+  feedback: {
+    getConfig: () => ipcRenderer.invoke('feedback:get-config'),
+    setConfig: (updates) => ipcRenderer.invoke('feedback:set-config', updates),
+    canSend: () => ipcRenderer.invoke('feedback:can-send'),
+    recordSend: () => ipcRenderer.invoke('feedback:record-send'),
+    send: (message) => ipcRenderer.invoke('feedback:send', message),
+    hide: () => ipcRenderer.invoke('feedback:hide'),
+    onShow: (callback) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('feedback:show', listener)
+      return () => ipcRenderer.removeListener('feedback:show', listener)
+    },
+    onHidden: (callback) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('feedback:hidden', listener)
+      return () => ipcRenderer.removeListener('feedback:hidden', listener)
+    }
   },
 
   // Theme dev panel (gated by is.dev — never call from production builds)

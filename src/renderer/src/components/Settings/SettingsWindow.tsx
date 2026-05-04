@@ -4,14 +4,16 @@ import { ListsTab } from './ListsTab'
 import { ShortcutsTab } from './ShortcutsTab'
 import { DataTab } from './DataTab'
 import { ThemesTab } from './ThemesTab'
+import { FeedbackTab } from './FeedbackTab'
 
-export type SettingsTab = 'general' | 'lists' | 'shortcuts' | 'themes' | 'data'
+export type SettingsTab = 'general' | 'lists' | 'shortcuts' | 'themes' | 'feedback' | 'data'
 
 const tabs: { key: SettingsTab; label: string }[] = [
   { key: 'general', label: 'General' },
   { key: 'lists', label: 'Lists' },
   { key: 'shortcuts', label: 'Shortcuts' },
   { key: 'themes', label: 'Themes' },
+  { key: 'feedback', label: 'Feedback' },
   { key: 'data', label: 'Data' }
 ]
 
@@ -68,6 +70,7 @@ export function SettingsWindow({ initialTab }: { initialTab?: SettingsTab }) {
         {activeTab === 'lists' && <ListsTab />}
         {activeTab === 'shortcuts' && <ShortcutsTab />}
         {activeTab === 'themes' && <ThemesTab />}
+        {activeTab === 'feedback' && <FeedbackTab />}
         {activeTab === 'data' && <DataTab />}
       </div>
     </div>
