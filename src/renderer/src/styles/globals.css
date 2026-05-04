@@ -327,7 +327,8 @@ html, body, #root {
 .submit-confirming-white-glow [data-submit-fade] {
   opacity: 0;
 }
-.submit-confirming-white-glow input {
+.submit-confirming-white-glow input,
+.submit-confirming-white-glow textarea {
   box-shadow:
     /* Sharp border on top of the stack */
     inset 0 0 0 0.25px rgba(255, 255, 255, 0.93),

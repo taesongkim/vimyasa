@@ -1,7 +1,12 @@
 import { app, nativeTheme } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipc'
-import { registerWindowIpcHandlers, wireOnboardingHosts, ensureQuickAddPrewarmed } from './windows'
+import {
+  registerWindowIpcHandlers,
+  wireOnboardingHosts,
+  ensureFeedbackPrewarmed,
+  ensureQuickAddPrewarmed
+} from './windows'
 import { createTray } from './tray'
 import { registerThemeDevPanelHandlers } from './theme-dev-panel'
 import {
@@ -71,6 +76,12 @@ app.whenReady().then(() => {
   // pauses its RAF loop on document.hidden so idle CPU stays at zero.
   // See windows.ts:ensureQuickAddPrewarmed.
   ensureQuickAddPrewarmed()
+
+  // Pre-warm the feedback window for the same reason. Lazy prewarm
+  // (creating it on first summon) raced the renderer mount — main
+  // sent 'feedback:show' before React's useEffect subscribed, leaving
+  // the first summon blank. Eager prewarm sidesteps that entirely.
+  ensureFeedbackPrewarmed()
 
   // Run the onboarding tour for first-time users (or anyone whose tour
   // version is behind). Small delay so the app's launch settles before

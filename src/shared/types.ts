@@ -59,6 +59,56 @@ export const DEFAULT_BUILTIN_SHORTCUTS: BuiltinShortcuts = {
 
 export type JkMode = 'standard' | 'inverse'
 
+// ── Feedback messenger ───────────────────────────────────────────
+// User-visible config (clientId is opaque, exposed for PR 2's send
+// payload). PR 1 ships the storage + Settings tab; PR 2 builds the
+// send flow and consumes `canSend` / `recordSend`.
+
+export interface FeedbackConfig {
+  clientId: string
+  senderName: string
+  dailyLimit: number
+}
+
+export interface FeedbackCanSendResult {
+  canSend: boolean
+  sendsToday: number
+  limit: number
+}
+
+export type FeedbackSendOutcome =
+  | { ok: true }
+  | {
+      ok: false
+      code: 'invalid' | 'rate-limit' | 'network-error'
+      sendsToday?: number
+      limit?: number
+    }
+
+export interface FeedbackAPI {
+  getConfig: () => Promise<FeedbackConfig>
+  setConfig: (
+    updates: Partial<Pick<FeedbackConfig, 'senderName' | 'dailyLimit'>>
+  ) => Promise<FeedbackConfig>
+  canSend: () => Promise<FeedbackCanSendResult>
+  recordSend: () => Promise<void>
+  /** POST the message to the Worker (composes payload in main, see
+   *  feedback-send.ts). Renderer awaits this from the feedback window's
+   *  Send handler. Recording the timestamp happens server-side of this
+   *  call (in main, only on success). */
+  send: (message: string) => Promise<FeedbackSendOutcome>
+  /** Hide the prewarmed feedback window. Mirrors quickAdd.hide — sends
+   *  'feedback:hidden' before win.hide() so the renderer can unmount
+   *  the form before the next show paints. */
+  hide: () => Promise<void>
+  /** Fires every time the feedback window is summoned. Renderer resets
+   *  state + replays the entrance animation. */
+  onShow: (callback: () => void) => () => void
+  /** Fires when the window is hiding (authoritative; document
+   *  visibilitychange in the renderer is also wired as a fallback). */
+  onHidden: (callback: () => void) => () => void
+}
+
 export interface DataStore {
   schemaVersion: number
   groups: Group[]
@@ -126,7 +176,7 @@ export interface VimyasaAPI {
   openListWindow: (listId: string, position?: { x: number; y: number }) => Promise<void>
   openQuickAdd: (variant: 'fixed' | 'select', targetListId?: string) => Promise<void>
   openComments: (itemId: string) => Promise<void>
-  openSettings: () => Promise<void>
+  openSettings: (tab?: 'general' | 'lists' | 'shortcuts' | 'themes' | 'feedback' | 'data') => Promise<void>
   openArchive: (listId?: string) => Promise<void>
   openShortcutsOverview: () => Promise<void>
   showContextMenu: (template: any[]) => Promise<void>
@@ -161,6 +211,9 @@ export interface VimyasaAPI {
 
   // Pre-warmed QuickAdd window — show/hide replaces the destroy/recreate path
   quickAdd: QuickAddAPI
+
+  // Feedback messenger — PR 1 ships config + clientId; PR 2 adds send flow
+  feedback: FeedbackAPI
 }
 
 export interface OnboardingCalloutPayload {

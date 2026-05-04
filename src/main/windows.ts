@@ -24,6 +24,8 @@ function trackForOnboarding(win: BrowserWindow): void {
 const LIST_WINDOW_WIDTH = 360
 const QUICKADD_WIDTH = 400
 const QUICKADD_HEIGHT = 116
+const FEEDBACK_WIDTH = 400
+const FEEDBACK_HEIGHT = 240
 const COMMENTS_WIDTH = 360
 const COMMENTS_HEIGHT = 480
 const SETTINGS_WIDTH = 420
@@ -36,6 +38,7 @@ const INITIAL_Y = 8
 // Track open windows
 const listWindows = new Map<string, BrowserWindow>()
 let quickAddWindow: BrowserWindow | null = null
+let feedbackWindow: BrowserWindow | null = null
 let commentsWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let archiveWindow: BrowserWindow | null = null
@@ -251,6 +254,66 @@ export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?:
   return win
 }
 
+// ── Feedback Window ─────────────────────────────────────────────
+
+/** Idempotent. Mirrors ensureQuickAddPrewarmed: builds the BrowserWindow
+ *  with show:false, loads the renderer route, parks it hidden. PR 2 calls
+ *  this lazily on first summon (so the second summon is fast); PR 3 will
+ *  call it eagerly at startup so the *first* summon is fast too. */
+export function ensureFeedbackPrewarmed(): void {
+  if (feedbackWindow && !feedbackWindow.isDestroyed()) return
+
+  const { x, y } = getCenteredPosition(FEEDBACK_WIDTH, FEEDBACK_HEIGHT)
+  const win = makeWindow('feedback', {
+    width: FEEDBACK_WIDTH,
+    height: FEEDBACK_HEIGHT,
+    x,
+    y,
+    resizable: false,
+    alwaysOnTop: true
+  })
+  feedbackWindow = win
+
+  loadRoute(win, '/feedback')
+
+  win.once('ready-to-show', () => {
+    // Intentionally no win.show() — we're warming the renderer only.
+    orchestrator.refreshPosition()
+  })
+
+  win.on('closed', () => {
+    feedbackWindow = null
+  })
+}
+
+/** Show the (pre-warmed or freshly-created) feedback window. Toggles
+ *  hide if already visible+focused, same as QuickAdd. */
+export function createFeedbackWindow(): BrowserWindow {
+  if (
+    feedbackWindow &&
+    !feedbackWindow.isDestroyed() &&
+    feedbackWindow.isVisible() &&
+    feedbackWindow.isFocused()
+  ) {
+    feedbackWindow.webContents.send('feedback:hidden')
+    feedbackWindow.hide()
+    return feedbackWindow
+  }
+
+  if (!feedbackWindow || feedbackWindow.isDestroyed()) {
+    ensureFeedbackPrewarmed()
+  }
+
+  const win = feedbackWindow!
+  // Send show event BEFORE win.show() so the renderer resets state and
+  // re-keys its motion.div for the entrance animation before the user
+  // sees a frame paint.
+  win.webContents.send('feedback:show')
+  win.show()
+  orchestrator.refreshPosition()
+  return win
+}
+
 // ── Comments Window ─────────────────────────────────────────────
 
 export function createCommentsWindow(itemId: string): BrowserWindow {
@@ -276,7 +339,7 @@ export function createCommentsWindow(itemId: string): BrowserWindow {
 
 // ── Settings Window ─────────────────────────────────────────────
 
-type SettingsTab = 'general' | 'lists' | 'shortcuts' | 'data'
+type SettingsTab = 'general' | 'lists' | 'shortcuts' | 'themes' | 'feedback' | 'data'
 
 export function createSettingsWindow(initialTab?: SettingsTab): BrowserWindow {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -414,6 +477,14 @@ export function registerWindowIpcHandlers(): void {
     }
   })
 
+  // Feedback window: same prewarm-and-hide pattern as QuickAdd.
+  ipcMain.handle('feedback:hide', () => {
+    if (feedbackWindow && !feedbackWindow.isDestroyed()) {
+      feedbackWindow.webContents.send('feedback:hidden')
+      feedbackWindow.hide()
+    }
+  })
+
   ipcMain.handle('openListWindow', (_e, listId: string, position?: { x: number; y: number }) => {
     createListWindow(listId, position)
   })
@@ -426,8 +497,8 @@ export function registerWindowIpcHandlers(): void {
     createCommentsWindow(itemId)
   })
 
-  ipcMain.handle('openSettings', () => {
-    createSettingsWindow()
+  ipcMain.handle('openSettings', (_e, tab?: SettingsTab) => {
+    createSettingsWindow(tab)
   })
 
   ipcMain.handle('openArchive', (_e, listId?: string) => {

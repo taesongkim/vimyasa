@@ -5,7 +5,14 @@ import { createListInStore } from './lists'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
 import { orchestrator } from './onboarding'
-import type { DataStore, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
+import type { DataStore, FeedbackConfig, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
+import {
+  canSendFeedback,
+  getFeedbackConfig,
+  recordFeedbackSend,
+  setFeedbackConfig
+} from './feedback-store'
+import { submitFeedback } from './feedback-send'
 import {
   getThemesState,
   setThemesState,
@@ -565,6 +572,30 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('themeEvent:fire', (_e, name: ThemeEventName): void => {
     broadcastThemeEvent(name)
   })
+
+  // ── Feedback messenger ──────────────────────────────────────────
+  // PR 1: config + clientId infrastructure. No send flow yet — PR 2
+  // wires the renderer window and the POST to the Worker. canSend /
+  // recordSend are exposed now so PR 2 can plug straight in.
+  ipcMain.handle('feedback:get-config', (): FeedbackConfig => getFeedbackConfig())
+
+  ipcMain.handle(
+    'feedback:set-config',
+    (_e, updates: Partial<Pick<FeedbackConfig, 'senderName' | 'dailyLimit'>>): FeedbackConfig =>
+      setFeedbackConfig(updates ?? {})
+  )
+
+  ipcMain.handle('feedback:can-send', () => canSendFeedback())
+
+  ipcMain.handle('feedback:record-send', (): void => {
+    recordFeedbackSend()
+  })
+
+  // POST → Worker → Resend. Composes payload in main; renderer never
+  // sees the Worker URL or the payload metadata. canSend + recordSend
+  // are enforced inside submitFeedback so the renderer can't bypass
+  // the daily limit by skipping the can-send IPC.
+  ipcMain.handle('feedback:send', (_e, message: string) => submitFeedback(message))
 
   // ── System: external links ──────────────────────────────────────
   // Used by attribution links in the Themes tab. Validates the URL

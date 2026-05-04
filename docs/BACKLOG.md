@@ -108,7 +108,10 @@ not silently grab next-priority items.
 - **Lane:** features (app-side build)
 - **Priority:** P1
 - **Version:** v0.1.5
-- **Status:** proposed → infrastructure live → app-side PRs pending.
+- **Status:** proposed → infrastructure live → PR 1 + PR 2 + PR 3's
+  prewarm in-flight (features lane, single branch). PR 3's prewarm was
+  pulled forward to fix a first-summon blank-window race; remaining PR 3
+  scope is visual polish + motion timing pass with aesthetics lane.
   See [proposals/feedback-messenger.md](./proposals/feedback-messenger.md)
   for the full design.
 - **Notes:** Cloudflare Worker deployed at

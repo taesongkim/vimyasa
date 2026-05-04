@@ -3,6 +3,7 @@ import { useStore } from './store/useStore'
 import { useThemesStore } from './store/themesStore'
 import { ListWindow } from './components/ListWindow/ListWindow'
 import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
+import { FeedbackWindow } from './components/Feedback/FeedbackWindow'
 import { CommentsWindow } from './components/Comments/CommentsWindow'
 import { SettingsWindow, type SettingsTab } from './components/Settings/SettingsWindow'
 import { ArchiveWindow } from './components/Archive/ArchiveWindow'
@@ -29,6 +30,9 @@ function parseHash(): RouteInfo {
   }
   if (parts[1] === 'quickadd' && parts[2] === 'select') {
     return { route: 'quickadd-fixed', params: { listId: '' } }
+  }
+  if (parts[1] === 'feedback') {
+    return { route: 'feedback', params: {} }
   }
   if (parts[1] === 'comments' && parts[2]) {
     return { route: 'comments', params: { itemId: parts[2] } }
@@ -139,6 +143,8 @@ export default function App() {
         </GlowSurface>
       )
     }
+    case 'feedback':
+      return <FeedbackWindow />
     case 'comments':
       return <CommentsWindow itemId={route.params.itemId} />
     case 'settings': {
@@ -148,6 +154,7 @@ export default function App() {
         tab === 'lists' ||
         tab === 'shortcuts' ||
         tab === 'themes' ||
+        tab === 'feedback' ||
         tab === 'data'
           ? tab
           : undefined
