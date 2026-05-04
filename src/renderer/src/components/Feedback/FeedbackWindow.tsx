@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
 import type { FeedbackConfig } from '../../../../shared/types'
@@ -15,7 +15,7 @@ type SendStatus = 'idle' | 'sending' | 'success' | 'limit' | 'error'
 
 const EXIT_DURATION_MS = 150
 const EXIT_OFFSET_PX = 4
-const SUCCESS_HOLD_MS = 1500
+const SUCCESS_HOLD_MS = 750
 const DEV_EMAIL = 'justin@taesongkim.com'
 const MESSAGE_MAX_LEN = 10_000
 
@@ -161,10 +161,25 @@ export function FeedbackWindow() {
   }
 
   // Limit notice copy is templated against the actual configured limit so
-  // the number stays accurate if the user tweaks it in Settings.
-  const limitCopy = limitInfo
-    ? `Damn okay, over-achiever — you hit the ${limitInfo.limit}-message daily limit. (I had to put a cap on this to prevent spam attacks. Sorry about it!) The limit resets at midnight your time. If it's urgent, hit me up at ${DEV_EMAIL} instead. Thanks!`
-    : ''
+  // the number stays accurate if the user tweaks it in Settings. The
+  // "Settings/Feedback" phrase is an inline button so the user can jump
+  // straight to the daily-limit input rather than hunting for it.
+  const limitCopy = limitInfo ? (
+    <>
+      Damn okay, over-achiever — you hit the {limitInfo.limit}-message daily
+      limit (I had to put a cap on this to prevent spam attacks). The limit
+      resets at midnight your time. If it&apos;s urgent, adjust your personal
+      limits in{' '}
+      <button
+        type="button"
+        onClick={openFeedbackSettings}
+        className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] underline transition-default cursor-pointer"
+      >
+        Settings/Feedback
+      </button>
+      .
+    </>
+  ) : null
   const errorCopy = `Send failed (network error). Try again in a minute. If it keeps failing, hit me up at ${DEV_EMAIL}. Thanks!`
 
   return (
@@ -219,6 +234,11 @@ export function FeedbackWindow() {
         <NoticeOverlay
           message={status === 'limit' ? limitCopy : errorCopy}
           typedMessage={text}
+          // Rate-limit users have a self-service fix (Settings link is
+          // already inline in the copy), so the email fallback is dropped.
+          // Network-error users have no self-service fix, so the email
+          // fallback stays.
+          showCopyEmail={status === 'error'}
           onDismiss={() => setStatus('idle')}
         />
       ) : (
@@ -296,10 +316,12 @@ function JkMailIcon() {
 function NoticeOverlay({
   message,
   typedMessage,
+  showCopyEmail,
   onDismiss
 }: {
-  message: string
+  message: ReactNode
   typedMessage: string
+  showCopyEmail: boolean
   onDismiss: () => void
 }) {
   const [copiedField, setCopiedField] = useState<'email' | 'message' | null>(null)
@@ -325,13 +347,15 @@ function NoticeOverlay({
         >
           {copiedField === 'message' ? 'Copied!' : 'Copy your message'}
         </button>
-        <button
-          type="button"
-          onClick={() => void copyTo('email')}
-          className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:10px] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-secondary)] hover:bg-[var(--hover-highlight)] transition-default"
-        >
-          {copiedField === 'email' ? 'Copied!' : 'Copy email'}
-        </button>
+        {showCopyEmail && (
+          <button
+            type="button"
+            onClick={() => void copyTo('email')}
+            className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:10px] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-secondary)] hover:bg-[var(--hover-highlight)] transition-default"
+          >
+            {copiedField === 'email' ? 'Copied!' : 'Copy email'}
+          </button>
+        )}
         <button
           type="button"
           onClick={onDismiss}
