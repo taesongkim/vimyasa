@@ -83,6 +83,23 @@ feature lane should:
   finishing), so other lanes don't pick up the same item.
 - Add follow-ups discovered mid-task to `BACKLOG.md` rather than memory.
 
+### Talking to the coordination lane
+
+Sessions are isolated processes — there's no live message bus between
+lanes. For async, durable communication, use [INBOX.md](./INBOX.md):
+
+- Write an entry when you have a **question**, **note**, **blocker**,
+  or **rule disagreement** worth coordination's attention.
+- Coordination sweeps the inbox on next session and resolves each open
+  entry by editing the relevant doc (BACKLOG, WORKFLOW, proposals,
+  architecture) and adding a resolution pointer.
+- The inbox does NOT auto-notify coordination. After writing, surface
+  the note to the human ("I left a coordination note about X") so they
+  know to bring it up.
+- Bugs go in `BACKLOG.md` directly. Long-form design discussions go in
+  `docs/proposals/`. The inbox is for short questions and notes, not
+  primary work artifacts.
+
 ### When asked to do work outside your lane
 
 This rule exists so the user learns the lane model in real time, instead
