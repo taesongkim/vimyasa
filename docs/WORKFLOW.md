@@ -83,6 +83,32 @@ feature lane should:
   finishing), so other lanes don't pick up the same item.
 - Add follow-ups discovered mid-task to `BACKLOG.md` rather than memory.
 
+### Audit fixes — who applies them
+
+`package.json` and `package-lock.json` aren't in any lane's primary
+ownership column above. When an audit (npm audit, security scan,
+dependency check) recommends a fix, ownership of *applying* the fix
+is determined by **size of the change**:
+
+- **Trivial fixes — coordination applies.** Defined as: `npm audit fix`
+  with no `--force`, no API surface change, no version pin, just
+  letting the resolver bump transitive deps within existing semver
+  ranges. Coordination has the audit context and the change is
+  mechanically safe. Coordination still runs `npm run build` to verify
+  nothing broke.
+- **Non-trivial fixes — features applies, with coordination handing
+  off.** Defined as: anything requiring `--force`, a major version bump,
+  a code change to accommodate a breaking API, a version pin, or a
+  multi-step upgrade plan. Coordination writes the assessment + plan;
+  features executes + verifies + tests beyond just `npm run build`.
+
+The split exists so coordination's "docs-only" purity isn't broken by
+mechanical follow-ups, while features doesn't get nickel-and-dimed by
+trivial dep bumps that have no real engineering content.
+
+If the size is genuinely unclear, default to features — when in doubt,
+the lane that owns build verification owns the change.
+
 ### Talking to the coordination lane
 
 Sessions are isolated processes — there's no live message bus between
