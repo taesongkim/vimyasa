@@ -32,9 +32,12 @@ land at current position. Carry mode is **sustained** — stays active
 across keystrokes until you explicitly exit. The send animation is
 real choreography (directional flight, parallel slide + fade,
 mid-flight resolution so the data move fires while the row's still
-in the air), with a directional motion-blur trail via SVG filters
-applied by default. If the blur causes rendering issues for you, off-switch
-lives in Settings → Advanced.
+in the air). A directional motion-blur trail via SVG filters is
+also available but **off by default** in v0.1.6 — the CSS-filter
+off-screen rendering noticeably degraded text quality during dev
+verification, so the polish is opt-in via Settings → Advanced for
+now. A future version may flip it back on once the rendering trade
+is sorted (filter scoped tighter, or a different effect technique).
 
 Receipts on the receiving list window: when an item arrives, the
 target list pulses and auto-scrolls the new item into view. Right-click
