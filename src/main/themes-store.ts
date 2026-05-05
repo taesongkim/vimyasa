@@ -81,6 +81,14 @@ export function getThemesState(): ThemesState {
     schemaVersion = 5
     mutated = true
   }
+  if (schemaVersion < 6) {
+    // v6: Theme 1 added `feedback-input` to the bake (feedback window
+    // textarea glow). Other surfaces left alone so any dev tuning is
+    // preserved.
+    surfaces = { ...surfaces, 'feedback-input': defaultSurfaceConfig('feedback-input') }
+    schemaVersion = 6
+    mutated = true
+  }
 
   for (const id of SURFACE_IDS) {
     if (!surfaces[id]) {

@@ -11,6 +11,7 @@ export type SurfaceId =
   | 'list-add-new'
   | 'welcome-callout-window'
   | 'welcome-callout-start-button'
+  | 'feedback-input'
 
 export const SURFACE_IDS: readonly SurfaceId[] = [
   'quickadd-window',
@@ -20,7 +21,8 @@ export const SURFACE_IDS: readonly SurfaceId[] = [
   'list-item-edit',
   'list-add-new',
   'welcome-callout-window',
-  'welcome-callout-start-button'
+  'welcome-callout-start-button',
+  'feedback-input'
 ] as const
 
 export const SURFACE_LABELS: Record<SurfaceId, string> = {
@@ -31,7 +33,8 @@ export const SURFACE_LABELS: Record<SurfaceId, string> = {
   'list-item-edit': 'List item — edit field',
   'list-add-new': 'Add new item field',
   'welcome-callout-window': 'Welcome callout window',
-  'welcome-callout-start-button': 'Welcome callout — Start Tour button'
+  'welcome-callout-start-button': 'Welcome callout — Start Tour button',
+  'feedback-input': 'Feedback window — message field'
 }
 
 // Subset of border-beam-fork's props we expose for tuning. We always pass
@@ -245,11 +248,12 @@ export type ThemeId = 'border-beam'
  *  - 4 → 5: Theme 1 tuned MAGIC_COLORS_BEAM (innerOpacity 0.16 → 0.35);
  *    migration re-bakes all three Magic Colors surfaces so the value
  *    change actually reaches existing stores.
+ *  - 5 → 6: Theme 1 added `feedback-input` to the bake (feedback window
+ *    textarea — mirror of quickadd-input, same Magic Colors styling).
  *
  *  Each step is applied incrementally in `getThemesState` so a user
- *  on v1 picks up everything; a user already on v4 (dev installs
- *  only — nothing < v5 has shipped) only picks up v5. */
-export const CURRENT_SCHEMA_VERSION = 5 as const
+ *  on v1 picks up everything; a user already on v5 only picks up v6. */
+export const CURRENT_SCHEMA_VERSION = 6 as const
 
 export interface ThemesState {
   schemaVersion: number
@@ -403,6 +407,15 @@ const THEME_1_SURFACE_OVERRIDES: Partial<
   'list-add-new': {
     enabled: true,
     borderBeam: { ...MAGIC_COLORS_BEAM, borderRadius: 4 },
+    particles: { ...MAGIC_COLORS_PARTICLES }
+  },
+  // Feedback window message field: 8px radius matches the textarea's
+  // `rounded-[var(--radius-md)]` (same value used by the QuickAdd input).
+  // Same Magic Colors styling as quickadd-input — feedback is a sibling
+  // input affordance, so the visual character carries across.
+  'feedback-input': {
+    enabled: true,
+    borderBeam: { ...MAGIC_COLORS_BEAM, borderRadius: 8 },
     particles: { ...MAGIC_COLORS_PARTICLES }
   }
 }
