@@ -195,13 +195,33 @@ export function ItemRow({
         ipcData: { action: 'setStatus', itemId: item.id, status: s }
       }))
 
-      const sendToSubmenu = lists
-        .filter((l) => l.id !== item.listId)
-        .map((l) => ({
+      // "Send to List" submenu. The hot list (when present + not the
+      // source) gets pinned at the top with a divider below it — it's
+      // the high-frequency target for "I'll do this today", so it's
+      // worth the visual separation from the regular roster. Right-
+      // clicking an item that's already in the hot list naturally has
+      // no hot entry (filtered as source), so the divider doesn't
+      // appear and the submenu is just the regular lists.
+      const sendable = lists.filter((l) => l.id !== item.listId)
+      const hotEntry = sendable.find((l) => l.kind === 'hot')
+      const regularEntries = sendable.filter((l) => l.kind !== 'hot')
+      const sendToSubmenu = [
+        ...(hotEntry
+          ? [
+              {
+                label: hotEntry.name,
+                ipcEvent: 'context-menu-action',
+                ipcData: { action: 'sendTo', itemId: item.id, listId: hotEntry.id }
+              },
+              { type: 'separator' as const }
+            ]
+          : []),
+        ...regularEntries.map((l) => ({
           label: l.name,
           ipcEvent: 'context-menu-action',
           ipcData: { action: 'sendTo', itemId: item.id, listId: l.id }
         }))
+      ]
 
       window.api.showContextMenu([
         { label: 'Edit', ipcEvent: 'context-menu-action', ipcData: { action: 'edit', itemId: item.id } },
