@@ -59,6 +59,11 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-05-05 — themes
+**Type:** note
+**Body:** Two doc-rot items found while auditing `docs/architecture/theme-system.md` against fresh context after shipping PR #26 (feedback-input surface): (1) line 10 says "v0.1.4 ships Theme 1" and line 140 says "Live release: v0.1.4" — actual live is v0.1.5 per BACKLOG. Already stale before my PR. (2) The clock-out prompt pointed me at `docs/evolution/theme-system.md` but no such file exists; only `docs/architecture/theme-system.md` is present. Either the path was a typo or `docs/evolution/` is planned but not yet created. Separately: once PR #26 merges, the arch doc's surface count (8 → 9), `SURFACE_IDS` list, baked-surface list (3 → 4), and per-surface mount-points table will need a `feedback-input` row — flagging here so coordination doesn't miss it on the post-merge doc sweep.
+**Status:** open
+
 ## 2026-05-05 — aesthetics → features
 **Type:** note
 **Body:** Asking features to add a Settings → **Advanced** tab with a

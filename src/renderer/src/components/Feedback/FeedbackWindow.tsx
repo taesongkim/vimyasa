@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
+import { GlowSurface } from '../shared/GlowSurface'
 import type { FeedbackConfig } from '../../../../shared/types'
 
 // Mirror of QuickAddFixed's prewarm + entrance + exit choreography,
@@ -242,23 +243,35 @@ export function FeedbackWindow() {
           onDismiss={() => setStatus('idle')}
         />
       ) : (
-        <textarea
-          ref={handleTextareaRef}
-          value={text}
-          maxLength={MESSAGE_MAX_LEN}
-          placeholder="Type a quick note…"
-          disabled={status !== 'idle'}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            // Cmd+Enter / Ctrl+Enter sends. Plain Enter inserts a newline
-            // (textarea default) — important for multi-paragraph notes.
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault()
-              void handleSend()
-            }
-          }}
-          className="no-drag flex-1 w-full resize-none bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
-        />
+        // GlowSurface wraps the textarea so it can participate in Theme 1
+        // (mirror of QuickAddFixed's quickadd-input). The wrapper is itself
+        // a flex item (flex-1 min-h-0) and a flex container (display:flex)
+        // so the textarea's `flex-1` keeps working when wrapped — without
+        // these, BorderBeam's plain div would short-circuit the flex chain
+        // and the textarea would collapse.
+        <GlowSurface
+          surface="feedback-input"
+          className="flex-1 min-h-0"
+          style={{ display: 'flex', width: '100%' }}
+        >
+          <textarea
+            ref={handleTextareaRef}
+            value={text}
+            maxLength={MESSAGE_MAX_LEN}
+            placeholder="Type a quick note…"
+            disabled={status !== 'idle'}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              // Cmd+Enter / Ctrl+Enter sends. Plain Enter inserts a newline
+              // (textarea default) — important for multi-paragraph notes.
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                void handleSend()
+              }
+            }}
+            className="no-drag flex-1 w-full resize-none bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
+          />
+        </GlowSurface>
       )}
 
       {/* Footer: personal message + send button. Always mounted so the
