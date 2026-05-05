@@ -43,23 +43,20 @@ export function getSendDirection(
 
 /** Total send-animation duration. Keep in sync with --carry-send-duration
  *  in globals.css. */
-export const CARRY_SEND_DURATION_MS = 220
+export const CARRY_SEND_DURATION_MS = 90
 
-/** When features should fire the actual sendItemToList during the send
- *  animation. Resolving the playSend() promise mid-flight (rather than
- *  at the end) makes the commit feel instant — by the time the user
- *  perceives the row leaving, the data has already moved. The remaining
- *  ~110ms of animation runs on a row that's about to unmount; React's
- *  AnimatePresence + the existing useUpwardFlip handle the sibling
- *  reflow without further help. Keep in sync with --carry-send-commit-ms. */
-export const CARRY_SEND_COMMIT_MS = 110
+/** When features should fire sendItemToList during the send animation.
+ *  Currently end-fire (== CARRY_SEND_DURATION_MS): the data mutation
+ *  happens after the visual completes, so the CSS keyframe owns the
+ *  entire on-screen motion. Keep in sync with --carry-send-commit-ms. */
+export const CARRY_SEND_COMMIT_MS = 90
 
 /** Play the send animation on a row element. Resolves at the commit
- *  point (mid-flight) — features should `await` this and then
- *  immediately call sendItemToList. The animation continues to its
- *  natural end via `forwards` fill mode in the CSS; there's no further
- *  cleanup here because the row is expected to unmount as part of the
- *  send.
+ *  point — features should `await` this and then immediately call
+ *  sendItemToList. With end-fire timing (commit == duration), the row
+ *  is fully invisible at resolve time (`forwards` fill mode keeps the
+ *  keyframe end state), so the subsequent React unmount + framer exit
+ *  happen out of sight.
  *
  *  Idempotent: if the element is already mid-send (class present), the
  *  function still resolves on the same schedule. Callers that re-fire

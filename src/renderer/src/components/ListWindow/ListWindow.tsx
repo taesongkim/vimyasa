@@ -28,7 +28,11 @@ import { DraftItemRow } from './DraftItemRow'
 import { DragGhost } from './DragGhost'
 import type { Item, ItemStatus } from '../../../../../shared/types'
 import { HOT_LIST_ID } from '@shared/types'
-import { getSendDirection, playSend } from '../../hooks/useCarryAnimation'
+import {
+  getSendDirection,
+  CARRY_SEND_DURATION_MS,
+  type SendDirection
+} from '../../hooks/useCarryAnimation'
 
 export function ListWindow({ listId: initialListId }: { listId: string }) {
   const { items, lists, addItem, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
@@ -55,6 +59,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // `item-row-carrying` class. Aesthetics lane will replace.
   const [carryItemId, setCarryItemId] = useState<string | null>(null)
   const isCarrying = carryItemId !== null
+  // Send direction for the in-flight row. Set when carrySendToList fires;
+  // cleared after the data mutation. Routed through React (not imperative
+  // classList mutation) so re-renders during the send don't clobber the
+  // class. While set, isCarrying stays true on the row — the lifted bg
+  // + shadow + z-index persist as the keyframe slides on top.
+  const [sendDirection, setSendDirection] = useState<SendDirection | null>(null)
   // Whether a new-item draft row is currently active at the bottom of the
   // list. Toggled by the `n` shortcut and the "+ Add item" toolbar button.
   // Save-vs-discard is handled inside DraftItemRow on Enter / blur / Esc /
@@ -308,15 +318,21 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
   // Safety: if the carry item disappears (archived from elsewhere,
   // deleted, or moved to another list via context menu), exit carry
-  // so we don't strand the state on a non-existent itemId. The
-  // commit paths (sendItemToList, etc.) already exit explicitly;
-  // this just covers the cross-window / cross-action edges.
+  // so we don't strand the state on a non-existent itemId. Also the
+  // exit path for carrySendToList — the send leaves these flags set
+  // intentionally so the unmounting row preserves its sending +
+  // carrying classes through AnimatePresence (otherwise the row
+  // reappears at opacity 1 / no transform between the optimistic data
+  // mutation and framer's exit, producing a brief flash).
   useEffect(() => {
     if (!carryItemId) return
     const stillHere = items.some(
       (i) => i.id === carryItemId && i.listId === activeListId && !i.archivedAt
     )
-    if (!stillHere) setCarryItemId(null)
+    if (!stillHere) {
+      setCarryItemId(null)
+      setSendDirection(null)
+    }
   }, [carryItemId, items, activeListId])
 
   const carrySendToList = useCallback(
@@ -334,28 +350,30 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       const toList = lists.find((l) => l.id === targetId)
       if (!fromList || !toList) return
       const direction = getSendDirection(fromList, toList)
-      // Resolve the carried row's DOM element via its data-flip-id.
-      // ItemRow is wrapped in a Framer motion.div, so the React-attached
-      // `transform` won't interfere with the keyframe transform — see
-      // the .item-row-sending-* CSS for the override on transition.
-      const rowEl =
-        itemsContainerRef.current?.querySelector(
-          `[data-flip-id="${carryItemId}"]`
-        ) ?? null
       const itemId = carryItemId
-      // playSend resolves at the commit point (~110ms in), so the data
-      // mutation fires while the row is still mid-flight. The remaining
-      // animation runs on a row that's about to unmount; AnimatePresence's
-      // exit animation also runs (opacity, x: -8) — they layer; the
-      // sending class's `transition: none !important` prevents framer
-      // from re-acquiring transform mid-keyframe.
-      const playPromise = rowEl instanceof HTMLElement
-        ? playSend(rowEl, direction)
-        : Promise.resolve()
-      void playPromise.then(() => {
+      // Set the React-driven send class. ItemRow keeps both
+      // .item-row-carrying AND .item-row-sending-{direction} during the
+      // send so the lifted state visually persists into the throw —
+      // no snap-back of background or shadow before the slide.
+      setSendDirection(direction)
+      // After the visual completes, mutate the data. End-fire (vs
+      // mid-flight) sidesteps an AnimatePresence-vs-keyframe conflict:
+      // the row is fully invisible (forwards keeps opacity 0) by the
+      // time React unmounts it, so framer's exit prop transform-reset
+      // happens out of sight.
+      //
+      // Don't clear sendDirection / carryItemId here — the safety
+      // effect picks them up after the optimistic store update removes
+      // the item from this list. Clearing them synchronously would
+      // strip the .item-row-sending-* / .item-row-carrying classes off
+      // the about-to-unmount row in the same render that AnimatePresence
+      // captures for exit, so the row would reappear at opacity 1 and
+      // default position for the duration of framer's exit (visible
+      // flash). Leaving the flags set means AnimatePresence preserves
+      // the classes; the keyframe's `forwards` keeps opacity 0.
+      window.setTimeout(() => {
         void sendItemToList(itemId, targetId)
-      })
-      exitCarry()
+      }, CARRY_SEND_DURATION_MS)
       // The item is leaving this list; reset focus so the highlight
       // doesn't strand on whatever happens to fall into its old slot.
       setFocusIndex(-1)
@@ -942,6 +960,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   item={item}
                   isFocused={idx === focusIndex}
                   isCarrying={item.id === carryItemId}
+                  sendDirection={item.id === carryItemId ? sendDirection : null}
                   onFocus={() => setFocusIndex(idx)}
                   lists={lists}
                   index={idx}

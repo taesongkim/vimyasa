@@ -33,6 +33,7 @@ export function ItemRow({
   item,
   isFocused,
   isCarrying = false,
+  sendDirection = null,
   onFocus,
   lists,
   index = 0,
@@ -42,10 +43,15 @@ export function ItemRow({
 }: {
   item: Item
   isFocused: boolean
-  /** True when this row is the active carry-mode item — visually
-   *  treated as "picked up". Placeholder visual lives in the
-   *  `item-row-carrying` CSS class; aesthetics lane will replace it. */
+  /** True when this row is the active carry-mode item — "picked up." */
   isCarrying?: boolean
+  /** When non-null, this row is mid-send — direction encodes the slide.
+   *  isCarrying should remain true throughout the send so the lifted
+   *  background + shadow + z-index persist while .item-row-sending-*
+   *  layers the keyframe transform on top. Routed through React (not
+   *  imperative classList) because re-renders during the send would
+   *  otherwise clobber an imperatively-added class. */
+  sendDirection?: 'left' | 'right' | null
   onFocus: () => void
   lists: List[]
   index?: number
@@ -305,7 +311,14 @@ export function ItemRow({
       // animate prop intentionally absent — opacity is now CSS-driven
       // via the inline style above. exit still animates because
       // AnimatePresence handles it independently of animate.
-      exit={{ opacity: 0, x: -8 }}
+      // While sending, suppress framer's exit animation entirely. The
+      // CSS keyframe owns the row's visual through unmount (forwards
+      // keeps opacity:0 + visibility:hidden); letting framer also
+      // animate opacity here causes the keyframe-vs-framer race that
+      // produced the "flash at end position" bug — framer interpolates
+      // opacity from its own tracked state (1 by default) and overrides
+      // the keyframe's forwards mid-exit.
+      exit={sendDirection ? undefined : { opacity: 0, x: -8 }}
       transition={{ duration: 0.15 }}
       // No transition-opacity class. With DragOverlay handling the
       // visual continuity (ghost smoothly snaps to target via dnd-kit's
@@ -316,7 +329,13 @@ export function ItemRow({
       // appears, all in one motion.
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
-      } ${isCarrying ? 'item-row-carrying' : ''}`}
+      } ${isCarrying ? 'item-row-carrying' : ''} ${
+        sendDirection === 'left'
+          ? 'item-row-sending-left'
+          : sendDirection === 'right'
+            ? 'item-row-sending-right'
+            : ''
+      }`}
       data-index={dataIndex}
       // Tag for useUpwardFlip in ListWindow. The hook measures these
       // elements' positions before/after each render and animates

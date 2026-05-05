@@ -113,16 +113,22 @@
 
   /* Carry mode (move-item flow). Tunable here; consumed by classes
      below and by useCarryAnimation. Keep --carry-send-commit-ms in
-     sync with CARRY_SEND_COMMIT_MS in useCarryAnimation.ts — the hook
-     resolves at the commit point so features can fire sendItemToList
-     mid-flight (feels instant) while the visual continues to land. */
-  --carry-lift-scale: 1.03;
+     sync with CARRY_SEND_COMMIT_MS in useCarryAnimation.ts.
+
+     Lift is translateY (no scale) — keeps the row's horizontal extent
+     fixed so it doesn't clip against the scroll container's implicit
+     overflow-x: hidden. The send keyframes preserve the translateY
+     throughout the throw (the row stays slightly elevated as it flies)
+     so there's no scale or Y "snap-back" visible mid-animation. */
+  --carry-lift-y: -1px;
   --carry-lift-duration: 180ms;
   --carry-lift-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --carry-send-distance: 140px;
-  --carry-send-duration: 220ms;
-  --carry-send-commit-ms: 110ms;
-  --carry-send-ease: cubic-bezier(0.5, 0, 0.75, 0); /* ease-in / "thrown" */
+  --carry-send-distance: 24px;
+  --carry-send-duration: 90ms;
+  --carry-send-commit-ms: 90ms; /* end-fire: data mutates after the visual completes,
+                                   so the keyframe owns the entire on-screen motion. */
+  --carry-send-slide-ease: linear;
+  --carry-send-fade-ease: ease-out;
   --carry-dim-multiplier: 0.5; /* multiplies onto each non-carried row's existing opacity */
   --carry-receipt-duration: 360ms;
 }
@@ -936,22 +942,20 @@ html, body, #root {
    touching keyframes. */
 
 .item-row-carrying {
-  /* Stays at scale through the entire carry → send sequence. The send
-     classes below intentionally don't touch transform's scale — they
-     only translate + fade — so the lift is preserved as the row flies
-     off. */
-  transform: scale(var(--carry-lift-scale));
+  /* Lift via translateY (not scale) — preserves the row's horizontal
+     extent so it doesn't clip against the scroll container's implicit
+     overflow-x: hidden. The send keyframes preserve this Y, so the row
+     stays elevated as it flies off (no Y "snap-back" mid-animation). */
+  transform: translateY(var(--carry-lift-y));
   /* Slightly brighter than .item-row-focused (rgba 0.10) so the carried
      row reads as one rung above "selected." */
   background: rgba(255, 255, 255, 0.14) !important;
-  /* Inset hairline edge — same vocabulary as the save flash, held instead
-     of pulsed. Drop shadow sits on top of the window's vibrancy without
-     going opaque-black (the row has content, so the vibrancy gotcha that
-     bites empty wrappers doesn't apply). */
+  /* Soft drop shadow only — both layers tight, similar in size, no
+     long spread below the row. Sits on top of vibrancy without going
+     opaque-black. */
   box-shadow:
-    inset 0 0 0 0.5px rgba(255, 255, 255, 0.28),
-    0 10px 28px rgba(0, 0, 0, 0.55),
-    0 2px 8px rgba(0, 0, 0, 0.4);
+    0 2px 6px rgba(0, 0, 0, 0.30),
+    0 1px 3px rgba(0, 0, 0, 0.25);
   /* z-lift so the shadow renders above adjacent rows instead of being
      clipped by their backgrounds. */
   position: relative;
@@ -975,32 +979,43 @@ html, body, #root {
   transition: opacity 200ms ease;
 }
 
-/* Send-off: directional translate + fade, scale held. ease-in (rather
-   than ease-out) makes the row read as thrown — slow start, accelerating
-   exit — so the moment of commit feels assertive. Pairs with the
-   receiving list's pulse arriving on the other end. */
-@keyframes carry-send-left {
-  from {
-    transform: scale(var(--carry-lift-scale)) translateX(0);
-    opacity: 1;
-  }
+/* Send-off: directional translateX + fade. Split into two parallel
+   animations so each can have its own timing function — slide is
+   linear (constant px/ms feel), fade is ease-out (rapid initial drop,
+   trailing toward zero). One keyframe can't carry two timing functions
+   for different properties.
+   Lift Y preserved throughout via the static .item-row-carrying
+   transform (no `from` here means the slide animation interpolates
+   from the element's current computed transform, which already
+   includes translateY).
+   visibility: hidden in the fade end state is a guard against
+   framer-motion's exit overriding the keyframe's opacity (framer
+   doesn't animate visibility). */
+@keyframes carry-send-slide-left {
   to {
-    transform: scale(var(--carry-lift-scale)) translateX(calc(-1 * var(--carry-send-distance)));
-    opacity: 0;
+    transform: translate(calc(-1 * var(--carry-send-distance)), var(--carry-lift-y));
   }
 }
-@keyframes carry-send-right {
-  from {
-    transform: scale(var(--carry-lift-scale)) translateX(0);
-    opacity: 1;
-  }
+@keyframes carry-send-slide-right {
   to {
-    transform: scale(var(--carry-lift-scale)) translateX(var(--carry-send-distance));
+    transform: translate(var(--carry-send-distance), var(--carry-lift-y));
+  }
+}
+@keyframes carry-send-fade {
+  to {
     opacity: 0;
+    visibility: hidden;
   }
 }
 .item-row-sending-left {
-  animation: carry-send-left var(--carry-send-duration) var(--carry-send-ease) forwards;
+  /* Two parallel animations: linear slide + ease-out fade. Both share
+     duration but each carries its own timing function — slide stays
+     constant px/ms, fade drops fast at first then trails toward zero.
+     forwards on both keeps the end state (translated + invisible)
+     locked in until React unmounts the row. */
+  animation:
+    carry-send-slide-left var(--carry-send-duration) var(--carry-send-slide-ease) forwards,
+    carry-send-fade var(--carry-send-duration) var(--carry-send-fade-ease) forwards;
   /* While sending, the row no longer wants the resting transition that
      .item-row-carrying applies to transform — that would interpolate
      against the keyframe's per-frame transform and stall. Override. */
@@ -1008,7 +1023,9 @@ html, body, #root {
   pointer-events: none;
 }
 .item-row-sending-right {
-  animation: carry-send-right var(--carry-send-duration) var(--carry-send-ease) forwards;
+  animation:
+    carry-send-slide-right var(--carry-send-duration) var(--carry-send-slide-ease) forwards,
+    carry-send-fade var(--carry-send-duration) var(--carry-send-fade-ease) forwards;
   transition: none !important;
   pointer-events: none;
 }
