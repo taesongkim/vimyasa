@@ -129,14 +129,14 @@ export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
           <li>
             <Key>r</Key>
             <span>
-              <span className="onb-mnem">R</span>ename · caret lands at end
+              <span className="onb-mnem">R</span>ename
             </span>
           </li>
           <li>
             <Key>m</Key>
             <span>
-              <span className="onb-mnem">M</span>ove · carry mode
-              (0–9 send, j/k reorder, Enter / Esc land)
+              <span className="onb-mnem">M</span>ove · Enter "Carry Mode"
+              (details explained in shortcut panel later)
             </span>
           </li>
           <li>
