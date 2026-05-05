@@ -54,9 +54,10 @@ not silently grab next-priority items.
 - **Lane:** features (with theme + aesthetics consultations later)
 - **Priority:** P1
 - **Version:** v0.1.6 (Phase 1: PR-1, PR-2, PR-3) + v0.1.7 (PR-4 prewarm)
-- **Status:** proposed → Option A + phasing approved → see [proposals/hot-list.md](./proposals/hot-list.md)
-- **Notes:** Phasing is defined in the proposal. PR-1 is schema-only,
-  ships invisibly — safe to pull into v0.1.5 if features lane has slack.
+- **Status:** proposed → Option A + phasing approved → **PR-1 + PR-2 + PR-3
+  in-flight on `hot-list` branch (features lane).** PR-4 prewarm still
+  v0.1.7. See [proposals/hot-list.md](./proposals/hot-list.md).
+- **Notes:** Phasing is defined in the proposal.
 
 ### Backup / restore user data
 - **Lane:** features

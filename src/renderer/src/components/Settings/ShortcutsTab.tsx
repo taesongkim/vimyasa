@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import { KeyCapture } from './KeyCapture'
 import { JkModeToggle } from '../JkModeToggle'
-import type { ShortcutAction, BuiltinShortcuts } from '../../../../../shared/types'
+import { getRegularLists, type ShortcutAction, type BuiltinShortcuts } from '@shared/types'
 
 const actionLabels: Record<ShortcutAction, string> = {
   openList: 'Open List',
@@ -43,17 +43,21 @@ function formatAccelerator(accel: string): string {
 
 export function ShortcutsTab() {
   const { shortcuts, lists, builtinShortcuts, jkMode } = useStore()
+  // Custom shortcuts can only target user lists. The hot list has its
+  // own dedicated builtin (Cmd+Shift+H, ships in PR 2) and isn't a
+  // valid target for openList / quickAddFixed shortcuts.
+  const targetableLists = getRegularLists(lists)
   const [newAction, setNewAction] = useState<ShortcutAction>('openList')
-  const [newTarget, setNewTarget] = useState<string>(lists[0]?.id || '')
+  const [newTarget, setNewTarget] = useState<string>(targetableLists[0]?.id || '')
   const [editingBuiltin, setEditingBuiltin] = useState<keyof BuiltinShortcuts | null>(null)
   const [editingBuiltinAccel, setEditingBuiltinAccel] = useState('')
 
   // Keep target in sync when lists change (e.g. new list created)
   useEffect(() => {
-    if (lists.length > 0 && !lists.find((l) => l.id === newTarget)) {
-      setNewTarget(lists[0].id)
+    if (targetableLists.length > 0 && !targetableLists.find((l) => l.id === newTarget)) {
+      setNewTarget(targetableLists[0].id)
     }
-  }, [lists, newTarget])
+  }, [targetableLists, newTarget])
   const [newAccel, setNewAccel] = useState('')
 
   const handleAddShortcut = async () => {
@@ -251,7 +255,7 @@ export function ShortcutsTab() {
                 value={newTarget}
                 onChange={(e) => setNewTarget(e.target.value)}
               >
-                {lists.map((l) => (
+                {targetableLists.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
                   </option>

@@ -23,6 +23,7 @@ export function createListInStore(groupId: string, name: string): List {
     id: uuid(),
     groupId,
     name,
+    kind: 'regular',
     sortOrder: nextSortOrder
   }
   store.set('lists', [...lists, list])

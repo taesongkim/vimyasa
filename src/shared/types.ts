@@ -13,11 +13,43 @@ export interface Group {
   sortOrder: number
 }
 
+export type ListKind = 'regular' | 'hot'
+
+/** Stable, well-known id for the always-existing hot list. The user's
+ *  daily-completion surface (proposed in docs/proposals/hot-list.md).
+ *  Reserved string — do not generate this id elsewhere. */
+export const HOT_LIST_ID = 'hot' as const
+
 export interface List {
   id: string
   groupId: string
   name: string
+  /** 'hot' is reserved for the single always-existing hot list (id =
+   *  HOT_LIST_ID). All user-created lists are 'regular'. The kind is
+   *  immutable per list — a regular list never becomes hot and vice
+   *  versa. Filter helpers in this module gate user-facing iteration
+   *  so the hot list doesn't accidentally show up in tray menus,
+   *  number-key bindings, etc., before its dedicated UI lands. */
+  kind: ListKind
   sortOrder: number
+}
+
+/** User-facing lists (everything except the hot list). Use this anywhere
+ *  the user iterates "their lists" — tray menu, number-key bindings,
+ *  list dropdowns, settings rosters.
+ *
+ *  Filters by NOT being hot (rather than IS regular) so a list whose
+ *  kind hasn't been backfilled yet — e.g. a v0.1.5 backup imported
+ *  before the import-side normalization lands — defaults to user-
+ *  visible rather than vanishing from the UI. */
+export function getRegularLists(lists: List[]): List[] {
+  return lists.filter((l) => l.kind !== 'hot')
+}
+
+/** The single hot list, or undefined if the seed migration hasn't run
+ *  yet (shouldn't happen in normal operation). */
+export function getHotList(lists: List[]): List | undefined {
+  return lists.find((l) => l.kind === 'hot')
 }
 
 export interface Item {

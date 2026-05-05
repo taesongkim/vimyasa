@@ -152,6 +152,15 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('deleteList', (e, id: string): void => {
+    // The hot list is an always-existing surface; deleting it would
+    // leave the app in an unrecoverable state until the next migration
+    // runs. The Settings → Lists UI already filters it out so this
+    // path shouldn't be reachable from chrome, but the IPC is the
+    // ultimate guard.
+    const target = store.get('lists').find((l) => l.id === id)
+    if (target?.kind === 'hot') {
+      throw new Error('Cannot delete the hot list')
+    }
     const lists = store.get('lists').filter((l) => l.id !== id)
     store.set('lists', lists)
     // Remove from group

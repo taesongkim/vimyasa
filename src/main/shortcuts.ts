@@ -7,7 +7,7 @@ import {
   createShortcutsOverviewWindow
 } from './windows'
 import type { BuiltinShortcuts, List } from '../shared/types'
-import { DEFAULT_BUILTIN_SHORTCUTS } from '../shared/types'
+import { DEFAULT_BUILTIN_SHORTCUTS, getRegularLists } from '../shared/types'
 import { orchestrator } from './onboarding'
 
 let cycleIndex = 0
@@ -15,10 +15,10 @@ let cycleIndex = 0
 // "First list" semantics across the app mean the user-facing first list,
 // i.e. the topmost row in Settings → Lists / the first entry in the tray
 // menu. That order is governed by list.sortOrder; the array stored on
-// disk is in insertion order. Sort here so global-shortcut callbacks
-// resolve the same list the user sees as "1".
+// disk is in insertion order. The hot list is excluded — it has its own
+// dedicated shortcut and never participates in the regular 1–9 ordering.
 function listsInDisplayOrder(): List[] {
-  return [...store.get('lists')].sort((a, b) => a.sortOrder - b.sortOrder)
+  return getRegularLists(store.get('lists')).sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
 // Track registered accelerators so we can selectively unregister

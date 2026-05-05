@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
 import { GlowSurface } from '../shared/GlowSurface'
+import { getRegularLists } from '@shared/types'
 
 export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const { lists, addItem } = useStore()
@@ -11,6 +12,10 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  // Quick-add never targets the hot list — it has its own dedicated
+  // surface (number-0 from a list, Cmd+Shift+H global). Filter it out
+  // of the dropdown options + Tab-cycle.
+  const regularLists = getRegularLists(lists)
   const selectedList = lists.find((l) => l.id === selectedListId)
 
   // TODO: source this from settings once the settings UI exists.
@@ -73,7 +78,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       // when motion.div mounts (next render) it has the right listId and
       // no stale text.
       setText('')
-      setSelectedListId(payload.listId || lists[0]?.id || initialListId)
+      setSelectedListId(payload.listId || regularLists[0]?.id || initialListId)
       setDropdownOpen(false)
       setExiting(false)
       exitingRef.current = false
@@ -211,7 +216,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
               className="absolute left-1/2 -translate-x-1/2 top-8 z-50 min-w-[140px] max-h-[64px] overflow-y-auto py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[rgb(19,19,19)]"
               style={{ boxShadow: 'var(--shadow-tooltip)' }}
             >
-              {lists.map((list) => (
+              {regularLists.map((list) => (
                 <button
                   key={list.id}
                   className={`w-full text-left px-3 py-0.5 text-[length:var(--font-size-xs)] transition-default ${
@@ -248,9 +253,10 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
             }
             if (e.key === 'Tab') {
               e.preventDefault()
-              const idx = lists.findIndex((l) => l.id === selectedListId)
-              const nextIdx = (idx + 1) % lists.length
-              setSelectedListId(lists[nextIdx].id)
+              const idx = regularLists.findIndex((l) => l.id === selectedListId)
+              if (regularLists.length === 0) return
+              const nextIdx = (idx + 1) % regularLists.length
+              setSelectedListId(regularLists[nextIdx].id)
             }
           }}
         />

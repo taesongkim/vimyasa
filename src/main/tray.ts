@@ -3,6 +3,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { store } from './store'
 import { createListInStore } from './lists'
+import { getRegularLists } from '../shared/types'
 import {
   createListWindow,
   createQuickAddWindow,
@@ -129,8 +130,14 @@ export function updateTrayMenu(): void {
       label: 'Entry Form',
       accelerator: 'CommandOrControl+Shift+;',
       click: () => {
-        if (lists.length > 0) {
-          createQuickAddWindow('fixed', lists[0].id)
+        // Quick-add target is the user's first regular list — the hot
+        // list isn't a quick-add destination (it has its own future
+        // flow via carry mode + number-0).
+        const regulars = getRegularLists(lists).sort(
+          (a, b) => a.sortOrder - b.sortOrder
+        )
+        if (regulars.length > 0) {
+          createQuickAddWindow('fixed', regulars[0].id)
         }
       }
     },
