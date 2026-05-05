@@ -223,6 +223,33 @@ not silently grab next-priority items.
   picking a new global hotkey. Update when new conflicts surface in
   testing or new vimyasa shortcuts ship. Last verified: 2026-05-04.
 
+### Electron major-version upgrade
+- **Lane:** features (build); coordination (proposal first)
+- **Priority:** P2
+- **Version:** unassigned — deserves its own dedicated effort, not bundled with feature work
+- **Status:** idea — surfaced during 2026-05-05 npm audit triage
+- **Notes:** Electron 33 is now ~8 majors behind (current is 41). The
+  npm audit lists 18 CVEs against electron <=39.8.4, none of which apply
+  to vimyasa's actual API usage (no `window.open`, `setAsDefaultProtocolClient`,
+  `requestSingleInstanceLock`, `commandLineSwitches`, USB, offscreen
+  rendering, service workers, iframes). Risk for shipped binary is low.
+  But the upgrade itself is worthwhile — security posture and access to
+  newer Electron features. **Do NOT use `npm audit fix --force`** (would
+  jump to 41 and likely break things). Instead: coordination writes an
+  upgrade proposal; features steps through 33 → 34 → ... → current with
+  test verification at each major.
+
+### npm audit: uuid v3/v5/v6 advisory
+- **Lane:** coordination (tracking only)
+- **Priority:** P3 — won't-fix unless usage changes
+- **Version:** N/A (tracking)
+- **Status:** assessed → no action needed
+- **Notes:** Triaged during 2026-05-05 npm audit. uuid <14.0.0 has a
+  buf-bounds-check issue in v3/v5/v6. vimyasa only imports `v4 as uuid`
+  and uses random UUIDs; v3/v5/v6 (namespace UUIDs) are not used.
+  Tracked here so a future audit triage doesn't re-investigate. If
+  vimyasa ever starts using v3/v5/v6, revisit.
+
 ### Auto-update integrity audit
 - **Lane:** coordination
 - **Priority:** P1 (one-time, then quiet for a long time)
