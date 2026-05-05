@@ -110,6 +110,21 @@
   --motion-hover: all 150ms ease;
   --motion-scroll-fade: opacity 350ms ease;
   --motion-scale-hover: transform 150ms ease;
+
+  /* Carry mode (move-item flow). Tunable here; consumed by classes
+     below and by useCarryAnimation. Keep --carry-send-commit-ms in
+     sync with CARRY_SEND_COMMIT_MS in useCarryAnimation.ts — the hook
+     resolves at the commit point so features can fire sendItemToList
+     mid-flight (feels instant) while the visual continues to land. */
+  --carry-lift-scale: 1.03;
+  --carry-lift-duration: 180ms;
+  --carry-lift-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --carry-send-distance: 140px;
+  --carry-send-duration: 220ms;
+  --carry-send-commit-ms: 110ms;
+  --carry-send-ease: cubic-bezier(0.5, 0, 0.75, 0); /* ease-in / "thrown" */
+  --carry-dim-multiplier: 0.5; /* multiplies onto each non-carried row's existing opacity */
+  --carry-receipt-duration: 360ms;
 }
 
 /* ── Base Reset ───────────────────────────────────────────────── */
@@ -883,4 +898,150 @@ html, body, #root {
 .onb-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* ── Carry mode (move-item flow) ──────────────────────────────────
+   Visual treatment for the "carry" interaction: m enters carry mode
+   on the focused item, number key sends it to that list, j/k reorder,
+   Esc/Enter exits. This block defines the lifted state, the
+   directional fly-off, and the receiving list's pulse.
+
+   Class contract (consumed by features lane — see
+   docs/INBOX.md note dated 2026-05-05):
+
+     On the carried row:
+       .item-row-carrying
+
+     On the list container while any row is carried:
+       .list-carrying        (dims non-carried siblings)
+
+     On the carried row when launching:
+       .item-row-sending-left   (target list ranks lower than source)
+       .item-row-sending-right  (target list ranks higher than source)
+       — see useCarryAnimation.getSendDirection for the ranking rule
+         (hot list ranked highest, otherwise sortOrder).
+
+     On the receiving list window when an item arrives via send:
+       .list-window-receiving-left   (incoming from the right side)
+       .list-window-receiving-right  (incoming from the left side)
+       — fired generically by an 'item-arrived' event so future flows
+         (drag-between-lists, bulk ops) get the same pulse for free.
+
+   All values are CSS variables in :root so they're tunable without
+   touching keyframes. */
+
+.item-row-carrying {
+  /* Stays at scale through the entire carry → send sequence. The send
+     classes below intentionally don't touch transform's scale — they
+     only translate + fade — so the lift is preserved as the row flies
+     off. */
+  transform: scale(var(--carry-lift-scale));
+  /* Slightly brighter than .item-row-focused (rgba 0.10) so the carried
+     row reads as one rung above "selected." */
+  background: rgba(255, 255, 255, 0.14) !important;
+  /* Inset hairline edge — same vocabulary as the save flash, held instead
+     of pulsed. Drop shadow sits on top of the window's vibrancy without
+     going opaque-black (the row has content, so the vibrancy gotcha that
+     bites empty wrappers doesn't apply). */
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.28),
+    0 10px 28px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  /* z-lift so the shadow renders above adjacent rows instead of being
+     clipped by their backgrounds. */
+  position: relative;
+  z-index: 10;
+  transition:
+    transform var(--carry-lift-duration) var(--carry-lift-ease),
+    box-shadow var(--carry-lift-duration) ease,
+    background var(--carry-lift-duration) ease;
+}
+
+/* Dim non-carried siblings while carry is active. Multiplicative — this
+   sets opacity on the row container, which composites on top of the
+   inline status opacity ItemRow already applies to its inner content
+   div (active=1, done=0.6, hold=0.35). So a hold item at 0.35 becomes
+   ~0.175 here, preserving relative status hierarchy.
+
+   If user-testing decides the dim is too much, removing this rule alone
+   reverts the behavior — the carried row's lift remains untouched. */
+.list-carrying [data-flip-id]:not(.item-row-carrying) {
+  opacity: var(--carry-dim-multiplier);
+  transition: opacity 200ms ease;
+}
+
+/* Send-off: directional translate + fade, scale held. ease-in (rather
+   than ease-out) makes the row read as thrown — slow start, accelerating
+   exit — so the moment of commit feels assertive. Pairs with the
+   receiving list's pulse arriving on the other end. */
+@keyframes carry-send-left {
+  from {
+    transform: scale(var(--carry-lift-scale)) translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: scale(var(--carry-lift-scale)) translateX(calc(-1 * var(--carry-send-distance)));
+    opacity: 0;
+  }
+}
+@keyframes carry-send-right {
+  from {
+    transform: scale(var(--carry-lift-scale)) translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: scale(var(--carry-lift-scale)) translateX(var(--carry-send-distance));
+    opacity: 0;
+  }
+}
+.item-row-sending-left {
+  animation: carry-send-left var(--carry-send-duration) var(--carry-send-ease) forwards;
+  /* While sending, the row no longer wants the resting transition that
+     .item-row-carrying applies to transform — that would interpolate
+     against the keyframe's per-frame transform and stall. Override. */
+  transition: none !important;
+  pointer-events: none;
+}
+.item-row-sending-right {
+  animation: carry-send-right var(--carry-send-duration) var(--carry-send-ease) forwards;
+  transition: none !important;
+  pointer-events: none;
+}
+
+/* Receiving list pulse — a brief edge glow on the side the item came
+   from. Generic enough to drive from any 'item-arrived' event payload
+   that includes a direction; carry-mode is the first caller but right-
+   click "Send to List", future drag-between-lists, and bulk ops should
+   all reuse this.
+
+   Pulse is rendered via inset box-shadow on the list-window root rather
+   than a sibling overlay, so it hugs whatever rounded-rect shape the
+   window happens to have without manual size matching. */
+@keyframes carry-receipt-left {
+  0% {
+    box-shadow: inset 16px 0 24px -8px rgba(255, 255, 255, 0);
+  }
+  20% {
+    box-shadow: inset 16px 0 24px -8px rgba(255, 255, 255, 0.45);
+  }
+  100% {
+    box-shadow: inset 16px 0 24px -8px rgba(255, 255, 255, 0);
+  }
+}
+@keyframes carry-receipt-right {
+  0% {
+    box-shadow: inset -16px 0 24px -8px rgba(255, 255, 255, 0);
+  }
+  20% {
+    box-shadow: inset -16px 0 24px -8px rgba(255, 255, 255, 0.45);
+  }
+  100% {
+    box-shadow: inset -16px 0 24px -8px rgba(255, 255, 255, 0);
+  }
+}
+.list-window-receiving-left {
+  animation: carry-receipt-left var(--carry-receipt-duration) ease-out;
+}
+.list-window-receiving-right {
+  animation: carry-receipt-right var(--carry-receipt-duration) ease-out;
 }

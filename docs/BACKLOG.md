@@ -80,10 +80,13 @@ not silently grab next-priority items.
   to v0.1.10+ if ever). Estimate: 2–3 active hours.
 
 ### Move-item flow — "carry mode"
-- **Lane:** features
+- **Lane:** features (mechanism); aesthetics (visual treatment, in-flight)
 - **Priority:** P2
 - **Version:** v0.1.8
-- **Status:** idea — naming + ENTER conflict to resolve
+- **Status:** idea — naming + ENTER conflict to resolve · aesthetics
+  visual primitives in-flight on `carry-mode-visuals` branch (CSS classes,
+  send-direction helper, animation hook). Features picks up the wiring
+  contract from INBOX when ready.
 - **Notes:** `m` toggles carry mode on focused item. Inside carry mode:
   number key → send to that list (incl. `0` → hot list — depends on
   hot list shipping in v0.1.6); `j`/`k` → reorder in current list;
