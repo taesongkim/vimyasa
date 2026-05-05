@@ -30,9 +30,11 @@ import type { Item, ItemStatus } from '../../../../../shared/types'
 import { HOT_LIST_ID } from '@shared/types'
 import {
   getSendDirection,
+  playBlurRamp,
   CARRY_SEND_DURATION_MS,
   type SendDirection
 } from '../../hooks/useCarryAnimation'
+import { CarryMotionBlurFilters } from './CarryMotionBlurFilters'
 
 export function ListWindow({ listId: initialListId }: { listId: string }) {
   const { items, lists, addItem, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
@@ -356,6 +358,10 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       // send so the lifted state visually persists into the throw —
       // no snap-back of background or shadow before the slide.
       setSendDirection(direction)
+      // Tier-3 motion blur: ramp the SVG trail filter's stdDeviation
+      // over the first ~30% of the slide so the blur eases on rather
+      // than snapping to full strength when the row starts moving.
+      playBlurRamp(direction)
       // After the visual completes, mutate the data. End-fire (vs
       // mid-flight) sidesteps an AnimatePresence-vs-keyframe conflict:
       // the row is fully invisible (forwards keeps opacity 0) by the
@@ -930,6 +936,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       className="flex flex-col h-full glass-surface relative"
       style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}
     >
+      <CarryMotionBlurFilters />
       <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}

@@ -123,12 +123,18 @@
   --carry-lift-y: -1px;
   --carry-lift-duration: 180ms;
   --carry-lift-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --carry-send-distance: 24px;
-  --carry-send-duration: 90ms;
-  --carry-send-commit-ms: 90ms; /* end-fire: data mutates after the visual completes,
+  --carry-send-distance: 48px;
+  --carry-send-duration: 80ms;
+  --carry-send-commit-ms: 80ms; /* end-fire: data mutates after the visual completes,
                                    so the keyframe owns the entire on-screen motion. */
   --carry-send-slide-ease: linear;
   --carry-send-fade-ease: ease-out;
+  /* Motion blur tier-3 experiment. SVG trail filters live in
+     <CarryMotionBlurFilters> mounted inside ListWindow. JS ramps
+     stdDeviation via playBlurRamp in useCarryAnimation. */
+  --carry-blur-max: 6px;
+  --carry-blur-ramp-fraction: 0.3; /* portion of duration spent ramping in */
+  --carry-trail-offset: 14px;
   --carry-dim-multiplier: 0.5; /* multiplies onto each non-carried row's existing opacity */
   --carry-receipt-duration: 360ms;
 }
@@ -1012,10 +1018,17 @@ html, body, #root {
      duration but each carries its own timing function — slide stays
      constant px/ms, fade drops fast at first then trails toward zero.
      forwards on both keeps the end state (translated + invisible)
-     locked in until React unmounts the row. */
+     locked in until React unmounts the row.
+     Motion-blur experiment: filter references the SVG trail filter.
+     stdDeviation starts at 0 (no blur) and is ramped up by
+     playBlurRamp in useCarryAnimation — applying a filter that
+     evaluates to identity is functionally a no-op visually but does
+     trigger off-screen rendering, so text may anti-alias slightly
+     differently for the duration of the send. */
   animation:
     carry-send-slide-left var(--carry-send-duration) var(--carry-send-slide-ease) forwards,
     carry-send-fade var(--carry-send-duration) var(--carry-send-fade-ease) forwards;
+  filter: url(#carry-trail-left);
   /* While sending, the row no longer wants the resting transition that
      .item-row-carrying applies to transform — that would interpolate
      against the keyframe's per-frame transform and stall. Override. */
@@ -1026,6 +1039,7 @@ html, body, #root {
   animation:
     carry-send-slide-right var(--carry-send-duration) var(--carry-send-slide-ease) forwards,
     carry-send-fade var(--carry-send-duration) var(--carry-send-fade-ease) forwards;
+  filter: url(#carry-trail-right);
   transition: none !important;
   pointer-events: none;
 }
