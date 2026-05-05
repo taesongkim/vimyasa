@@ -240,6 +240,21 @@ export interface VimyasaAPI {
 
   // Events
   onDataChanged: (callback: () => void) => () => void
+  /** Generic "an item just landed in this list" subscription. Fires
+   *  on every cross-list move (today: moveItem; future: drag-
+   *  between-lists, bulk ops). Payload includes the source/target
+   *  list ids and the direction the source flew (right = up the
+   *  order, left = down). Receivers typically filter by active
+   *  listId === toListId before firing the receipt pulse + scroll
+   *  the new item into view. */
+  onItemArrived: (
+    callback: (payload: {
+      itemId: string
+      fromListId: string
+      toListId: string
+      direction: 'left' | 'right'
+    }) => void
+  ) => () => void
   /** Subscribe to clicks on items in a previously-shown context menu.
    *  Main re-broadcasts the chosen action (with the ipcData payload the
    *  caller attached to the template entry) over `context-menu-action`.

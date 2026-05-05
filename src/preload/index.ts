@@ -91,6 +91,34 @@ const api: VimyasaAPI = {
       ipcRenderer.removeListener('data-changed', listener)
     }
   },
+  onItemArrived: (callback) => {
+    const listener = (_e: unknown, payload: unknown): void => {
+      const p = payload as
+        | {
+            itemId?: string
+            fromListId?: string
+            toListId?: string
+            direction?: 'left' | 'right'
+          }
+        | null
+      if (
+        p &&
+        typeof p.itemId === 'string' &&
+        typeof p.fromListId === 'string' &&
+        typeof p.toListId === 'string' &&
+        (p.direction === 'left' || p.direction === 'right')
+      ) {
+        callback({
+          itemId: p.itemId,
+          fromListId: p.fromListId,
+          toListId: p.toListId,
+          direction: p.direction
+        })
+      }
+    }
+    ipcRenderer.on('item-arrived', listener)
+    return () => ipcRenderer.removeListener('item-arrived', listener)
+  },
   onContextMenuAction: (callback) => {
     const listener = (_event: unknown, data: Parameters<typeof callback>[0]): void =>
       callback(data)

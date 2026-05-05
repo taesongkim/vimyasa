@@ -54,6 +54,47 @@ function broadcastDataChanged(senderWebContentsId?: number): void {
   }
 }
 
+/** Generic "an item just landed in this list" broadcast. Cross-window
+ *  IPC: any open ListWindow whose active listId === toListId can react
+ *  with the receipt pulse + scroll-into-view. Fires from wherever an
+ *  item changes lists — moveItem today; future drag-between-lists
+ *  and bulk-move flows should fire it too so the visual treatment
+ *  comes along for free.
+ *
+ *  Direction logic mirrors `getSendDirection` in
+ *  `src/renderer/src/hooks/useCarryAnimation.ts`: hot list ranks
+ *  highest, otherwise sortOrder. To-hot = right; from-hot = left;
+ *  target.sortOrder > source.sortOrder = right, else left. Reproduced
+ *  in main rather than imported because the renderer-side helper
+ *  takes a List type and runs in a window's React tree. */
+function computeArrivalDirection(
+  fromListId: string,
+  toListId: string,
+  lists: List[]
+): 'left' | 'right' {
+  const from = lists.find((l) => l.id === fromListId)
+  const to = lists.find((l) => l.id === toListId)
+  if (!from || !to) return 'right' // Defensive default; should not happen
+  if (to.kind === 'hot') return 'right'
+  if (from.kind === 'hot') return 'left'
+  return to.sortOrder > from.sortOrder ? 'right' : 'left'
+}
+
+interface ItemArrivedPayload {
+  itemId: string
+  fromListId: string
+  toListId: string
+  direction: 'left' | 'right'
+}
+
+function broadcastItemArrived(payload: ItemArrivedPayload): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('item-arrived', payload)
+    }
+  }
+}
+
 /** Fan a theme trigger event out to every renderer (including the sender) so
  *  GlowSurface instances on any window can pulse in response — e.g.,
  *  QuickAdd submitting fires on the list window too. Sender included so a
@@ -286,6 +327,7 @@ export function registerIpcHandlers(): void {
     const items = store.get('items')
     const idx = items.findIndex((i) => i.id === id)
     if (idx === -1) throw new Error(`Item not found: ${id}`)
+    const fromListId = items[idx].listId
     // Same gap-aware sortOrder logic as createItem — count of visible items
     // in the target list isn't a reliable "next bottom" when archived items
     // have left holes.
@@ -302,6 +344,19 @@ export function registerIpcHandlers(): void {
     }
     store.set('items', items)
     broadcastDataChanged(e.sender.id)
+    // Tell any list window whose active listId === targetListId that
+    // the item landed there. Skipped when fromListId === targetListId
+    // (degenerate same-list move; no visual signal warranted). Fires
+    // even when the target list isn't currently open — receivers
+    // filter by active listId on their end.
+    if (fromListId !== targetListId) {
+      broadcastItemArrived({
+        itemId: id,
+        fromListId,
+        toListId: targetListId,
+        direction: computeArrivalDirection(fromListId, targetListId, store.get('lists'))
+      })
+    }
     return items[idx]
   })
 

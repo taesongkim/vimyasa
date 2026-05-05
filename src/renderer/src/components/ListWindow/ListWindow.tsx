@@ -31,6 +31,7 @@ import { HOT_LIST_ID } from '@shared/types'
 import {
   getSendDirection,
   playBlurRamp,
+  playReceipt,
   CARRY_SEND_DURATION_MS,
   type SendDirection
 } from '../../hooks/useCarryAnimation'
@@ -88,6 +89,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const focusedItemEditFnRef = useRef<(() => void) | null>(null)
   const cycleTargetRef = useRef<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // Outer motion.div ref. playReceipt applies the .list-window-receiving-*
+  // class on it to drive the inset-box-shadow pulse — needs to be the
+  // element that owns the visible window's rounded-rect chrome
+  // (glass-surface). Re-keyed on activeListId, so the ref's current
+  // value also re-binds on every cycle swap.
+  const windowRootRef = useRef<HTMLDivElement>(null)
   // Container holding the items themselves (inside the scroll container,
   // outside DndContext/SortableContext). Passed to useUpwardFlip so it
   // can find rows tagged with data-flip-id and animate ones moving up.
@@ -435,6 +442,24 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   useEffect(() => {
     return window.api.quickAdd.onItemAdded(({ itemId, listId }) => {
       if (listId !== activeListId) return
+      setPendingScrollItemId(itemId)
+    })
+  }, [activeListId])
+
+  // Subscribe to cross-list arrivals (carry-mode send, right-click
+  // "Send to List", future drag-between-lists / bulk ops). Two
+  // reactions when the arrival lands in our active list:
+  //   - `playReceipt` on the window root → inset edge pulse on the
+  //     side the item came from (sentDirection is opposite of the
+  //     receiving edge; useCarryAnimation handles that flip).
+  //   - `setPendingScrollItemId` so the same scroll-into-view effect
+  //     the entry-form-add path uses kicks in once `items` reconciles.
+  useEffect(() => {
+    return window.api.onItemArrived(({ itemId, toListId, direction }) => {
+      if (toListId !== activeListId) return
+      if (windowRootRef.current) {
+        playReceipt(windowRootRef.current, direction)
+      }
       setPendingScrollItemId(itemId)
     })
   }, [activeListId])
@@ -931,6 +956,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   return (
     <motion.div
       key={activeListId}
+      ref={windowRootRef}
       initial={{ opacity: 0, x: slideEnterX }}
       animate={cyclePhase === 'out' ? { opacity: 0, x: slideExitX } : { opacity: 1, x: 0 }}
       transition={{ duration: cyclePhase === 'out' ? 0.08 : 0.1, ease: [0.25, 0.1, 0.25, 1] }}

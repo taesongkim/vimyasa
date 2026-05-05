@@ -225,7 +225,23 @@ target > source = right; target < source = left.
 
 Tunable values: search `--carry-` in `globals.css` for the CSS
 variables driving lift scale, send distance, pulse intensity, etc.
-**Status:** open
+**Status:** resolved
+**Resolved (2026-05-05 — features):** built on
+`carry-motion-blur-toggle` (same branch as the toggle, since main-
+process IPC changes were already required there). Implementation:
+- `moveItem` IPC handler in `src/main/ipc.ts` now broadcasts
+  `item-arrived` after persisting the move (skipped on same-list
+  no-op moves). Direction computed in main via a small port of
+  `getSendDirection`'s rule (hot list highest, then sortOrder) so
+  no shared-package gymnastics.
+- New `onItemArrived` subscription on `window.api` (preload + types).
+- ListWindow subscribes; when `toListId === activeListId`, fires
+  `playReceipt(windowRootRef.current, direction)` AND sets
+  `pendingScrollItemId` so the existing scroll-into-view effect
+  reconciles once the item lands in `items`. Same scroll mechanic
+  as the entry-form-add path; both feel identical.
+- Right-click "Send to List" gets the treatment for free (it
+  routes through `sendItemToList` → `moveItem`).
 
 *(Add new entries above this line, newest first.)*
 
