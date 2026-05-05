@@ -91,6 +91,25 @@ export const DEFAULT_BUILTIN_SHORTCUTS: BuiltinShortcuts = {
 
 export type JkMode = 'standard' | 'inverse'
 
+// ── Effects (Settings → Advanced) ───────────────────────────────
+// Opt-in visual effects that aren't part of the default look. The
+// shape is open-ended so future toggles (anything aesthetics ships
+// behind a switch) slot in here without a schema migration each
+// time. Default values live in store.ts defaults + the runtime seed.
+
+export interface Effects {
+  /** Adds a directional trailing motion blur to the carry-mode send
+   *  animation. Off by default — the blur uses CSS `filter: url(...)`
+   *  which forces off-screen rendering (text quality may degrade
+   *  slightly even at zero stdDeviation). See INBOX 2026-05-05 for
+   *  the full rationale + tunables. */
+  carryMotionBlur: boolean
+}
+
+export const DEFAULT_EFFECTS: Effects = {
+  carryMotionBlur: false
+}
+
 // ── Feedback messenger ───────────────────────────────────────────
 // User-visible config (clientId is opaque, exposed for PR 2's send
 // payload). PR 1 ships the storage + Settings tab; PR 2 builds the
@@ -152,6 +171,8 @@ export interface DataStore {
   // 'standard' = j down, k up (vim convention).
   // 'inverse'  = j up, k down.
   jkMode: JkMode
+  // Opt-in visual effects (Settings → Advanced).
+  effects: Effects
 }
 
 // ── IPC API Types ─────────────────────────────────────────────────
@@ -198,6 +219,10 @@ export interface VimyasaAPI {
 
   // J/K mapping mode
   setJkMode: (mode: JkMode) => Promise<JkMode>
+
+  // Effects (Settings → Advanced). Partial update so callers can
+  // toggle individual flags without round-tripping the whole object.
+  setEffects: (updates: Partial<Effects>) => Promise<Effects>
 
   // Shortcut capture
   pauseGlobalShortcuts: () => Promise<void>

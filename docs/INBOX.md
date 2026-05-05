@@ -161,7 +161,20 @@ sliders later (probably not for v1):
 These all live as `export const`s in
 `src/renderer/src/hooks/useCarryAnimation.ts` and as CSS variables in
 `globals.css`.
-**Status:** open
+**Status:** resolved
+**Resolved (2026-05-05 — features):** built on
+`carry-motion-blur-toggle` (off `carry-motion-blur-experiment`).
+Settings → Advanced tab with the toggle; persistence under
+`effects.carryMotionBlur` in DataStore (defaults false). Body class
+`motion-blur-enabled` set from App.tsx; CSS rules in globals.css
+gate the `filter: url(...)` declarations behind that class. JS RAF
+ramp gated by `carryMotionBlurEnabled` in ListWindow's
+`carrySendToList`. Cross-window: setEffects IPC broadcasts
+data-changed (sender excluded), which any open window picks up via
+its existing onDataChanged → refresh subscription. Toggle PR is
+stacked on the experimental branch — merge order: experimental
+first, toggle second, or rebase the toggle if the experimental gets
+squashed into something else.
 
 ## 2026-05-05 — aesthetics + features (joint)
 **Type:** note

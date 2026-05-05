@@ -80,6 +80,21 @@ not silently grab next-priority items.
 - **Notes:** No persistence across summons. No cross-list undo (deferred
   to v0.1.10+ if ever). Estimate: 2–3 active hours.
 
+### Carry-mode motion blur (Settings → Advanced)
+- **Lane:** features (toggle); aesthetics (effect itself)
+- **Priority:** P3
+- **Version:** v0.1.6 (with carry-mode visuals)
+- **Status:** in-flight on `carry-motion-blur-toggle` branch
+  (features). Stacked on `carry-motion-blur-experiment` (aesthetics).
+  Merge order: experimental first, toggle second.
+- **Notes:** Settings → Advanced tab with single toggle "Motion blur
+  on carry-mode send". Off by default — opt-in. Persistence under
+  `effects.carryMotionBlur` in DataStore. Body class
+  `motion-blur-enabled` gates the CSS `filter: url(...)` rules in
+  globals.css; the JS RAF ramp in ListWindow's `carrySendToList` is
+  also gated. See INBOX 2026-05-05 (resolved) for the full spec
+  + tunable values.
+
 ### Move-item flow — "carry mode"
 - **Lane:** features (mechanism); aesthetics (visual treatment, in-flight)
 - **Priority:** P2

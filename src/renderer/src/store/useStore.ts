@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { v4 as uuid } from 'uuid'
-import type { DataStore, Group, List, Item, Comment, ItemStatus, JkMode } from '@shared/types'
-import { DEFAULT_BUILTIN_SHORTCUTS } from '@shared/types'
+import type { DataStore, Effects, Group, List, Item, Comment, ItemStatus, JkMode } from '@shared/types'
+import { DEFAULT_BUILTIN_SHORTCUTS, DEFAULT_EFFECTS } from '@shared/types'
 
 interface StoreState extends DataStore {
   hydrated: boolean
@@ -37,6 +37,9 @@ interface StoreState extends DataStore {
 
   // J/K mapping
   setJkMode: (mode: JkMode) => Promise<void>
+
+  // Effects (Settings → Advanced)
+  setEffects: (updates: Partial<Effects>) => Promise<void>
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -50,6 +53,7 @@ export const useStore = create<StoreState>((set, get) => ({
   shortcuts: [],
   builtinShortcuts: DEFAULT_BUILTIN_SHORTCUTS,
   jkMode: 'standard',
+  effects: DEFAULT_EFFECTS,
 
   hydrate: async () => {
     const data = await window.api.getAll()
@@ -320,5 +324,14 @@ export const useStore = create<StoreState>((set, get) => ({
     // the broadcast that follows would do the same anyway.
     set({ jkMode: mode })
     await window.api.setJkMode(mode)
+  },
+
+  // ── Effects ────────────────────────────────────────────────────
+  setEffects: async (updates) => {
+    // Same optimistic posture as setJkMode — flip the toggle UI in
+    // this window before the IPC roundtrip; the cross-window
+    // broadcast (data-changed → refresh) reconciles other windows.
+    set((s) => ({ effects: { ...s.effects, ...updates } }))
+    await window.api.setEffects(updates)
   }
 }))

@@ -1,7 +1,7 @@
 import Store from 'electron-store'
 import { v4 as uuid } from 'uuid'
-import type { DataStore, List } from '../shared/types'
-import { DEFAULT_BUILTIN_SHORTCUTS, HOT_LIST_ID } from '../shared/types'
+import type { DataStore, Effects, List } from '../shared/types'
+import { DEFAULT_BUILTIN_SHORTCUTS, DEFAULT_EFFECTS, HOT_LIST_ID } from '../shared/types'
 
 const defaultGroupId = uuid()
 const defaultListId = uuid()
@@ -51,7 +51,8 @@ const defaults: DataStore = {
   comments: [],
   shortcuts: [],
   builtinShortcuts: DEFAULT_BUILTIN_SHORTCUTS,
-  jkMode: 'standard'
+  jkMode: 'standard',
+  effects: DEFAULT_EFFECTS
 }
 
 export const store = new Store<DataStore>({
@@ -103,6 +104,27 @@ export const store = new Store<DataStore>({
 //      insurance.
 // Idempotent — on subsequent boots after the seed exists, it's a no-op
 // against electron-store (no `set` call when nothing changed).
+// Defensive runtime backfill for the `effects` namespace. Same rationale
+// as ensureHotListSeed below — version-keyed migrations only fire when
+// the app version crosses the key, but the renderer expects effects to
+// always be a fully-typed object. Backfills missing top-level + missing
+// individual flags so future additions to DEFAULT_EFFECTS land cleanly
+// for existing installs without bumping schemaVersion.
+function ensureEffectsSeed(): void {
+  const current = store.get('effects') as Effects | undefined
+  const merged: Effects = { ...DEFAULT_EFFECTS, ...(current ?? {}) }
+  // set() is a no-op if the value didn't change in shape, but
+  // electron-store doesn't deep-equal — write only when the merge
+  // actually added a key.
+  const hasNewKey = !current || Object.keys(DEFAULT_EFFECTS).some(
+    (k) => !(k in (current as Record<string, unknown>))
+  )
+  if (hasNewKey) {
+    store.set('effects', merged)
+  }
+}
+ensureEffectsSeed()
+
 function ensureHotListSeed(): void {
   const lists = store.get('lists') ?? []
   let mutated = false

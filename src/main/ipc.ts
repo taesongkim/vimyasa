@@ -5,7 +5,8 @@ import { createListInStore } from './lists'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
 import { orchestrator } from './onboarding'
-import type { DataStore, FeedbackConfig, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
+import type { DataStore, Effects, FeedbackConfig, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
+import { DEFAULT_EFFECTS } from '../shared/types'
 import {
   canSendFeedback,
   getFeedbackConfig,
@@ -85,7 +86,8 @@ export function registerIpcHandlers(): void {
       comments: store.get('comments'),
       shortcuts: store.get('shortcuts'),
       builtinShortcuts: store.get('builtinShortcuts'),
-      jkMode: store.get('jkMode') ?? 'standard'
+      jkMode: store.get('jkMode') ?? 'standard',
+      effects: { ...DEFAULT_EFFECTS, ...(store.get('effects') ?? {}) }
     }
   })
 
@@ -420,6 +422,20 @@ export function registerIpcHandlers(): void {
     store.set('jkMode', mode)
     broadcastDataChanged(e.sender.id)
     return mode
+  })
+
+  // ── Effects (Settings → Advanced) ──────────────────────────────
+  // Partial update so a toggle UI can flip a single flag without
+  // resending the whole object. Broadcast EXcludes sender so the
+  // toggle's optimistic update doesn't double-render its own UI;
+  // every other window picks up the new state via data-changed →
+  // refresh().
+  ipcMain.handle('setEffects', (e, updates: Partial<Effects>): Effects => {
+    const current = (store.get('effects') ?? DEFAULT_EFFECTS) as Effects
+    const next: Effects = { ...DEFAULT_EFFECTS, ...current, ...updates }
+    store.set('effects', next)
+    broadcastDataChanged(e.sender.id)
+    return next
   })
 
   // ── Shortcut capture (pause/resume) ─────────────────────────

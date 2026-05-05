@@ -1018,17 +1018,10 @@ html, body, #root {
      duration but each carries its own timing function — slide stays
      constant px/ms, fade drops fast at first then trails toward zero.
      forwards on both keeps the end state (translated + invisible)
-     locked in until React unmounts the row.
-     Motion-blur experiment: filter references the SVG trail filter.
-     stdDeviation starts at 0 (no blur) and is ramped up by
-     playBlurRamp in useCarryAnimation — applying a filter that
-     evaluates to identity is functionally a no-op visually but does
-     trigger off-screen rendering, so text may anti-alias slightly
-     differently for the duration of the send. */
+     locked in until React unmounts the row. */
   animation:
     carry-send-slide-left var(--carry-send-duration) var(--carry-send-slide-ease) forwards,
     carry-send-fade var(--carry-send-duration) var(--carry-send-fade-ease) forwards;
-  filter: url(#carry-trail-left);
   /* While sending, the row no longer wants the resting transition that
      .item-row-carrying applies to transform — that would interpolate
      against the keyframe's per-frame transform and stall. Override. */
@@ -1039,9 +1032,21 @@ html, body, #root {
   animation:
     carry-send-slide-right var(--carry-send-duration) var(--carry-send-slide-ease) forwards,
     carry-send-fade var(--carry-send-duration) var(--carry-send-fade-ease) forwards;
-  filter: url(#carry-trail-right);
   transition: none !important;
   pointer-events: none;
+}
+/* Motion-blur experiment: gated by Settings → Advanced → "Motion blur
+   on carry-mode send". Body-class gate (set in App.tsx from the
+   effects.carryMotionBlur store flag) means the filter is never even
+   applied when the toggle is off — applying a filter that evaluates
+   to identity is still functionally a no-op visually but DOES trigger
+   off-screen rendering, so text may anti-alias slightly differently
+   for the duration of the send. Off by default. */
+.motion-blur-enabled .item-row-sending-left {
+  filter: url(#carry-trail-left);
+}
+.motion-blur-enabled .item-row-sending-right {
+  filter: url(#carry-trail-right);
 }
 
 /* Receiving list pulse — a brief edge glow on the side the item came

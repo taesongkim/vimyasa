@@ -64,8 +64,20 @@ export default function App() {
   // Raw lists (includes hot). User-facing iteration filters via
   // getRegularLists; raw is fine for id-based fallback lookups.
   const lists = useStore((s) => s.lists)
+  const carryMotionBlur = useStore((s) => s.effects.carryMotionBlur)
   const [route, setRoute] = useState<RouteInfo>(parseHash)
   const [error, setError] = useState<string | null>(null)
+
+  // Body-class gate for the carry-mode motion blur. The CSS rules in
+  // globals.css for `.item-row-sending-{left,right}` reference the
+  // SVG trail filter only inside `.motion-blur-enabled` — flipping
+  // this class on/off enables/disables the effect without touching
+  // each row. Renderer-wide so every list window in this process
+  // picks it up; cross-window sync is handled by data-changed →
+  // refresh hydrating each window's store from main.
+  useEffect(() => {
+    document.body.classList.toggle('motion-blur-enabled', carryMotionBlur)
+  }, [carryMotionBlur])
 
   useEffect(() => {
     hydrate().catch((err) => {
@@ -161,6 +173,7 @@ export default function App() {
         tab === 'shortcuts' ||
         tab === 'themes' ||
         tab === 'feedback' ||
+        tab === 'advanced' ||
         tab === 'data'
           ? tab
           : undefined

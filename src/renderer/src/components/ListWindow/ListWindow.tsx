@@ -39,6 +39,13 @@ import { CarryMotionBlurFilters } from './CarryMotionBlurFilters'
 export function ListWindow({ listId: initialListId }: { listId: string }) {
   const { items, lists, addItem, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
     useStore()
+  // Gate the JS-side motion blur ramp (Settings → Advanced → "Motion
+  // blur on carry-mode send"). The CSS filter is gated separately via
+  // a body class set in App.tsx; both must be off for the effect to
+  // be fully inert. Skipping the RAF when the toggle's off avoids the
+  // SVG attribute mutations (60 frames over ~24ms) when no element
+  // references the filter URL anyway.
+  const carryMotionBlurEnabled = useStore((s) => s.effects.carryMotionBlur)
 
   const [activeListId, setActiveListId] = useState(initialListId)
   const [filter, setFilter] = useState<FilterType>('all')
@@ -361,7 +368,10 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       // Tier-3 motion blur: ramp the SVG trail filter's stdDeviation
       // over the first ~30% of the slide so the blur eases on rather
       // than snapping to full strength when the row starts moving.
-      playBlurRamp(direction)
+      // Gated by Settings → Advanced; off by default.
+      if (carryMotionBlurEnabled) {
+        playBlurRamp(direction)
+      }
       // After the visual completes, mutate the data. End-fire (vs
       // mid-flight) sidesteps an AnimatePresence-vs-keyframe conflict:
       // the row is fully invisible (forwards keeps opacity 0) by the
@@ -384,7 +394,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       // doesn't strand on whatever happens to fall into its old slot.
       setFocusIndex(-1)
     },
-    [carryItemId, sortedLists, activeListId, sendItemToList, exitCarry, lists]
+    [carryItemId, sortedLists, activeListId, sendItemToList, exitCarry, lists, carryMotionBlurEnabled]
   )
 
   // Auto-scroll focused item into view

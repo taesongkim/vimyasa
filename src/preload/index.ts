@@ -66,6 +66,9 @@ const api: VimyasaAPI = {
   // J/K mapping mode
   setJkMode: (mode) => ipcRenderer.invoke('setJkMode', mode),
 
+  // Effects (Settings → Advanced)
+  setEffects: (updates) => ipcRenderer.invoke('setEffects', updates),
+
   // Shortcut capture
   pauseGlobalShortcuts: () => ipcRenderer.invoke('pauseGlobalShortcuts'),
   resumeGlobalShortcuts: () => ipcRenderer.invoke('resumeGlobalShortcuts'),
