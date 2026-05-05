@@ -207,6 +207,28 @@ not silently grab next-priority items.
   a debounced position-update. Should be one transition or
   request-animation-frame fix. Minor visual polish.
 
+### Unify `quickadd:item-added` + `item-arrived` events
+- **Lane:** features
+- **Priority:** P3
+- **Version:** unassigned — pull into any version with features slack
+- **Status:** idea — cleanup
+- **Notes:** Two parallel "a row just landed in this list" channels
+  exist today:
+  - `window.api.quickAdd.onItemAdded` — fires from QuickAdd's
+    `notifyItemAdded` IPC after `createItem` succeeds. ItemRow shows
+    the white-glow flash via the lazy-mount path (createdAt < 1s).
+  - `window.api.onItemArrived` — fires from main after `moveItem`.
+    ItemRow shows the same flash via the parent-driven `arrivalFlash`
+    prop.
+  Both produce identical visuals + use the same scroll-into-view
+  mechanism. They could collapse to a single `item-arrived` event
+  with a `kind: 'created' | 'moved'` discriminator (and `createItem`
+  fires it with `kind: 'created'`). The `arrivalFlash` prop becomes
+  the sole flash trigger; ItemRow's lazy-mount check on `createdAt`
+  retires. Not urgent — current code is clean and works. Worth doing
+  only when in this code anyway (e.g., adding another arrival
+  source).
+
 ---
 
 ## Bugs
