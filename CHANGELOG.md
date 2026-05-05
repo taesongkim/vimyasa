@@ -10,6 +10,54 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.6 — *Hot list, carry mode, capture-flow polish* (2026-05-05)
+
+The capture-flow release. The headline is the **Hot list** — a second
+always-existing list summoned by `Cmd+Shift+H`, holding number key
+`0`, sliding in from the right side of the screen as a mirror to your
+regular lists on the left. The hot list is meant for daily completion
+— "get these done today" — distinct from the longer-term storage and
+processing the regular lists are for. Visually it inherits Theme 1's
+magic colors automatically (same components as regular lists), with
+its own right-side window position and animation direction. Pinned to
+the top of the right-click "Send to List" submenu with a divider so
+it always lands first.
+
+The second big move is **carry mode.** Press `m` on a focused item and
+the item is "picked up" — visually lifted via scale + drop shadow
++ inset edge, with non-carried siblings dimmed. Inside carry mode:
+press `0`–`9` to send to a list (`0` = hot list); press `j` / `k` to
+reorder up/down within the current list; press `Enter` or `Esc` to
+land at current position. Carry mode is **sustained** — stays active
+across keystrokes until you explicitly exit. The send animation is
+real choreography (directional flight, parallel slide + fade,
+mid-flight resolution so the data move fires while the row's still
+in the air), with a directional motion-blur trail via SVG filters
+applied by default. If the blur causes rendering issues for you, off-switch
+lives in Settings → Advanced.
+
+Receipts on the receiving list window: when an item arrives, the
+target list pulses and auto-scrolls the new item into view. Right-click
+"Send to List" gets the same treatment for free — a generic
+`item-arrived` IPC broadcast handles both flows.
+
+A keymap restructuring landed alongside: **Enter no longer archives**
+a focused item (A still does). This frees Enter for carry-mode commit
+and prevents accidental archives after rename or move actions.
+**`r` enters edit mode** as a parallel keyboard handler to the existing
+edit entry. Edit mode now lands the caret after the last character
+instead of as a select-all (small bug fix while we were in the area).
+Onboarding tour and shortcut surfaces (Settings, `Cmd+Shift+'`
+overview window) updated to reflect everything.
+
+Two small wins originally slated for v0.1.8: items added via the
+QuickAdd entry form **auto-scroll into view** in any open list window;
+the previously-highlighted item **deselects** when a new-item draft
+starts. Both pulled forward because they fit naturally with the
+capture-flow theme.
+
+---
+
 ## v0.1.5 — *Feedback messenger* (2026-05-04)
 
 The first version where testers can talk back. `Cmd+Shift+\` opens a
