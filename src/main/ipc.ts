@@ -152,6 +152,15 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('deleteList', (e, id: string): void => {
+    // The hot list is an always-existing surface; deleting it would
+    // leave the app in an unrecoverable state until the next migration
+    // runs. The Settings → Lists UI already filters it out so this
+    // path shouldn't be reachable from chrome, but the IPC is the
+    // ultimate guard.
+    const target = store.get('lists').find((l) => l.id === id)
+    if (target?.kind === 'hot') {
+      throw new Error('Cannot delete the hot list')
+    }
     const lists = store.get('lists').filter((l) => l.id !== id)
     store.set('lists', lists)
     // Remove from group
@@ -572,6 +581,23 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('themeEvent:fire', (_e, name: ThemeEventName): void => {
     broadcastThemeEvent(name)
   })
+
+  // ── QuickAdd → list window: scroll-into-view hint ───────────────
+  // Fires after the entry form successfully adds an item. We re-broadcast
+  // so any open list window can find the new item by id and scroll it
+  // into view. Pure UX hint — persistence already happened in createItem;
+  // this is just "hey, the user just added that one from the entry form,
+  // make sure they can see it."
+  ipcMain.handle(
+    'quickadd:notify-item-added',
+    (_e, itemId: string, listId: string): void => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('quickadd:item-added', { itemId, listId })
+        }
+      }
+    }
+  )
 
   // ── Feedback messenger ──────────────────────────────────────────
   // PR 1: config + clientId infrastructure. No send flow yet — PR 2

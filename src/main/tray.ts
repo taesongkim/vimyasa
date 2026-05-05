@@ -3,6 +3,7 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { store } from './store'
 import { createListInStore } from './lists'
+import { getHotList, getRegularLists, HOT_LIST_ID } from '../shared/types'
 import {
   createListWindow,
   createQuickAddWindow,
@@ -94,10 +95,31 @@ export function updateTrayMenu(): void {
     }
   }
 
+  // Hot list lives outside group structure — surface it as its own
+  // tray entry below the regular lists with the "0." prefix that
+  // matches the title-bar listNumber and the keyboard shortcut.
+  const hotList = getHotList(lists)
+  const hotListMenuItem: Electron.MenuItemConstructorOptions[] = hotList
+    ? [
+        {
+          label: `0. ${hotList.name}${
+            (activeCountByList.get(HOT_LIST_ID) ?? 0) > 0
+              ? ` (${activeCountByList.get(HOT_LIST_ID)})`
+              : ''
+          }`,
+          accelerator: 'CommandOrControl+Shift+H',
+          click: () => createListWindow(HOT_LIST_ID)
+        }
+      ]
+    : []
+
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Vimyasa', type: 'normal', enabled: false },
     { type: 'separator' },
     ...groupMenuItems,
+    ...(hotListMenuItem.length > 0
+      ? [{ type: 'separator' as const }, ...hotListMenuItem]
+      : []),
     { type: 'separator' },
     {
       label: 'New List...',
@@ -129,8 +151,14 @@ export function updateTrayMenu(): void {
       label: 'Entry Form',
       accelerator: 'CommandOrControl+Shift+;',
       click: () => {
-        if (lists.length > 0) {
-          createQuickAddWindow('fixed', lists[0].id)
+        // Quick-add target is the user's first regular list — the hot
+        // list isn't a quick-add destination (it has its own future
+        // flow via carry mode + number-0).
+        const regulars = getRegularLists(lists).sort(
+          (a, b) => a.sortOrder - b.sortOrder
+        )
+        if (regulars.length > 0) {
+          createQuickAddWindow('fixed', regulars[0].id)
         }
       }
     },

@@ -59,71 +59,55 @@ talking to coordination.
 
 ## Open entries
 
-## 2026-05-05 — aesthetics
+## 2026-05-05 — aesthetics + features (joint)
 **Type:** note
-**Body:** Carry-mode visual primitives shipped on `carry-mode-visuals`
-branch (CSS classes + `useCarryAnimation` hook in
-`src/renderer/src/hooks/useCarryAnimation.ts`). Wiring contract for
-features lane when the v0.1.8 mechanism lands:
+**Body:** Carry mode shipped end-to-end across two branches that have
+now been merged on `carry-mode-visuals`:
 
-  1. **Carry state — class toggling.** When carry mode is active on a
-     focused item, add `item-row-carrying` to that ItemRow's outer
-     `motion.div` and `list-carrying` to the items container in
-     ListWindow (the `itemsContainerRef` div). Removing both classes
-     exits the lifted state cleanly.
+- **Mechanism** (features, on `keymap-onboarding`): `m` enters/exits
+  carry on the focused item; 0-9 sends to list N (0 = hot list); j/k
+  + arrows reorder; Enter/Esc land. ItemRow accepts an `isCarrying`
+  prop. Placeholder visual was a dashed accent outline.
 
-  2. **Send animation — middle-of-animation commit.** On number-key
-     send, call:
+- **Visual treatment** (aesthetics, on `carry-mode-visuals`): the
+  dashed-outline placeholder is replaced by the real lift treatment
+  (scale + drop shadow + inset edge), the `.list-carrying` container
+  class dims non-carried siblings (multiplicative opacity, easy to
+  pull if it doesn't earn its keep), and the send animation is wired
+  via `useCarryAnimation.playSend()` — `await playSend(rowEl, dir)`
+  resolves mid-flight so `sendItemToList` fires while the row's
+  still in the air (feels instant).
 
-         import { playSend, getSendDirection, CARRY_SEND_DURATION_MS }
-           from '../../hooks/useCarryAnimation'
+Direction rule (per `getSendDirection` in
+`src/renderer/src/hooks/useCarryAnimation.ts`): hot list ranks
+highest; otherwise by `sortOrder`. To-hot = right; from-hot = left;
+target > source = right; target < source = left.
 
-         const direction = getSendDirection(currentList, targetList)
-         await playSend(rowEl, direction)
-         await sendItemToList(item.id, targetList.id)
+**Still pending** — needs features lane:
 
-     `playSend` resolves at ~110ms (middle of the 220ms animation), so
-     `sendItemToList` fires while the row is still in the air. Feels
-     instant. Direction rule per user spec: hot list ranks highest;
-     otherwise by `sortOrder`. The helper takes a minimal
-     `{ sortOrder, kind?, isHot? }` shape so it doesn't pin you to the
-     full `List` type.
+  **Generic `'item-arrived'` broadcast** for the receipt pulse +
+  auto-scroll on the receiving list window. Cross-window IPC, so
+  it has to come from the main process. Suggested shape:
 
-  3. **Receipt pulse + auto-scroll — generic `'item-arrived'` event.**
-     User asked this be coded so future flows (drag-between-lists, bulk
-     ops, right-click "Send to List") inherit the behavior automatically.
-     Proposed shape:
+      broadcastItemArrived({
+        itemId, fromListId, toListId,
+        direction: getSendDirection(fromList, toList) // 'left'|'right'
+      })
 
-         // From wherever an item lands in a list (sendItemToList,
-         // future drag-between-lists, etc.):
-         broadcastItemArrived({
-           itemId,
-           fromListId,
-           toListId,
-           direction: getSendDirection(fromList, toList) // 'left' | 'right'
-         })
+  Fired from wherever an item lands in a list (`sendItemToList`,
+  future drag-between-lists, etc.). Any open ListWindow whose
+  active list === toListId responds with:
+    - `playReceipt(windowRootEl, payload.direction)` from
+      `useCarryAnimation` (already exported)
+    - Auto-scroll the new item into view (same mechanic as the
+      "Auto-scroll to new item added via entry form" BACKLOG item
+      — these can ship together).
 
-     Any open ListWindow whose active list === toListId responds:
-       - `playReceipt(windowRootEl, payload.direction)` (already in
-         the hook file)
-       - Auto-scroll the new item into view (uses the same scroll
-         mechanic the BACKLOG entry "Auto-scroll to new item added via
-         entry form" describes — these can ship together).
+  Adding the broadcast retroactively gives right-click "Send to
+  List" the same treatment, with no extra wiring.
 
-     The existing right-click "Send to List" flow should also fire this
-     event, retroactively gaining the pulse.
-
-  4. **Dim-others — pull-back ready.** The `.list-carrying` selector
-     dims non-carried siblings to opacity 0.5 (multiplicative on top of
-     status opacity). User flagged this as "we may not need it." If the
-     live test reads as too much, deleting the single `.list-carrying
-     [data-flip-id]:not(.item-row-carrying)` block in `globals.css`
-     reverts cleanly without touching the lifted-row treatment.
-
-Visual values (lift scale, send distance, pulse intensity) are tunable
-via CSS variables under `:root` in `globals.css` — search for
-`--carry-` to find them. They're best-guess until carry mode is wired
-up live; expect a polish PR after features lands the mechanism.
+Tunable values: search `--carry-` in `globals.css` for the CSS
+variables driving lift scale, send distance, pulse intensity, etc.
 **Status:** open
 
 *(Add new entries above this line, newest first.)*

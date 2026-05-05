@@ -4,6 +4,7 @@ import { is } from '@electron-toolkit/utils'
 import { orchestrator } from './onboarding'
 import { getThemesPreloadArg } from './themes-store'
 import { instrumentWindow } from './window-logging'
+import { HOT_LIST_ID } from '../shared/types'
 
 // Re-run onboarding callout positioning whenever a host window moves /
 // resizes / shows / hides / closes — keeps the callout glued to the host.
@@ -76,12 +77,35 @@ function getRightEdgePosition(width: number, height: number): { x: number; y: nu
   }
 }
 
+// Right-edge anchored placement for the hot list. Mirror of the
+// leftward stack used by regular lists — establishes the spatial split
+// "regular = left, hot = right" the proposal calls for.
+function calculateHotListPosition(height: number): { x: number; y: number } {
+  const cursor = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(cursor)
+  const wa = display.workArea
+  let x = wa.x + wa.width - LIST_WINDOW_WIDTH - INITIAL_X
+  let y = wa.y + INITIAL_Y
+  // Defensive clamps in case the work area is smaller than expected
+  // (rare; multi-monitor edge case where window > display height).
+  if (x < wa.x) x = wa.x
+  if (y + height > wa.y + wa.height) y = wa.y + wa.height - height - 20
+  return { x, y }
+}
+
 function calculateStackedPosition(): { x: number; y: number } {
   const cursor = screen.getCursorScreenPoint()
   const display = screen.getDisplayNearestPoint(cursor)
   const workArea = display.workArea
 
-  const openCount = listWindows.size
+  // Stack count is regular-only: the hot list lives at the right edge
+  // (calculateHotListPosition) and isn't part of the leftward column
+  // sequence. Including it would push every regular list one column
+  // further right than expected.
+  let openCount = 0
+  for (const id of listWindows.keys()) {
+    if (id !== HOT_LIST_ID) openCount++
+  }
   let x = INITIAL_X + openCount * (LIST_WINDOW_WIDTH + WINDOW_GAP)
   let y = workArea.y + INITIAL_Y
 
@@ -142,6 +166,12 @@ function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions)
 export function createListWindow(listId: string, position?: { x: number; y: number }): BrowserWindow {
   const existing = listWindows.get(listId)
   if (existing && !existing.isDestroyed()) {
+    // Toggle-on-focused: pressing the same shortcut while a list is
+    // focused acts as Esc. Applies to hot list too — Cmd+Shift+H from
+    // inside hot dismisses it. Cross-side swaps (0 from regular, 1-9
+    // from hot) don't hit this branch because the swap source is the
+    // focused window, not the target — the target is necessarily not
+    // focused at summon time, so it falls through to focus().
     if (existing.isFocused()) {
       existing.close()
       return existing
@@ -152,7 +182,14 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
 
   const workArea = screen.getPrimaryDisplay().workArea
   const listWindowHeight = Math.round(workArea.height * 0.97)
-  const { x, y } = position || calculateStackedPosition()
+  // Hot list defaults to right-edge anchored; regular lists keep the
+  // existing leftward stack. An explicit `position` arg still wins
+  // (e.g. user-driven open at a specific coordinate via IPC).
+  const { x, y } =
+    position ||
+    (listId === HOT_LIST_ID
+      ? calculateHotListPosition(listWindowHeight)
+      : calculateStackedPosition())
   const win = makeWindow(`list:${listId}`, {
     width: LIST_WINDOW_WIDTH,
     height: listWindowHeight,

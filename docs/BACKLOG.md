@@ -54,9 +54,10 @@ not silently grab next-priority items.
 - **Lane:** features (with theme + aesthetics consultations later)
 - **Priority:** P1
 - **Version:** v0.1.6 (Phase 1: PR-1, PR-2, PR-3) + v0.1.7 (PR-4 prewarm)
-- **Status:** proposed → Option A + phasing approved → see [proposals/hot-list.md](./proposals/hot-list.md)
-- **Notes:** Phasing is defined in the proposal. PR-1 is schema-only,
-  ships invisibly — safe to pull into v0.1.5 if features lane has slack.
+- **Status:** proposed → Option A + phasing approved → **PR-1 + PR-2 + PR-3
+  in-flight on `hot-list` branch (features lane).** PR-4 prewarm still
+  v0.1.7. See [proposals/hot-list.md](./proposals/hot-list.md).
+- **Notes:** Phasing is defined in the proposal.
 
 ### Backup / restore user data
 - **Lane:** features
@@ -82,17 +83,21 @@ not silently grab next-priority items.
 ### Move-item flow — "carry mode"
 - **Lane:** features (mechanism); aesthetics (visual treatment, in-flight)
 - **Priority:** P2
-- **Version:** v0.1.8
-- **Status:** idea — naming + ENTER conflict to resolve · aesthetics
-  visual primitives in-flight on `carry-mode-visuals` branch (CSS classes,
-  send-direction helper, animation hook). Features picks up the wiring
-  contract from INBOX when ready.
-- **Notes:** `m` toggles carry mode on focused item. Inside carry mode:
-  number key → send to that list (incl. `0` → hot list — depends on
-  hot list shipping in v0.1.6); `j`/`k` → reorder in current list;
-  `Esc` lands. **Open:** `Enter` already archives — needs a different
-  commit key, or carry-mode reuses Esc exclusively. Suggest "carry
-  mode" as the name (or "pickup mode"); user to confirm.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
+  `keymap-onboarding` branch alongside the Enter→A archive split,
+  `r`-rename, edit-mode caret fix, and the shortcut-surface updates).
+- **Status:** in-flight. Mechanism done (features lane); aesthetics
+  visual treatment in-flight on `carry-mode-visuals` branch (CSS
+  classes + `useCarryAnimation` hook + integration with the `m` /
+  0-9 / j-k / Enter-Esc state machine features built). Naming
+  confirmed as "carry mode"; Enter conflict resolved by removing
+  Enter-archives entirely (A keeps it). Carry mode is sustained:
+  0-9 send + exit, j/k reorder + persist, Enter / Esc exit at
+  current position.
+- **Notes:** Receipt pulse on the receiving list window still needs
+  a generic `'item-arrived'` IPC broadcast from features (so future
+  flows — drag-between-lists, bulk ops, retroactively right-click
+  "Send to List" — get the same treatment for free). See INBOX.
 
 ### Focus-state visual cue (flash + glow)
 - **Lane:** themes (primary), aesthetics (timing/feel)
@@ -160,22 +165,22 @@ not silently grab next-priority items.
 ### Auto-scroll to new item added via entry form
 - **Lane:** features
 - **Priority:** P2
-- **Version:** v0.1.8
-- **Status:** idea — small win
-- **Notes:** Mechanic exists for `n` in-list (auto-scrolls focused
-  item into view). Reuse it when entry form adds an item to the
-  currently-open list whose visible area doesn't contain the new item.
-  Likely a one-IPC-event addition: `quickadd` triggers `item-added`,
-  list windows that contain that item scroll to it.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
+  `hot-list` branch alongside the hot-list PRs).
+- **Status:** in-flight (features lane).
+- **Notes:** Implemented via `quickadd:notify-item-added` IPC →
+  broadcast `quickadd:item-added` → list window scrolls the matching
+  row into view if the listId matches its active list. Pure UX hint;
+  persistence still flows through the normal createItem path.
 
 ### Deselect prior item when new item is initiated
 - **Lane:** features
 - **Priority:** P3
-- **Version:** v0.1.8
-- **Status:** idea — tiny
-- **Notes:** When `n` (or shortcut, or anything else) starts a new
-  item draft, the previously-highlighted item should lose its selection
-  state. Trivial — likely a single state-clear in the new-item handler.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (same branch).
+- **Status:** in-flight (features lane).
+- **Notes:** `startDraft` in ListWindow now clears `focusIndex` to -1
+  before flipping `isAddingItem`. The draft surface owns the spotlight
+  from that point until commit / discard.
 
 ### Scrollbar tracking lag
 - **Lane:** features (or aesthetics, dealer's choice)

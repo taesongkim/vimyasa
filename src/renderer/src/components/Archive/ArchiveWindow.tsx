@@ -2,9 +2,15 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { StatusDot } from '../shared/StatusDot'
+import { getRegularLists } from '@shared/types'
 
 export function ArchiveWindow({ listId }: { listId?: string }) {
   const { items, lists, restoreItem, removeItem } = useStore()
+  // Filter pills exclude the hot list (it doesn't surface anywhere yet
+  // before its dedicated UI lands). The list-name lookup below stays on
+  // the raw `lists` array so an archived item's origin name renders
+  // correctly even if it came from the hot list.
+  const filterableLists = getRegularLists(lists)
   const [selectedListId, setSelectedListId] = useState<string | 'all'>(listId || 'all')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
@@ -52,7 +58,7 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
         >
           All
         </button>
-        {lists.map((list) => (
+        {filterableLists.map((list) => (
           <button
             key={list.id}
             className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium transition-default shrink-0 ${

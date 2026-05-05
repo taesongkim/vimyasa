@@ -61,6 +61,8 @@ function parseHash(): RouteInfo {
 export default function App() {
   const hydrate = useStore((s) => s.hydrate)
   const hydrated = useStore((s) => s.hydrated)
+  // Raw lists (includes hot). User-facing iteration filters via
+  // getRegularLists; raw is fine for id-based fallback lookups.
   const lists = useStore((s) => s.lists)
   const [route, setRoute] = useState<RouteInfo>(parseHash)
   const [error, setError] = useState<string | null>(null)
@@ -136,7 +138,11 @@ export default function App() {
         </GlowSurface>
       )
     case 'quickadd-fixed': {
-      const listId = route.params.listId || lists[0]?.id || ''
+      // Fallback target is the user's first REGULAR list — quick-add
+      // never targets the hot list as a default. Hot list stays
+      // dedicated to its own number-0 / Cmd+Shift+H summon.
+      const firstRegular = lists.find((l) => l.kind === 'regular')
+      const listId = route.params.listId || firstRegular?.id || ''
       return (
         <GlowSurface surface="quickadd-window" style={{ height: '100%', width: '100%' }}>
           <QuickAddFixed listId={listId} />

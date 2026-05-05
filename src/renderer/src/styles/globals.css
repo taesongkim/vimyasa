@@ -296,6 +296,11 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.075) !important;
 }
 
+/* Carry mode visuals (.item-row-carrying, .list-carrying, send + receipt
+   keyframes) live in the "Carry mode" section near the bottom of this
+   file alongside the --carry-* tokens — keeps the lifted state, the
+   send animation, and the receipt pulse in one block. */
+
 /* ── TipTap editor ────────────────────────────────────────────── */
 
 .tiptap {
