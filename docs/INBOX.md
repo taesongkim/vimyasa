@@ -59,10 +59,17 @@ talking to coordination.
 
 ## Open entries
 
+*(Add new entries above this line, newest first.)*
+
+---
+
+## Resolved entries
+
 ## 2026-05-05 — themes
 **Type:** note
 **Body:** Two doc-rot items found while auditing `docs/architecture/theme-system.md` against fresh context after shipping PR #26 (feedback-input surface): (1) line 10 says "v0.1.4 ships Theme 1" and line 140 says "Live release: v0.1.4" — actual live is v0.1.5 per BACKLOG. Already stale before my PR. (2) The clock-out prompt pointed me at `docs/evolution/theme-system.md` but no such file exists; only `docs/architecture/theme-system.md` is present. Either the path was a typo or `docs/evolution/` is planned but not yet created. Separately: once PR #26 merges, the arch doc's surface count (8 → 9), `SURFACE_IDS` list, baked-surface list (3 → 4), and per-surface mount-points table will need a `feedback-input` row — flagging here so coordination doesn't miss it on the post-merge doc sweep.
-**Status:** open
+**Status:** resolved
+**Resolved (2026-05-05 — coordination, release-prep PR):** All three doc-rot items addressed in the same release-prep PR. (1) Live-release reference and Theme 1 v0.1.4-only attribution updated in `docs/architecture/theme-system.md` summary, surface count corrected from 8 → 9, baked count from 3 → 4. (2) `docs/evolution/theme-system.md` does now exist (created in PR #25 Historian foundation); the typo at clock-out was correct in spirit but timing-off (PR #25 hadn't merged yet when themes session started). (3) Mount-points table updated with the `feedback-input` row + the v0.1.6 ship date noted on the bake. Pattern noted for future: when a themes PR ships a new surface, the architecture doc updates need to land in the same release window so the doc never goes stale across more than one release.
 
 ## 2026-05-05 — aesthetics → features
 **Type:** note
@@ -247,12 +254,6 @@ process IPC changes were already required there). Implementation:
   as the entry-form-add path; both feel identical.
 - Right-click "Send to List" gets the treatment for free (it
   routes through `sendItemToList` → `moveItem`).
-
-*(Add new entries above this line, newest first.)*
-
----
-
-## Resolved entries
 
 ## 2026-05-04 — features
 **Type:** note

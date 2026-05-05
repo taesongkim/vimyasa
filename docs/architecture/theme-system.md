@@ -4,25 +4,26 @@ How vimyasa's theme system is wired: surface registry, baked overrides,
 schema migrations, cross-window event triggers, and what it takes to add
 a second theme.
 
-**One-paragraph summary.** Vimyasa has eight named "surfaces" defined in
+**One-paragraph summary.** Vimyasa has nine named "surfaces" defined in
 [src/shared/themes.ts](../../src/shared/themes.ts). Each surface gets a
 `SurfaceConfig` describing whether it's enabled and how its border-beam,
-particles, burst, and event-triggered pulses behave. v0.1.4 ships **Theme
-1 ("Magic Colors")** baked on three of those surfaces (`quickadd-input`,
-`list-item-edit`, `list-add-new`). The currently-running theme is whatever
-sits in the persisted store; theme switching is **not** wired —
-`ThemesState.activeTheme` exists in the schema but doesn't gate anything
-in `defaultSurfaceConfig`. Adding Theme 2 means building the switching
-layer too.
+particles, burst, and event-triggered pulses behave. **Theme 1 ("Magic
+Colors")** is currently baked on four surfaces: `quickadd-input` (v0.1.4),
+`list-item-edit` (v0.1.4), `list-add-new` (v0.1.4), and `feedback-input`
+(v0.1.6). The currently-running theme is whatever sits in the persisted
+store; theme switching is **not** wired — `ThemesState.activeTheme` exists
+in the schema but doesn't gate anything in `defaultSurfaceConfig`. Adding
+Theme 2 means building the switching layer too.
 
 ## Files to know
 
 - **`src/shared/themes.ts`** — surface registry, types, defaults, baked
   overrides, attributions. The single source of truth for what each theme
   looks like.
-  - `SURFACE_IDS` (8 surfaces): `quickadd-window`, `quickadd-input`,
+  - `SURFACE_IDS` (9 surfaces): `quickadd-window`, `quickadd-input`,
     `list-window`, `list-item`, `list-item-edit`, `list-add-new`,
-    `welcome-callout-window`, `welcome-callout-start-button`.
+    `feedback-input`, `welcome-callout-window`,
+    `welcome-callout-start-button`.
   - `MAGIC_COLORS_BEAM` + `MAGIC_COLORS_PARTICLES` — shared `Partial<…>`
     constants. Each Theme 1 surface entry spreads these and overrides
     only what differs (e.g. `borderRadius` per surface).
@@ -71,6 +72,7 @@ Each component that hosts a surface mounts a
 | `list-item` | ItemRow's outer motion.div | overlay | `eventFilter={{itemId}}` for per-row scoping |
 | `list-item-edit` | ItemRow's outer motion.div | overlay (gated on `editing`) | **baked** in Theme 1 |
 | `list-add-new` | DraftItemRow's outer motion.div | overlay | **baked** in Theme 1 |
+| `feedback-input` | FeedbackWindow textarea wrapper | wrap | **baked** in Theme 1 (v0.1.6) |
 | `welcome-callout-*` | CalloutWindow | wrap | not currently in the bake |
 
 The "highlight space" rule: surfaces mount on the row CONTAINER (whole
@@ -129,7 +131,7 @@ means architecturally:
   friends-and-family ship (no end-user tuning UI); matters for ongoing
   dev panel iteration.
 - **Surface coverage carries over.** Both themes should typically cover
-  the same surfaces (currently the three baked ones) — the user's choice
+  the same surfaces (currently the four baked ones) — the user's choice
   is "which look," not "which surfaces."
 - **The save-flash on items is colorless** (`.item-row-save-flash` in
   globals.css uses white box-shadow). Doesn't depend on theme palette;
@@ -137,7 +139,7 @@ means architecturally:
 
 ## Versioning posture
 
-Live release: v0.1.4. Treat any next theme work as targeting v0.1.5 or
+Live release: v0.1.6. Treat any next theme work as targeting v0.1.7 or
 later — do NOT propose a v0.2.0 bump unless the user explicitly approves.
 Schema migration story (per-version diff, preserve user state for
 unrelated surfaces) is the established pattern.

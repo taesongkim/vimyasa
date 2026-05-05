@@ -17,15 +17,15 @@ iteration · `P3` someday/maybe.
 
 ## Versioning roadmap
 
-Live release: **v0.1.5**. Planned next sequence:
+Live release: **v0.1.6**. Planned next sequence:
 
 | Version | Theme | Primary contents |
 |---|---|---|
 | ~~**v0.1.5**~~ | ~~Feedback messenger~~ | ✅ Shipped — Cmd+Shift+\\ feedback window, Cloudflare Worker → Resend → email pipeline. |
-| **v0.1.6** | Hot list — Phase 1 (visible) + release-notes-in-update | Hot-list PR-1 schema, PR-2 shortcut + window + slide animation, PR-3 number-0 wiring. Plus: surface GitHub release notes in the auto-update prompt window. |
-| **v0.1.7** | Hot list polish + Undo | Hot list PR-4 (prewarm). Undo with 3–5 step in-memory ring buffer. `Cmd+Z` / `Cmd+Shift+Z`, in-session only, single-list scope. |
-| **v0.1.8** | Move-item flow + small wins | Carry mode (`m` enter / 0–9 send / j/k reorder / Esc land). Auto-scroll to entry-form-added item. Deselect prior item on new-item init. |
-| **v0.1.9** | Focus-state cues + backup | Themes lane: focus-changed event + flash/glow via existing magic-colors infra. Features lane: discover existing export, ship tested import. |
+| ~~**v0.1.6**~~ | ~~Hot list + carry mode + capture-flow polish~~ | ✅ Shipped — hot list (`Cmd+Shift+H`, holds 0, slides from right), carry mode (`m` to pick up, 0-9 to send, j/k to reorder, Enter/Esc to land), Enter→A archive change, `r` for rename, edit caret fix, motion blur on send (default ON, toggle in Settings → Advanced), auto-scroll to entry-form adds, deselect-on-new-draft, `item-arrived` receipt pulse. Carry mode + the two usability wins were pulled forward from v0.1.8. |
+| **v0.1.7** | Release-notes-in-update + Undo | Surface GitHub release notes in the auto-update prompt window (was v0.1.6). Undo with 3–5 step in-memory ring buffer. `Cmd+Z` / `Cmd+Shift+Z`, in-session only, single-list scope. Hot list PR-4 prewarm if there's slack. |
+| **v0.1.8** | Custom entry-form commands + slack | Slash-command system per [proposals/custom-entry-commands.md](./proposals/custom-entry-commands.md) (PR #24 still awaiting copy + version sign-off; defaulting to v0.1.8 unless human pulls forward). Anything unfinished from v0.1.7 lands here. |
+| **v0.1.9** | Focus-state cues + backup + themed feedback input | Themes lane: focus-changed event + flash/glow via existing magic-colors infra. `feedback-input` surface bake. Features lane: discover existing export, ship tested import. |
 | **v0.1.10** | Polish + bug bash + audit | Mystery flicker root-cause hunt. Onboarding dim z-order. Scrollbar lag. Coordination: auto-update integrity audit. |
 | **v0.2.0** (someday) | Real Theme 2 + switcher | Path B from theme-system docs, or first significant new surface area. Reserved for genuinely big change. |
 
@@ -53,11 +53,9 @@ not silently grab next-priority items.
 ### Hot list — `Cmd+Shift+H`, holds 0, slides from right
 - **Lane:** features (with theme + aesthetics consultations later)
 - **Priority:** P1
-- **Version:** v0.1.6 (Phase 1: PR-1, PR-2, PR-3) + v0.1.7 (PR-4 prewarm)
-- **Status:** proposed → Option A + phasing approved → **PR-1 + PR-2 + PR-3
-  in-flight on `hot-list` branch (features lane).** PR-4 prewarm still
-  v0.1.7. See [proposals/hot-list.md](./proposals/hot-list.md).
-- **Notes:** Phasing is defined in the proposal.
+- **Version:** v0.1.6 — **shipped** (Phase 1: PR-1, PR-2, PR-3 in single delivery via PR #28)
+- **Status:** ✅ merged. PR-4 prewarm still tentative for v0.1.7 if there's slack. Theme 1 inheritance is automatic via component reuse (`list-item-edit` + `list-add-new` surfaces fire on hot-list items same as regular list items).
+- **Notes:** Pinned to top of right-click "Send to List" submenu with divider. Cross-side number swap (press 0 from a regular list to switch to hot list, press 1-9 from hot list to switch). Tray entry. See [proposals/hot-list.md](./proposals/hot-list.md) for the original design.
 
 ### Backup / restore user data
 - **Lane:** features
@@ -83,36 +81,16 @@ not silently grab next-priority items.
 ### Carry-mode motion blur (Settings → Advanced)
 - **Lane:** features (toggle); aesthetics (effect itself)
 - **Priority:** P3
-- **Version:** v0.1.6 (with carry-mode visuals)
-- **Status:** in-flight on `carry-motion-blur-toggle` branch
-  (features). Stacked on `carry-motion-blur-experiment` (aesthetics).
-  Merge order: experimental first, toggle second.
-- **Notes:** Settings → Advanced tab with single toggle "Motion blur
-  on carry-mode send". Off by default — opt-in. Persistence under
-  `effects.carryMotionBlur` in DataStore. Body class
-  `motion-blur-enabled` gates the CSS `filter: url(...)` rules in
-  globals.css; the JS RAF ramp in ListWindow's `carrySendToList` is
-  also gated. See INBOX 2026-05-05 (resolved) for the full spec
-  + tunable values.
+- **Version:** v0.1.6 — **shipped**, default ON
+- **Status:** ✅ merged in PR #28. Per human direction, default flipped from off (aesthetics' original recommendation) to ON. Off-switch lives at Settings → Advanced. The original opt-in rationale (CSS `filter:` allocates filter region even at zero stdDeviation) is preserved in the type docstring; human's call to ship on with a clear off-switch.
+- **Notes:** Settings → Advanced tab with toggle "Motion blur on carry-mode send". Persistence at `effects.carryMotionBlur`. Body class `motion-blur-enabled` gates CSS `filter: url(...)` rules; JS RAF ramp gated in ListWindow's `carrySendToList`.
 
 ### Move-item flow — "carry mode"
-- **Lane:** features (mechanism); aesthetics (visual treatment, in-flight)
+- **Lane:** features (mechanism); aesthetics (visual treatment + send animation + motion blur)
 - **Priority:** P2
-- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
-  `keymap-onboarding` branch alongside the Enter→A archive split,
-  `r`-rename, edit-mode caret fix, and the shortcut-surface updates).
-- **Status:** in-flight. Mechanism done (features lane); aesthetics
-  visual treatment in-flight on `carry-mode-visuals` branch (CSS
-  classes + `useCarryAnimation` hook + integration with the `m` /
-  0-9 / j-k / Enter-Esc state machine features built). Naming
-  confirmed as "carry mode"; Enter conflict resolved by removing
-  Enter-archives entirely (A keeps it). Carry mode is sustained:
-  0-9 send + exit, j/k reorder + persist, Enter / Esc exit at
-  current position.
-- **Notes:** Receipt pulse on the receiving list window still needs
-  a generic `'item-arrived'` IPC broadcast from features (so future
-  flows — drag-between-lists, bulk ops, retroactively right-click
-  "Send to List" — get the same treatment for free). See INBOX.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6 — shipped**
+- **Status:** ✅ merged in PR #28. Mechanism + visual treatment + send animation + receipt pulse on receiver all landed in one delivery.
+- **Notes:** Carry mode is sustained — 0-9 sends + exits, j/k reorders + persists, Enter / Esc exit at current position. `m` also lands (toggle, not just enter). Item-arrived IPC broadcast handles cross-window receipt pulse + auto-scroll. Right-click "Send to List" inherits the same treatment for free.
 
 ### Focus-state visual cue (flash + glow)
 - **Lane:** themes (primary), aesthetics (timing/feel)
@@ -130,7 +108,7 @@ not silently grab next-priority items.
 ### Release notes in auto-update prompt
 - **Lane:** features (primary), aesthetics (visual treatment)
 - **Priority:** P2
-- **Version:** v0.1.6
+- **Version:** v0.1.7 (was v0.1.6 — pushed because the v0.1.6 release filled with hot list + carry mode + capture-flow)
 - **Status:** idea — quick scope only, not yet a proposal
 - **Notes:** When the auto-update flow shows the "update available"
   message, include the GitHub release notes (markdown body of the
@@ -143,21 +121,14 @@ not silently grab next-priority items.
   2. electron-updater concatenates skipped versions' notes —
      decide: show all, or just latest?
   3. Markdown renderer choice (`marked` is ~5kb, plenty).
-  Coordination writes a proper proposal when v0.1.6 is closer.
+  Coordination writes a proper proposal when v0.1.7 is closer.
 
 ### Feedback window — themed input surface
 - **Lane:** themes
 - **Priority:** P3
-- **Version:** v0.1.9 (with focus-state cues — same lane, same release)
-- **Status:** in-flight (themes lane, branch `claude/condescending-leakey-9dec29`, 2026-05-05)
-- **Notes:** Feedback window's `<textarea>` shipped bare in v0.1.5
-  (no `GlowSurface` wrap). To make it participate in Theme 1 (or future
-  themed treatments), register a new `feedback-input` surface in
-  `src/shared/themes.ts` and wrap the textarea in
-  `src/renderer/src/components/Feedback/FeedbackWindow.tsx` — mirror
-  of `quickadd-input` on QuickAddFixed. Schema bump + migration (per
-  the established pattern). Trivial once you're already in the themes
-  code.
+- **Version:** v0.1.6 — **shipped** (was v0.1.9; pulled forward by themes lane today)
+- **Status:** ✅ merged → PR #26.
+- **Notes:** `feedback-input` surface registered in `src/shared/themes.ts` and baked in Theme 1; textarea wrapped in `FeedbackWindow.tsx`. Schema bumped + migration applied. Mirror of `quickadd-input` on QuickAddFixed.
 
 ### In-app feedback messenger to dev
 - **Lane:** features (built); coordination (Worker)
@@ -180,22 +151,16 @@ not silently grab next-priority items.
 ### Auto-scroll to new item added via entry form
 - **Lane:** features
 - **Priority:** P2
-- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
-  `hot-list` branch alongside the hot-list PRs).
-- **Status:** in-flight (features lane).
-- **Notes:** Implemented via `quickadd:notify-item-added` IPC →
-  broadcast `quickadd:item-added` → list window scrolls the matching
-  row into view if the listId matches its active list. Pure UX hint;
-  persistence still flows through the normal createItem path.
+- **Version:** v0.1.6 — **shipped** (was v0.1.8)
+- **Status:** ✅ merged in PR #28.
+- **Notes:** Via `quickadd:notify-item-added` IPC → broadcast `quickadd:item-added` → list window scrolls matching row into view if listId matches active list. Pure UX hint; persistence still flows through normal createItem path.
 
 ### Deselect prior item when new item is initiated
 - **Lane:** features
 - **Priority:** P3
-- **Version:** v0.1.8 → **pulled forward to v0.1.6** (same branch).
-- **Status:** in-flight (features lane).
-- **Notes:** `startDraft` in ListWindow now clears `focusIndex` to -1
-  before flipping `isAddingItem`. The draft surface owns the spotlight
-  from that point until commit / discard.
+- **Version:** v0.1.6 — **shipped** (was v0.1.8)
+- **Status:** ✅ merged in PR #28.
+- **Notes:** `startDraft` in ListWindow clears `focusIndex` to -1 before flipping `isAddingItem`. The draft surface owns the spotlight from that point until commit / discard.
 
 ### Scrollbar tracking lag
 - **Lane:** features (or aesthetics, dealer's choice)
