@@ -130,6 +130,30 @@ not silently grab next-priority items.
 - **Status:** ✅ merged → PR #26.
 - **Notes:** `feedback-input` surface registered in `src/shared/themes.ts` and baked in Theme 1; textarea wrapped in `FeedbackWindow.tsx`. Schema bumped + migration applied. Mirror of `quickadd-input` on QuickAddFixed.
 
+### Status redesign — colors, labels, customization
+- **Lane:** features (data model + Settings) + aesthetics (visual + transitions) + coordination (proposal)
+- **Priority:** P2
+- **Version:** unassigned — substantial enough to warrant its own version slot once scoped
+- **Status:** idea (2026-05-05) — **needs deeper pass with coordination** before any code starts
+- **Notes:** User wants to rethink statuses. Open questions:
+  - Are the current status labels and colors right, or could they be better?
+  - Should statuses be user-customizable (rename labels, recolor)?
+  - How does this interact with Theme 1 / future themes?
+  - How does it interact with the cycling-order change (Active → Hold → Done) and the proposed 4th status (see below)?
+
+  **Coupled with:** "New Done style + 4th 'Deprioritized' status" entry below — same proposal pass should address both. The Deprioritized status takes the *current* Done style; the *new* Done gets a distinct visual + transition animation. Timing-wise these belong together.
+
+### New Done style + 4th status: Deprioritized
+- **Lane:** features (data model + state machine) + aesthetics (style + transition animation)
+- **Priority:** P2
+- **Version:** unassigned — **bundle with Status redesign above**
+- **Status:** idea (2026-05-05) — **needs deeper pass with coordination** before any code starts
+- **Notes:** Current Done state's visual treatment becomes the new "Deprioritized" status (a fourth status — items the user has set aside indefinitely without committing them as truly done). New Done gets:
+  - A distinct visual (different from Deprioritized, different from Active/Hold).
+  - A celebratory / closing transition animation when an item moves into Done — should feel like a satisfying click.
+
+  Cycling order with 4 statuses TBD; user has expressed preference for `Active → Hold → Done` (3-status cycle); if Deprioritized joins the cycle, the order question reopens.
+
 ### In-app feedback messenger to dev
 - **Lane:** features (built); coordination (Worker)
 - **Priority:** P1
@@ -171,6 +195,36 @@ not silently grab next-priority items.
   scroll position — likely a CSS smooth-scroll, transform-on-spring, or
   a debounced position-update. Should be one transition or
   request-animation-frame fix. Minor visual polish.
+
+### Filter active state — visual cue
+- **Lane:** features (state) + aesthetics (visual treatment)
+- **Priority:** P3
+- **Version:** unassigned
+- **Status:** idea (2026-05-05)
+- **Notes:** When a list filter is on, give a clear "filter active" cue
+  so the user doesn't forget. Suggested: blinking orange indicator (per
+  user). Could be on the filter toggle button, on the list window
+  header, or both. Probably small once specced.
+
+### Status cycling order: Active → Hold → Done
+- **Lane:** features
+- **Priority:** P3
+- **Version:** unassigned (small; pull into any features-lane day)
+- **Status:** idea (2026-05-05)
+- **Notes:** Currently the status cycle goes Active → Done → Hold.
+  User wants Active → Hold → Done so the muscle memory matches a
+  natural progression. One-line change in the status-cycling handler;
+  worth coordinating with the broader Status redesign (below) since
+  that may change what statuses exist.
+
+### Personality in Feedback textarea placeholder
+- **Lane:** aesthetics (copy)
+- **Priority:** P3
+- **Version:** unassigned
+- **Status:** idea (2026-05-05) — **user will write the copy themselves; coordination just needs to remind them when this gets picked up**
+- **Notes:** The Feedback window's textarea has a generic placeholder.
+  User wants something with personality. They'll provide the exact
+  string when ready; aesthetics lane just wires it in.
 
 ### Unify `quickadd:item-added` + `item-arrived` events
 - **Lane:** features
@@ -222,6 +276,40 @@ not silently grab next-priority items.
   user windows reliably (especially full-screen apps). Investigation:
   check `dim-overlay.ts` for the `setAlwaysOnTop(true, level)` call.
 
+### Onboarding tour: tester saw 3 entries fail to save during tour
+- **Lane:** features
+- **Priority:** P3
+- **Version:** unassigned (bug-bash candidate; possibly v0.1.10)
+- **Status:** open — possibly user error, possibly real bug
+- **Notes:** A tester reported that during the onboarding tour, three
+  entry-form attempts didn't result in items being saved to the list.
+  Items added after onboarding worked normally. Possible causes:
+  1. User pressed something other than Enter to commit (e.g. Tab,
+     Esc) and entries were silently discarded.
+  2. The onboarding-tour state machine eats certain keystrokes during
+     specific tour steps.
+  3. Race between tour-step transitions and entry-form submission.
+  Next step: scan onboarding tour code for any place entry-form input
+  could be dropped or routed weirdly during tour-driven state changes.
+
+### Tray icon hidden when menu bar is full
+- **Lane:** features (primary), coordination (proposal first if non-trivial)
+- **Priority:** P2
+- **Version:** unassigned — **needs deeper pass with coordination**
+- **Status:** idea (2026-05-05)
+- **Notes:** macOS menu bar can fill up (especially on smaller-resolution
+  Macs or with many menu-bar apps); when it does, vimyasa's tray icon
+  may get hidden behind the system clock or simply not be reachable.
+  Solutions to consider in proposal:
+  - Detect overflow and surface a warning / instruction to the user.
+  - Offer a "show in dock instead" fallback (would change vimyasa's
+    no-dock-icon stance — significant decision).
+  - Encourage users to install Bartender / iBar / similar utility.
+  - Bind a global "open vimyasa Settings" hotkey so the tray icon
+    isn't the only entry to settings.
+  Honest read: there's no clean Apple-blessed solution to "menu bar
+  too full." Mitigation > fix.
+
 ---
 
 ## Coordination / infrastructure
@@ -242,6 +330,29 @@ not silently grab next-priority items.
 - **[`docs/evolution/`](./evolution/)** — cross-version narrative arcs
   for long-running systems. First entry: theme system. Add a new arc
   when a system has spanned 2+ versions and is likely to keep growing.
+
+### Multi-screen behavior audit
+- **Lane:** coordination (audit + proposal); features (any fixes)
+- **Priority:** P2
+- **Version:** unassigned — **needs deeper pass with coordination** before any code starts
+- **Status:** idea (2026-05-05) — triggered by tester confusion
+- **Notes:** A tester on a multi-monitor setup reported confusion —
+  for example, the tray icon was visible on one screen's menu bar but
+  not on another's. Vimyasa was likely never tested rigorously on
+  multi-monitor configurations. Audit candidates:
+  - Tray icon visibility per screen (Electron tray on macOS attaches
+    to one screen's menu bar; the other shows nothing — is that the
+    expected behavior, or is there a per-screen mode?)
+  - Window positioning when summoned (does it appear on the active
+    screen vs. a fixed screen?)
+  - Hotkey behavior when multiple screens are active.
+  - Cross-Space behavior (already partially fixed in v0.1.3).
+  - Onboarding tour step positioning across screens.
+  - List window stacking when multiple screens are connected.
+
+  Output: `docs/audits/multi-screen.md` documenting current behavior
+  + recommended fixes. Likely a half-day audit + a follow-up PR per
+  fix as scope warrants.
 
 ### Future Historian agent (cross-project)
 - **Lane:** coordination (preparing the supporting docs); the agent itself lives outside this repo
