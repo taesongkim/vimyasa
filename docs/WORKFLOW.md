@@ -142,6 +142,84 @@ something like "lane override" or "stop blocking, just do it." The
 session does the work and adds a `BACKLOG.md` entry so coordination can
 revisit *whether the rule itself needs adjusting*.
 
+## Session rituals: clocking in and clocking out
+
+Two phrases mark the start and end of a focused work session with the
+human. Coordination performs the rituals. Other lanes don't trigger
+them but should recognize the phrases as coordination-bound if they
+ever surface in a non-coordination session.
+
+### Phrases
+
+- `clocking in` — start of a work session
+- `clocking out` — end of a work session
+
+**Variations are expected.** "Good morning, let's get started." or
+"Alright, that's a wrap for today." Anything that smells like a
+session boundary but isn't the canonical phrase: **ask before
+performing the ritual.** Example response shape: *"Reading that as a
+clock-in — confirm?"* One-line confirmation, then proceed.
+
+### Forgotten-ritual handling
+
+Three cases. Be helpful, not pedantic.
+
+1. **Human jumps into work without clocking in.** Do the work. At the
+   end of your first response, add a soft prompt: *"(No clock-in
+   today — want me to do the snapshot before we continue? Takes 20
+   seconds.)"* They opt in or ignore.
+2. **Human winds down without clocking out.** If they say something
+   like "okay I'm done," "good for today," or go quiet after a long
+   active stretch, ask: *"Should I clock you out before you go?"*
+3. **Human returns after a long gap (multiple hours / days) and there
+   was no prior clock-out.** Ask: *"Last session didn't end with a
+   clock-out — did one of your last few prompts mean to be one? I can
+   back-fill a wrap from where we left off, then clock you back in."*
+   If they confirm a back-fill: do the wrap based on what was
+   discussed at the end of the prior session, then proceed with a
+   fresh clock-in.
+
+### Clocking in — the ritual
+
+**Format:** structured snapshot at top, free-form commentary below.
+
+**Snapshot fields** (consistent ordering, easy to scan):
+
+- **Last session:** time elapsed (or "fresh today" if no prior session detectable)
+- **Main:** current commit short SHA + title
+- **Open PRs:** mine and other lanes', with one-line summaries
+- **INBOX:** any open entries
+- **Active version:** which v0.1.x is the current target, what's in-flight where
+
+**Commentary:** anything urgent, recommended focus, anything surprising
+or worth flagging in the snapshot. End with one question — usually
+*"What's today's focus?"* but adapt to context.
+
+**Also:** call `mark_chapter` with a title like `Session — YYYY-MM-DD
+morning` so the transcript gets a visual marker.
+
+### Clocking out — the ritual
+
+**Format:** structured summary at top, free-form commentary below.
+
+**Summary fields:**
+
+- **Merged today:** PRs that landed
+- **Decisions:** key choices made (design, scope, sequencing)
+- **Open threads:** WIP branches, unresolved questions, deferred items
+- **Next-up:** concrete first move for next session — friction-free re-entry
+
+**Commentary:** honest read on the session (productive / mostly
+triage / shorter than planned), patterns worth noting, anything
+surprising.
+
+**Memory pass:** end with *"Anything from today worth a memory entry? I
+propose, you confirm."* and list 0–3 candidates. Let the human approve
+or skip each.
+
+The chapter started by clock-in gets implicitly closed; no separate
+chapter call needed at clock-out.
+
 ## Why this shape
 
 Vimyasa is a solo-dev pre-1.0 project. The lanes exist to:
