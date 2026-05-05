@@ -98,7 +98,14 @@ function calculateStackedPosition(): { x: number; y: number } {
   const display = screen.getDisplayNearestPoint(cursor)
   const workArea = display.workArea
 
-  const openCount = listWindows.size
+  // Stack count is regular-only: the hot list lives at the right edge
+  // (calculateHotListPosition) and isn't part of the leftward column
+  // sequence. Including it would push every regular list one column
+  // further right than expected.
+  let openCount = 0
+  for (const id of listWindows.keys()) {
+    if (id !== HOT_LIST_ID) openCount++
+  }
   let x = INITIAL_X + openCount * (LIST_WINDOW_WIDTH + WINDOW_GAP)
   let y = workArea.y + INITIAL_Y
 
@@ -159,15 +166,12 @@ function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions)
 export function createListWindow(listId: string, position?: { x: number; y: number }): BrowserWindow {
   const existing = listWindows.get(listId)
   if (existing && !existing.isDestroyed()) {
-    // Hot list is invariant: never more than one window, and never
-    // toggle-closed by an open trigger. Any open call when hot is
-    // already up is just a focus change. Regular lists keep the
-    // existing toggle-on-focused behavior (close-when-focused) so
-    // the same shortcut still acts as an Esc-equivalent for them.
-    if (listId === HOT_LIST_ID) {
-      existing.focus()
-      return existing
-    }
+    // Toggle-on-focused: pressing the same shortcut while a list is
+    // focused acts as Esc. Applies to hot list too — Cmd+Shift+H from
+    // inside hot dismisses it. Cross-side swaps (0 from regular, 1-9
+    // from hot) don't hit this branch because the swap source is the
+    // focused window, not the target — the target is necessarily not
+    // focused at summon time, so it falls through to focus().
     if (existing.isFocused()) {
       existing.close()
       return existing
