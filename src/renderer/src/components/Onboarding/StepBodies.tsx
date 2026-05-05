@@ -123,8 +123,20 @@ export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
           <li>
             <Key>a</Key>
             <span>
-              <span className="onb-mnem">A</span>rchive ·{' '}
-              <Key>Enter</Key> also archives
+              <span className="onb-mnem">A</span>rchive
+            </span>
+          </li>
+          <li>
+            <Key>r</Key>
+            <span>
+              <span className="onb-mnem">R</span>ename
+            </span>
+          </li>
+          <li>
+            <Key>m</Key>
+            <span>
+              <span className="onb-mnem">M</span>ove · Enter "Carry Mode"
+              (details explained in shortcut panel later)
             </span>
           </li>
           <li>

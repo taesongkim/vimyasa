@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../../store/useStore'
-import type { List } from '../../../../../shared/types'
+import { getRegularLists, type List } from '@shared/types'
 
 interface SortableListItemProps {
   list: List
@@ -108,8 +108,10 @@ export function ListsTab() {
   const [editingList, setEditingList] = useState<List | null>(null)
   const [newName, setNewName] = useState('')
 
-  // Sort lists by sortOrder for display
-  const sortedLists = [...lists].sort((a, b) => a.sortOrder - b.sortOrder)
+  // Hide the hot list from this UI — its order isn't user-configurable
+  // and it isn't deletable/renameable here. The IPC delete-guard is the
+  // ultimate fallback if it ever leaks into a UI that does mutate lists.
+  const sortedLists = getRegularLists(lists).sort((a, b) => a.sortOrder - b.sortOrder)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),

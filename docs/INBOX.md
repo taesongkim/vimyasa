@@ -64,6 +64,190 @@ talking to coordination.
 **Body:** Two doc-rot items found while auditing `docs/architecture/theme-system.md` against fresh context after shipping PR #26 (feedback-input surface): (1) line 10 says "v0.1.4 ships Theme 1" and line 140 says "Live release: v0.1.4" — actual live is v0.1.5 per BACKLOG. Already stale before my PR. (2) The clock-out prompt pointed me at `docs/evolution/theme-system.md` but no such file exists; only `docs/architecture/theme-system.md` is present. Either the path was a typo or `docs/evolution/` is planned but not yet created. Separately: once PR #26 merges, the arch doc's surface count (8 → 9), `SURFACE_IDS` list, baked-surface list (3 → 4), and per-surface mount-points table will need a `feedback-input` row — flagging here so coordination doesn't miss it on the post-merge doc sweep.
 **Status:** open
 
+## 2026-05-05 — aesthetics → features
+**Type:** note
+**Body:** Asking features to add a Settings → **Advanced** tab with a
+toggle for the carry-mode motion blur visual.
+
+**Important:** the motion blur lives on the `carry-motion-blur-experiment`
+branch (off `carry-mode-visuals` → off `keymap-onboarding`). It is NOT
+in `carry-mode-visuals` (PR #27). Picking up this work means either
+merging the experimental branch into a base your toggle PR sits on, or
+rebasing on top of it. Coordinate with whoever lands the carry-mode
+visual treatment first — the toggle PR depends on the experimental
+branch landing.
+
+### What the toggle controls
+
+When **off** (default — opt-in): no motion blur. Carry mode plays the
+plain slide + fade defined in `carry-mode-visuals`. Identical visual to
+what's in PR #27.
+
+When **on**: adds a directional trailing motion blur to the send
+animation via SVG filters + JS RAF. Defined in:
+- `src/renderer/src/components/ListWindow/CarryMotionBlurFilters.tsx`
+  — SVG `<defs>` mounted inside `ListWindow`. Two filter chains
+  (`#carry-trail-left`, `#carry-trail-right`).
+- `src/renderer/src/hooks/useCarryAnimation.ts` — `playBlurRamp(direction)`
+  function that RAF-ramps the SVG filter's `stdDeviation` and trail
+  alpha from 0 → peak over the first 30% of the send.
+
+### What features needs to gate
+
+Two sites apply motion blur. **Both** must respect the toggle:
+
+1. **CSS filter application** (`src/renderer/src/styles/globals.css`,
+   in the `.item-row-sending-left` and `.item-row-sending-right`
+   blocks):
+
+   ```css
+   filter: url(#carry-trail-left);   /* and -right */
+   ```
+
+   Suggested: gate via a body class. When toggle is on, add
+   `motion-blur-enabled` to `<body>` (or the renderer root). Then
+   change CSS to:
+
+   ```css
+   .motion-blur-enabled .item-row-sending-left { filter: url(...); }
+   ```
+
+   This keeps gating in CSS — no per-row prop drilling.
+
+2. **JS RAF ramp** (`src/renderer/src/components/ListWindow/ListWindow.tsx`,
+   in `carrySendToList`, currently around line 339):
+
+   ```ts
+   playBlurRamp(direction)
+   ```
+
+   Wrap in a check: `if (motionBlurEnabled) playBlurRamp(direction)`.
+   The RAF is cheap (60 frames over 24ms) but skipping it when
+   disabled keeps the SVG attribute mutations from happening
+   unnecessarily.
+
+`<CarryMotionBlurFilters />` itself can stay mounted unconditionally —
+it's just SVG `<defs>` (zero render cost when no element references
+the filter URL). No need to gate the component.
+
+### Persistence + UI
+
+- **Setting key** (suggestion): `effects.carryMotionBlur` (boolean,
+  default `false`).
+- **UI**: new "Advanced" tab in Settings. The existing pattern in
+  `src/renderer/src/components/Settings/GeneralTab.tsx` (the
+  launch-at-login toggle) is the model — same pill-toggle markup,
+  same flat layout. Title: "Motion blur on carry-mode send" with a
+  subtitle like "Adds a directional motion-blur trail when sending
+  an item to another list. Off by default."
+- **Cross-window**: list windows need to react when the user toggles
+  in Settings. Either fire an IPC broadcast on toggle change and have
+  list windows listen, or write to a shared store the list windows
+  already subscribe to (`useStore` if you want it user-data-shaped, or
+  a new `usePreferencesStore` if it should be its own thing).
+
+### Why opt-in default
+
+The blur uses CSS `filter:` which forces off-screen rendering during
+the send. Text quality may degrade slightly even at `stdDeviation: 0`
+(filter region is allocated regardless). Opt-in keeps the default
+experience untouched while letting users who want the effect turn it
+on. Easy to flip to opt-out later if it proves stable.
+
+### Tunable values (for the toggle PR description)
+
+If features wants to surface any of these as separate sub-toggles or
+sliders later (probably not for v1):
+- `CARRY_BLUR_MAX_PX` (peak stdDeviation): 6
+- `CARRY_TRAIL_ALPHA_MAX` (peak trail alpha): 0.5
+- `CARRY_BLUR_RAMP_FRACTION` (fraction of duration spent ramping): 0.3
+- `dx` in the filter feOffset nodes (trail offset distance): ±14
+
+These all live as `export const`s in
+`src/renderer/src/hooks/useCarryAnimation.ts` and as CSS variables in
+`globals.css`.
+**Status:** resolved
+**Resolved (2026-05-05 — features):** built on
+`carry-motion-blur-toggle` (off `carry-motion-blur-experiment`).
+Settings → Advanced tab with the toggle; persistence under
+`effects.carryMotionBlur` in DataStore (defaults false). Body class
+`motion-blur-enabled` set from App.tsx; CSS rules in globals.css
+gate the `filter: url(...)` declarations behind that class. JS RAF
+ramp gated by `carryMotionBlurEnabled` in ListWindow's
+`carrySendToList`. Cross-window: setEffects IPC broadcasts
+data-changed (sender excluded), which any open window picks up via
+its existing onDataChanged → refresh subscription. Toggle PR is
+stacked on the experimental branch — merge order: experimental
+first, toggle second, or rebase the toggle if the experimental gets
+squashed into something else.
+
+## 2026-05-05 — aesthetics + features (joint)
+**Type:** note
+**Body:** Carry mode shipped end-to-end across two branches that have
+now been merged on `carry-mode-visuals`:
+
+- **Mechanism** (features, on `keymap-onboarding`): `m` enters/exits
+  carry on the focused item; 0-9 sends to list N (0 = hot list); j/k
+  + arrows reorder; Enter/Esc land. ItemRow accepts an `isCarrying`
+  prop. Placeholder visual was a dashed accent outline.
+
+- **Visual treatment** (aesthetics, on `carry-mode-visuals`): the
+  dashed-outline placeholder is replaced by the real lift treatment
+  (scale + drop shadow + inset edge), the `.list-carrying` container
+  class dims non-carried siblings (multiplicative opacity, easy to
+  pull if it doesn't earn its keep), and the send animation is wired
+  via `useCarryAnimation.playSend()` — `await playSend(rowEl, dir)`
+  resolves mid-flight so `sendItemToList` fires while the row's
+  still in the air (feels instant).
+
+Direction rule (per `getSendDirection` in
+`src/renderer/src/hooks/useCarryAnimation.ts`): hot list ranks
+highest; otherwise by `sortOrder`. To-hot = right; from-hot = left;
+target > source = right; target < source = left.
+
+**Still pending** — needs features lane:
+
+  **Generic `'item-arrived'` broadcast** for the receipt pulse +
+  auto-scroll on the receiving list window. Cross-window IPC, so
+  it has to come from the main process. Suggested shape:
+
+      broadcastItemArrived({
+        itemId, fromListId, toListId,
+        direction: getSendDirection(fromList, toList) // 'left'|'right'
+      })
+
+  Fired from wherever an item lands in a list (`sendItemToList`,
+  future drag-between-lists, etc.). Any open ListWindow whose
+  active list === toListId responds with:
+    - `playReceipt(windowRootEl, payload.direction)` from
+      `useCarryAnimation` (already exported)
+    - Auto-scroll the new item into view (same mechanic as the
+      "Auto-scroll to new item added via entry form" BACKLOG item
+      — these can ship together).
+
+  Adding the broadcast retroactively gives right-click "Send to
+  List" the same treatment, with no extra wiring.
+
+Tunable values: search `--carry-` in `globals.css` for the CSS
+variables driving lift scale, send distance, pulse intensity, etc.
+**Status:** resolved
+**Resolved (2026-05-05 — features):** built on
+`carry-motion-blur-toggle` (same branch as the toggle, since main-
+process IPC changes were already required there). Implementation:
+- `moveItem` IPC handler in `src/main/ipc.ts` now broadcasts
+  `item-arrived` after persisting the move (skipped on same-list
+  no-op moves). Direction computed in main via a small port of
+  `getSendDirection`'s rule (hot list highest, then sortOrder) so
+  no shared-package gymnastics.
+- New `onItemArrived` subscription on `window.api` (preload + types).
+- ListWindow subscribes; when `toListId === activeListId`, fires
+  `playReceipt(windowRootRef.current, direction)` AND sets
+  `pendingScrollItemId` so the existing scroll-into-view effect
+  reconciles once the item lands in `items`. Same scroll mechanic
+  as the entry-form-add path; both feel identical.
+- Right-click "Send to List" gets the treatment for free (it
+  routes through `sendItemToList` → `moveItem`).
+
 *(Add new entries above this line, newest first.)*
 
 ---

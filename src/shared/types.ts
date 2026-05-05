@@ -13,11 +13,43 @@ export interface Group {
   sortOrder: number
 }
 
+export type ListKind = 'regular' | 'hot'
+
+/** Stable, well-known id for the always-existing hot list. The user's
+ *  daily-completion surface (proposed in docs/proposals/hot-list.md).
+ *  Reserved string — do not generate this id elsewhere. */
+export const HOT_LIST_ID = 'hot' as const
+
 export interface List {
   id: string
   groupId: string
   name: string
+  /** 'hot' is reserved for the single always-existing hot list (id =
+   *  HOT_LIST_ID). All user-created lists are 'regular'. The kind is
+   *  immutable per list — a regular list never becomes hot and vice
+   *  versa. Filter helpers in this module gate user-facing iteration
+   *  so the hot list doesn't accidentally show up in tray menus,
+   *  number-key bindings, etc., before its dedicated UI lands. */
+  kind: ListKind
   sortOrder: number
+}
+
+/** User-facing lists (everything except the hot list). Use this anywhere
+ *  the user iterates "their lists" — tray menu, number-key bindings,
+ *  list dropdowns, settings rosters.
+ *
+ *  Filters by NOT being hot (rather than IS regular) so a list whose
+ *  kind hasn't been backfilled yet — e.g. a v0.1.5 backup imported
+ *  before the import-side normalization lands — defaults to user-
+ *  visible rather than vanishing from the UI. */
+export function getRegularLists(lists: List[]): List[] {
+  return lists.filter((l) => l.kind !== 'hot')
+}
+
+/** The single hot list, or undefined if the seed migration hasn't run
+ *  yet (shouldn't happen in normal operation). */
+export function getHotList(lists: List[]): List | undefined {
+  return lists.find((l) => l.kind === 'hot')
 }
 
 export interface Item {
@@ -58,6 +90,28 @@ export const DEFAULT_BUILTIN_SHORTCUTS: BuiltinShortcuts = {
 }
 
 export type JkMode = 'standard' | 'inverse'
+
+// ── Effects (Settings → Advanced) ───────────────────────────────
+// Opt-in visual effects that aren't part of the default look. The
+// shape is open-ended so future toggles (anything aesthetics ships
+// behind a switch) slot in here without a schema migration each
+// time. Default values live in store.ts defaults + the runtime seed.
+
+export interface Effects {
+  /** Adds a directional trailing motion blur to the carry-mode send
+   *  animation. ON by default per human direction — provides the
+   *  intended polish for the send animation. Toggle in Settings →
+   *  Advanced if it ever causes rendering issues. The blur uses CSS
+   *  `filter: url(...)` which forces off-screen rendering (text
+   *  quality may degrade slightly even at zero stdDeviation), but
+   *  the human's call: ship on, give an off-switch. See INBOX
+   *  2026-05-05 for tunables. */
+  carryMotionBlur: boolean
+}
+
+export const DEFAULT_EFFECTS: Effects = {
+  carryMotionBlur: true
+}
 
 // ── Feedback messenger ───────────────────────────────────────────
 // User-visible config (clientId is opaque, exposed for PR 2's send
@@ -120,6 +174,8 @@ export interface DataStore {
   // 'standard' = j down, k up (vim convention).
   // 'inverse'  = j up, k down.
   jkMode: JkMode
+  // Opt-in visual effects (Settings → Advanced).
+  effects: Effects
 }
 
 // ── IPC API Types ─────────────────────────────────────────────────
@@ -167,6 +223,10 @@ export interface VimyasaAPI {
   // J/K mapping mode
   setJkMode: (mode: JkMode) => Promise<JkMode>
 
+  // Effects (Settings → Advanced). Partial update so callers can
+  // toggle individual flags without round-tripping the whole object.
+  setEffects: (updates: Partial<Effects>) => Promise<Effects>
+
   // Shortcut capture
   pauseGlobalShortcuts: () => Promise<void>
   resumeGlobalShortcuts: () => Promise<void>
@@ -183,6 +243,21 @@ export interface VimyasaAPI {
 
   // Events
   onDataChanged: (callback: () => void) => () => void
+  /** Generic "an item just landed in this list" subscription. Fires
+   *  on every cross-list move (today: moveItem; future: drag-
+   *  between-lists, bulk ops). Payload includes the source/target
+   *  list ids and the direction the source flew (right = up the
+   *  order, left = down). Receivers typically filter by active
+   *  listId === toListId before firing the receipt pulse + scroll
+   *  the new item into view. */
+  onItemArrived: (
+    callback: (payload: {
+      itemId: string
+      fromListId: string
+      toListId: string
+      direction: 'left' | 'right'
+    }) => void
+  ) => () => void
   /** Subscribe to clicks on items in a previously-shown context menu.
    *  Main re-broadcasts the chosen action (with the ipcData payload the
    *  caller attached to the template entry) over `context-menu-action`.

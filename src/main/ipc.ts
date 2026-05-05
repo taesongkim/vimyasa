@@ -5,7 +5,8 @@ import { createListInStore } from './lists'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
 import { orchestrator } from './onboarding'
-import type { DataStore, FeedbackConfig, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
+import type { DataStore, Effects, FeedbackConfig, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
+import { DEFAULT_EFFECTS } from '../shared/types'
 import {
   canSendFeedback,
   getFeedbackConfig,
@@ -53,6 +54,47 @@ function broadcastDataChanged(senderWebContentsId?: number): void {
   }
 }
 
+/** Generic "an item just landed in this list" broadcast. Cross-window
+ *  IPC: any open ListWindow whose active listId === toListId can react
+ *  with the receipt pulse + scroll-into-view. Fires from wherever an
+ *  item changes lists — moveItem today; future drag-between-lists
+ *  and bulk-move flows should fire it too so the visual treatment
+ *  comes along for free.
+ *
+ *  Direction logic mirrors `getSendDirection` in
+ *  `src/renderer/src/hooks/useCarryAnimation.ts`: hot list ranks
+ *  highest, otherwise sortOrder. To-hot = right; from-hot = left;
+ *  target.sortOrder > source.sortOrder = right, else left. Reproduced
+ *  in main rather than imported because the renderer-side helper
+ *  takes a List type and runs in a window's React tree. */
+function computeArrivalDirection(
+  fromListId: string,
+  toListId: string,
+  lists: List[]
+): 'left' | 'right' {
+  const from = lists.find((l) => l.id === fromListId)
+  const to = lists.find((l) => l.id === toListId)
+  if (!from || !to) return 'right' // Defensive default; should not happen
+  if (to.kind === 'hot') return 'right'
+  if (from.kind === 'hot') return 'left'
+  return to.sortOrder > from.sortOrder ? 'right' : 'left'
+}
+
+interface ItemArrivedPayload {
+  itemId: string
+  fromListId: string
+  toListId: string
+  direction: 'left' | 'right'
+}
+
+function broadcastItemArrived(payload: ItemArrivedPayload): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('item-arrived', payload)
+    }
+  }
+}
+
 /** Fan a theme trigger event out to every renderer (including the sender) so
  *  GlowSurface instances on any window can pulse in response — e.g.,
  *  QuickAdd submitting fires on the list window too. Sender included so a
@@ -85,7 +127,8 @@ export function registerIpcHandlers(): void {
       comments: store.get('comments'),
       shortcuts: store.get('shortcuts'),
       builtinShortcuts: store.get('builtinShortcuts'),
-      jkMode: store.get('jkMode') ?? 'standard'
+      jkMode: store.get('jkMode') ?? 'standard',
+      effects: { ...DEFAULT_EFFECTS, ...(store.get('effects') ?? {}) }
     }
   })
 
@@ -152,6 +195,15 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('deleteList', (e, id: string): void => {
+    // The hot list is an always-existing surface; deleting it would
+    // leave the app in an unrecoverable state until the next migration
+    // runs. The Settings → Lists UI already filters it out so this
+    // path shouldn't be reachable from chrome, but the IPC is the
+    // ultimate guard.
+    const target = store.get('lists').find((l) => l.id === id)
+    if (target?.kind === 'hot') {
+      throw new Error('Cannot delete the hot list')
+    }
     const lists = store.get('lists').filter((l) => l.id !== id)
     store.set('lists', lists)
     // Remove from group
@@ -275,6 +327,7 @@ export function registerIpcHandlers(): void {
     const items = store.get('items')
     const idx = items.findIndex((i) => i.id === id)
     if (idx === -1) throw new Error(`Item not found: ${id}`)
+    const fromListId = items[idx].listId
     // Same gap-aware sortOrder logic as createItem — count of visible items
     // in the target list isn't a reliable "next bottom" when archived items
     // have left holes.
@@ -291,6 +344,19 @@ export function registerIpcHandlers(): void {
     }
     store.set('items', items)
     broadcastDataChanged(e.sender.id)
+    // Tell any list window whose active listId === targetListId that
+    // the item landed there. Skipped when fromListId === targetListId
+    // (degenerate same-list move; no visual signal warranted). Fires
+    // even when the target list isn't currently open — receivers
+    // filter by active listId on their end.
+    if (fromListId !== targetListId) {
+      broadcastItemArrived({
+        itemId: id,
+        fromListId,
+        toListId: targetListId,
+        direction: computeArrivalDirection(fromListId, targetListId, store.get('lists'))
+      })
+    }
     return items[idx]
   })
 
@@ -411,6 +477,20 @@ export function registerIpcHandlers(): void {
     store.set('jkMode', mode)
     broadcastDataChanged(e.sender.id)
     return mode
+  })
+
+  // ── Effects (Settings → Advanced) ──────────────────────────────
+  // Partial update so a toggle UI can flip a single flag without
+  // resending the whole object. Broadcast EXcludes sender so the
+  // toggle's optimistic update doesn't double-render its own UI;
+  // every other window picks up the new state via data-changed →
+  // refresh().
+  ipcMain.handle('setEffects', (e, updates: Partial<Effects>): Effects => {
+    const current = (store.get('effects') ?? DEFAULT_EFFECTS) as Effects
+    const next: Effects = { ...DEFAULT_EFFECTS, ...current, ...updates }
+    store.set('effects', next)
+    broadcastDataChanged(e.sender.id)
+    return next
   })
 
   // ── Shortcut capture (pause/resume) ─────────────────────────
@@ -572,6 +652,23 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('themeEvent:fire', (_e, name: ThemeEventName): void => {
     broadcastThemeEvent(name)
   })
+
+  // ── QuickAdd → list window: scroll-into-view hint ───────────────
+  // Fires after the entry form successfully adds an item. We re-broadcast
+  // so any open list window can find the new item by id and scroll it
+  // into view. Pure UX hint — persistence already happened in createItem;
+  // this is just "hey, the user just added that one from the entry form,
+  // make sure they can see it."
+  ipcMain.handle(
+    'quickadd:notify-item-added',
+    (_e, itemId: string, listId: string): void => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('quickadd:item-added', { itemId, listId })
+        }
+      }
+    }
+  )
 
   // ── Feedback messenger ──────────────────────────────────────────
   // PR 1: config + clientId infrastructure. No send flow yet — PR 2

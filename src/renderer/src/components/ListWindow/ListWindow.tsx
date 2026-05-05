@@ -27,16 +27,62 @@ import { ItemRow } from './ItemRow'
 import { DraftItemRow } from './DraftItemRow'
 import { DragGhost } from './DragGhost'
 import type { Item, ItemStatus } from '../../../../../shared/types'
+import { HOT_LIST_ID } from '@shared/types'
+import {
+  getSendDirection,
+  playBlurRamp,
+  CARRY_SEND_DURATION_MS,
+  type SendDirection
+} from '../../hooks/useCarryAnimation'
+import { CarryMotionBlurFilters } from './CarryMotionBlurFilters'
 
 export function ListWindow({ listId: initialListId }: { listId: string }) {
   const { items, lists, addItem, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
     useStore()
+  // Gate the JS-side motion blur ramp (Settings → Advanced → "Motion
+  // blur on carry-mode send"). The CSS filter is gated separately via
+  // a body class set in App.tsx; both must be off for the effect to
+  // be fully inert. Skipping the RAF when the toggle's off avoids the
+  // SVG attribute mutations (60 frames over ~24ms) when no element
+  // references the filter URL anyway.
+  const carryMotionBlurEnabled = useStore((s) => s.effects.carryMotionBlur)
 
   const [activeListId, setActiveListId] = useState(initialListId)
   const [filter, setFilter] = useState<FilterType>('all')
   const [focusIndex, setFocusIndex] = useState(-1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
+  // When QuickAdd notifies us "I just added <itemId> to <listId>", we
+  // stash the id here. A separate effect watches `items` for the row's
+  // arrival (data-changed → refresh → re-render is async, so the row
+  // isn't in the DOM yet at notify time) and scrolls it into view, then
+  // clears. Best-effort UX hint; the persistence path is unaffected.
+  const [pendingScrollItemId, setPendingScrollItemId] = useState<string | null>(null)
+  // Item-arrival flash trigger. The new-item save flash (the white-glow
+  // overlay in ItemRow) is what users associate with "this row just
+  // landed" — reusing it for cross-list arrivals keeps the visual
+  // vocabulary tight. The counter bumps on every arrival so the same
+  // itemId arriving twice in a row still re-fires (deps change). Source
+  // window receives the broadcast too but its activeListId !== toListId
+  // so the handler bails before this state updates.
+  const [arrivalFlash, setArrivalFlash] = useState<{ itemId: string; key: number } | null>(null)
+  const arrivalCounterRef = useRef(0)
+  // Carry mode — sustained "I'm holding this item" state. Entered with
+  // `m` on a focused item; exits on commit (0-9 send / Enter land /
+  // Esc cancel). While active:
+  //   j/k       → reorder up/down within the visible list, focus follows
+  //   0-9       → send to list N (0 = hot list, 1-9 = sortedLists[N-1])
+  //   Enter/Esc → exit at current position (semantic-only distinction)
+  // Visual treatment is a placeholder for now — see ItemRow's
+  // `item-row-carrying` class. Aesthetics lane will replace.
+  const [carryItemId, setCarryItemId] = useState<string | null>(null)
+  const isCarrying = carryItemId !== null
+  // Send direction for the in-flight row. Set when carrySendToList fires;
+  // cleared after the data mutation. Routed through React (not imperative
+  // classList mutation) so re-renders during the send don't clobber the
+  // class. While set, isCarrying stays true on the row — the lifted bg
+  // + shadow + z-index persist as the keyframe slides on top.
+  const [sendDirection, setSendDirection] = useState<SendDirection | null>(null)
   // Whether a new-item draft row is currently active at the bottom of the
   // list. Toggled by the `n` shortcut and the "+ Add item" toolbar button.
   // Save-vs-discard is handled inside DraftItemRow on Enter / blur / Esc /
@@ -76,8 +122,18 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Settings → Lists tab updates on drag-reorder. Every position-y display
   // here (list number, number-key 1–9 switching, Tab cycling) reads from
   // sortedLists so it stays in sync with what Settings shows.
+  // sortedLists drives both the title-bar list number AND the 1-9
+  // number-key navigation. Filtering to regular lists means:
+  //   - regular lists get listNumber 1..N (in user-facing order)
+  //   - hot list's findIndex returns -1, so listNumber renders as 0
+  //     (matching the proposal's "hot list holds slot 0" stance)
+  //   - 1-9 key presses stay scoped to user lists; they can't
+  //     accidentally land on the hot list
+  // PR 3 wires the actual `0` key handler that switches into the hot
+  // list — the visual `0.` on the title bar is just a free side
+  // effect of using the same source.
   const sortedLists = useMemo(
-    () => [...lists].sort((a, b) => a.sortOrder - b.sortOrder),
+    () => lists.filter((l) => l.kind !== 'hot').sort((a, b) => a.sortOrder - b.sortOrder),
     [lists]
   )
 
@@ -223,6 +279,133 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [sortedLists, activeListId, cyclePhase])
 
+  // Cross-side window swap. Closes the current window, opens the target.
+  // Order matters: open first so there's never a "no windows" gap.
+  // Used by `0` from a regular list and `1`-`9` from the hot list (see
+  // the keyboard config below). Stays as a stable helper even if the
+  // 0-key navigation gets disabled later — carry mode reuses it.
+  const swapToList = useCallback((targetId: string) => {
+    void window.api.openListWindow(targetId)
+    void window.api.closeWindow()
+  }, [])
+
+  // ── Carry mode helpers ─────────────────────────────────────────
+  const enterCarry = useCallback(() => {
+    if (focusedItem) setCarryItemId(focusedItem.id)
+  }, [focusedItem])
+
+  const exitCarry = useCallback(() => {
+    setCarryItemId(null)
+  }, [])
+
+  // Reorder the carry item by ±1 within the visible list. Uses the
+  // FULL ordered list of items in the active list as the basis for
+  // the reorder IPC (passing only a subset would clobber other items'
+  // sortOrder, since the IPC sets sortOrder = index). Visible neighbor
+  // is the one we swap with — if a hidden item sits between, it stays
+  // put; the user perceives single-step movement in the visible roster.
+  const carryReorder = useCallback(
+    (delta: -1 | 1) => {
+      if (!carryItemId) return
+      const visibleIdx = listItems.findIndex((i) => i.id === carryItemId)
+      if (visibleIdx < 0) return
+      const newVisibleIdx = visibleIdx + delta
+      if (newVisibleIdx < 0 || newVisibleIdx >= listItems.length) return
+      const swapTargetId = listItems[newVisibleIdx].id
+      const allInList = items
+        .filter((i) => i.listId === activeListId)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+      const fullCarryIdx = allInList.findIndex((i) => i.id === carryItemId)
+      const fullTargetIdx = allInList.findIndex((i) => i.id === swapTargetId)
+      if (fullCarryIdx < 0 || fullTargetIdx < 0) return
+      const fullOrder = [...allInList]
+      ;[fullOrder[fullCarryIdx], fullOrder[fullTargetIdx]] = [
+        fullOrder[fullTargetIdx],
+        fullOrder[fullCarryIdx]
+      ]
+      reorder(
+        activeListId,
+        fullOrder.map((i) => i.id)
+      )
+      // Focus follows the carry so the highlight stays glued to the
+      // moving row instead of stranding on the fixed visible index.
+      setFocusIndex(newVisibleIdx)
+    },
+    [carryItemId, listItems, items, activeListId, reorder]
+  )
+
+  // Safety: if the carry item disappears (archived from elsewhere,
+  // deleted, or moved to another list via context menu), exit carry
+  // so we don't strand the state on a non-existent itemId. Also the
+  // exit path for carrySendToList — the send leaves these flags set
+  // intentionally so the unmounting row preserves its sending +
+  // carrying classes through AnimatePresence (otherwise the row
+  // reappears at opacity 1 / no transform between the optimistic data
+  // mutation and framer's exit, producing a brief flash).
+  useEffect(() => {
+    if (!carryItemId) return
+    const stillHere = items.some(
+      (i) => i.id === carryItemId && i.listId === activeListId && !i.archivedAt
+    )
+    if (!stillHere) {
+      setCarryItemId(null)
+      setSendDirection(null)
+    }
+  }, [carryItemId, items, activeListId])
+
+  const carrySendToList = useCallback(
+    (listNumber: number) => {
+      if (!carryItemId) return
+      const targetId =
+        listNumber === 0 ? HOT_LIST_ID : sortedLists[listNumber - 1]?.id
+      if (!targetId) return // No matching list — stay in carry, no-op
+      if (targetId === activeListId) {
+        // Same-list send is a no-op; treat as commit + exit.
+        exitCarry()
+        return
+      }
+      const fromList = lists.find((l) => l.id === activeListId)
+      const toList = lists.find((l) => l.id === targetId)
+      if (!fromList || !toList) return
+      const direction = getSendDirection(fromList, toList)
+      const itemId = carryItemId
+      // Set the React-driven send class. ItemRow keeps both
+      // .item-row-carrying AND .item-row-sending-{direction} during the
+      // send so the lifted state visually persists into the throw —
+      // no snap-back of background or shadow before the slide.
+      setSendDirection(direction)
+      // Tier-3 motion blur: ramp the SVG trail filter's stdDeviation
+      // over the first ~30% of the slide so the blur eases on rather
+      // than snapping to full strength when the row starts moving.
+      // Gated by Settings → Advanced; off by default.
+      if (carryMotionBlurEnabled) {
+        playBlurRamp(direction)
+      }
+      // After the visual completes, mutate the data. End-fire (vs
+      // mid-flight) sidesteps an AnimatePresence-vs-keyframe conflict:
+      // the row is fully invisible (forwards keeps opacity 0) by the
+      // time React unmounts it, so framer's exit prop transform-reset
+      // happens out of sight.
+      //
+      // Don't clear sendDirection / carryItemId here — the safety
+      // effect picks them up after the optimistic store update removes
+      // the item from this list. Clearing them synchronously would
+      // strip the .item-row-sending-* / .item-row-carrying classes off
+      // the about-to-unmount row in the same render that AnimatePresence
+      // captures for exit, so the row would reappear at opacity 1 and
+      // default position for the duration of framer's exit (visible
+      // flash). Leaving the flags set means AnimatePresence preserves
+      // the classes; the keyframe's `forwards` keeps opacity 0.
+      window.setTimeout(() => {
+        void sendItemToList(itemId, targetId)
+      }, CARRY_SEND_DURATION_MS)
+      // The item is leaving this list; reset focus so the highlight
+      // doesn't strand on whatever happens to fall into its old slot.
+      setFocusIndex(-1)
+    },
+    [carryItemId, sortedLists, activeListId, sendItemToList, exitCarry, lists, carryMotionBlurEnabled]
+  )
+
   // Auto-scroll focused item into view
   useEffect(() => {
     if (focusIndex >= 0 && scrollContainerRef.current) {
@@ -253,6 +436,73 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       }
     }
   }, [focusIndex])
+
+  // Subscribe to entry-form add hints. We only care about adds that
+  // landed in our active list — others go to a different list window.
+  // The actual scroll waits until the new item appears in `items`
+  // (handled by the effect below) so the DOM has the row to scroll to.
+  useEffect(() => {
+    return window.api.quickAdd.onItemAdded(({ itemId, listId }) => {
+      if (listId !== activeListId) return
+      setPendingScrollItemId(itemId)
+    })
+  }, [activeListId])
+
+  // Subscribe to cross-list arrivals (carry-mode send, right-click
+  // "Send to List", future drag-between-lists / bulk ops). Two
+  // reactions when the arrival lands in our active list:
+  //   - `arrivalFlash` → ItemRow whose id matches replays the new-item
+  //     save flash (white-glow overlay). Same visual vocabulary as
+  //     fresh-create + rename-commit — users read "this row just
+  //     landed" without needing a new effect. Counter-bumped so a
+  //     repeat arrival of the same itemId still fires.
+  //   - `setPendingScrollItemId` so the existing scroll-into-view
+  //     effect (originally built for entry-form adds) brings the new
+  //     row into view once `items` reconciles.
+  useEffect(() => {
+    return window.api.onItemArrived(({ itemId, toListId }) => {
+      if (toListId !== activeListId) return
+      arrivalCounterRef.current += 1
+      setArrivalFlash({ itemId, key: arrivalCounterRef.current })
+      setPendingScrollItemId(itemId)
+    })
+  }, [activeListId])
+
+  // Once the pending item shows up in `items` (refresh has reconciled),
+  // find its DOM row and scroll it into view. Mirror of the focus-change
+  // auto-scroll effect above (same scrollBehavior toggle + 150ms reset)
+  // so both scroll triggers feel identical to the user — anything else
+  // would create a perceptual seam between "added via n" and "added
+  // via entry form".
+  useEffect(() => {
+    if (!pendingScrollItemId) return
+    if (!items.some((i) => i.id === pendingScrollItemId)) return
+    const container = scrollContainerRef.current
+    if (!container) {
+      setPendingScrollItemId(null)
+      return
+    }
+    const el = container.querySelector(
+      `[data-flip-id="${pendingScrollItemId}"]`
+    )
+    if (el instanceof HTMLElement) {
+      const containerRect = container.getBoundingClientRect()
+      const elementRect = el.getBoundingClientRect()
+      const isAbove = elementRect.top < containerRect.top
+      const isBelow = elementRect.bottom > containerRect.bottom
+      if (isAbove || isBelow) {
+        const targetScrollTop = isAbove
+          ? container.scrollTop + elementRect.top - containerRect.top
+          : container.scrollTop + elementRect.bottom - containerRect.bottom
+        container.style.scrollBehavior = 'smooth'
+        container.scrollTo({ top: targetScrollTop })
+        setTimeout(() => {
+          container.style.scrollBehavior = ''
+        }, 150)
+      }
+    }
+    setPendingScrollItemId(null)
+  }, [pendingScrollItemId, items])
 
   // Listen for context menu actions from main process. Subscribed via
   // window.api.onContextMenuAction — an earlier version reached for
@@ -367,6 +617,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Draft handlers. The DraftItemRow owns the textarea + UX; the list
   // window owns persistence (addItem) and the visibility flag.
   const startDraft = useCallback(() => {
+    // Drop any previously-focused item — keeping the old highlight on
+    // a row while the user starts typing a NEW item is visually
+    // confusing (looks like the focused row is being edited). The
+    // draft surface owns the spotlight from this point until commit
+    // / discard.
+    setFocusIndex(-1)
     setIsAddingItem(true)
   }, [])
 
@@ -414,6 +670,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Keyboard navigation
   useKeyboard({
     onArrowUp: () => {
+      // In carry mode, j/k (mapped to arrow handlers via jkMode) AND
+      // arrow keys all reorder. The user is "holding" the item; every
+      // up/down primitive moves it.
+      if (isCarrying) {
+        carryReorder(-1)
+        return
+      }
       setFocusIndex((i) => {
         if (listItems.length === 0) return -1
         if (i === -1) return listItems.length - 1 // nothing selected → focus last
@@ -421,6 +684,10 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       })
     },
     onArrowDown: () => {
+      if (isCarrying) {
+        carryReorder(1)
+        return
+      }
       setFocusIndex((i) => {
         if (listItems.length === 0) return -1
         if (i === -1) return 0 // nothing selected → focus first
@@ -428,9 +695,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       })
     },
     onEnter: () => {
-      if (focusedItem) {
-        archiveItem(focusedItem.id)
-        handlePostDestructive()
+      // Enter no longer archives — A keeps that role. Frees Enter to
+      // commit + exit carry mode at the current position. Outside
+      // carry, Enter is a deliberate no-op (was a frequent accidental
+      // archive trigger after rename / move).
+      if (isCarrying) {
+        exitCarry()
       }
     },
     onSpace: () => {
@@ -481,15 +751,37 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         handlePostDestructive()
       }
     },
+    onR: () => {
+      // Same code path as the right-click → Edit context menu action
+      // and the double-click handler: focused row's startEditing was
+      // registered into focusedItemEditFnRef on focus change. Bare `r`
+      // (Cmd+R is reload, never clobber) just calls it.
+      focusedItemEditFnRef.current?.()
+    },
+    onM: () => {
+      // Toggle: m enters carry mode on the focused item, m again
+      // lands at current position (third land path alongside Enter
+      // and Esc). Lets the user pop in and out with the same finger.
+      if (isCarrying) {
+        exitCarry()
+      } else {
+        enterCarry()
+      }
+    },
     onN: startDraft,
     onEscape: () => {
       // Hierarchical Escape — step back exactly one focus level per press:
+      //   carry mode   → exit carry (item lands at current position)
       //   input focus  → blur the input             (lands in item or window focus)
       //   item focus   → clear focusIndex            (lands in window focus)
       //   window focus → close the window           (top of the stack)
       // The order matters: input check has to come first because focusIndex
       // is -1 in *both* input focus and window focus, so we can't tell them
       // apart without consulting document.activeElement.
+      if (isCarrying) {
+        exitCarry()
+        return
+      }
       const active = document.activeElement as HTMLElement | null
       const isTypingInInput =
         !!active &&
@@ -507,15 +799,69 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       }
       window.api.closeWindow()
     },
-    onNumber1: () => switchToListByNumber(1),
-    onNumber2: () => switchToListByNumber(2),
-    onNumber3: () => switchToListByNumber(3),
-    onNumber4: () => switchToListByNumber(4),
-    onNumber5: () => switchToListByNumber(5),
-    onNumber6: () => switchToListByNumber(6),
-    onNumber7: () => switchToListByNumber(7),
-    onNumber8: () => switchToListByNumber(8),
-    onNumber9: () => switchToListByNumber(9),
+    // Number-key navigation. Carry mode takes priority over the
+    // regular/hot navigation flows — when carrying, every number key
+    // is "send to list N" (0 = hot list).
+    //
+    //   carry mode,   `0`-`9`  → send carry item to list N + exit.
+    //   regular list, `1`-`9`  → in-place active-list swap (existing).
+    //   regular list, `0`      → close + open the hot list.            [REMOVABLE]
+    //   hot list,     `1`-`9`  → close + open regular list N.          [REMOVABLE]
+    //   hot list,     `0`      → no-op.
+    //
+    // To revert to "regular lists only navigate 1-9 in-place; hot list
+    // ignores number keys entirely", delete the [REMOVABLE] branches.
+    // Carry-mode and the in-place path are unaffected.
+    onNumber0: isCarrying
+      ? () => carrySendToList(0)
+      : list?.kind === 'hot'
+        ? undefined
+        : () => swapToList(HOT_LIST_ID), // [REMOVABLE]
+    onNumber1: isCarrying
+      ? () => carrySendToList(1)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[0]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(1),
+    onNumber2: isCarrying
+      ? () => carrySendToList(2)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[1]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(2),
+    onNumber3: isCarrying
+      ? () => carrySendToList(3)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[2]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(3),
+    onNumber4: isCarrying
+      ? () => carrySendToList(4)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[3]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(4),
+    onNumber5: isCarrying
+      ? () => carrySendToList(5)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[4]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(5),
+    onNumber6: isCarrying
+      ? () => carrySendToList(6)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[5]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(6),
+    onNumber7: isCarrying
+      ? () => carrySendToList(7)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[6]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(7),
+    onNumber8: isCarrying
+      ? () => carrySendToList(8)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[7]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(8),
+    onNumber9: isCarrying
+      ? () => carrySendToList(9)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[8]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(9),
     onTab: cycleToNextList
   })
 
@@ -600,11 +946,22 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     )
   }
 
+  // Slide direction mirrors the spatial position: regular lists stack
+  // from the left and slide in from the left (-20 → 0); the hot list
+  // anchors to the right edge and slides in from the right (+20 → 0).
+  // The user develops a left/right muscle memory for "everyday work"
+  // vs. "today's commitments." If `list` is briefly undefined during
+  // a delete, default to the regular direction — the window will close
+  // shortly anyway.
+  const isHot = list?.kind === 'hot'
+  const slideEnterX = isHot ? 20 : -20
+  const slideExitX = isHot ? 30 : -30
+
   return (
     <motion.div
       key={activeListId}
-      initial={{ opacity: 0, x: -20 }}
-      animate={cyclePhase === 'out' ? { opacity: 0, x: -30 } : { opacity: 1, x: 0 }}
+      initial={{ opacity: 0, x: slideEnterX }}
+      animate={cyclePhase === 'out' ? { opacity: 0, x: slideExitX } : { opacity: 1, x: 0 }}
       transition={{ duration: cyclePhase === 'out' ? 0.08 : 0.1, ease: [0.25, 0.1, 0.25, 1] }}
       onAnimationComplete={() => {
         if (cyclePhase === 'out' && cycleTargetRef.current) {
@@ -618,11 +975,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       className="flex flex-col h-full glass-surface relative"
       style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}
     >
+      <CarryMotionBlurFilters />
       <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
       <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
-        <div ref={itemsContainerRef} className="flex flex-col" style={{ gap: `var(--space-item-gap)` }}>
+        <div
+          ref={itemsContainerRef}
+          className={`flex flex-col${isCarrying ? ' list-carrying' : ''}`}
+          style={{ gap: `var(--space-item-gap)` }}
+        >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -643,6 +1005,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   key={item.id}
                   item={item}
                   isFocused={idx === focusIndex}
+                  isCarrying={item.id === carryItemId}
+                  arrivalFlash={
+                    arrivalFlash && arrivalFlash.itemId === item.id
+                      ? arrivalFlash
+                      : null
+                  }
+                  sendDirection={item.id === carryItemId ? sendDirection : null}
                   onFocus={() => setFocusIndex(idx)}
                   lists={lists}
                   index={idx}

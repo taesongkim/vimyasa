@@ -532,6 +532,19 @@ export interface QuickAddAPI {
   onHidden: (callback: () => void) => () => void
   /** Hide the pre-warmed QuickAdd window. Renderer stays alive. */
   hide: () => Promise<void>
+  /** Tell main "I just added this item from the entry form." Main
+   *  re-broadcasts to every renderer as 'quickadd:item-added' so any
+   *  open list window whose `listId` matches the payload can scroll
+   *  the new item into view. The data-changed broadcast that already
+   *  fires on createItem reconciles the list contents — this is a
+   *  pure UX hint, not a persistence signal. */
+  notifyItemAdded: (itemId: string, listId: string) => Promise<void>
+  /** Subscribe to entry-form item-added broadcasts. The handler should
+   *  scroll the matching item into view if it belongs to this window's
+   *  active list. Returns an unsubscribe fn. */
+  onItemAdded: (
+    callback: (payload: { itemId: string; listId: string }) => void
+  ) => () => void
 }
 
 export interface ThemeEventsAPI {

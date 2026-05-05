@@ -66,6 +66,9 @@ const api: VimyasaAPI = {
   // J/K mapping mode
   setJkMode: (mode) => ipcRenderer.invoke('setJkMode', mode),
 
+  // Effects (Settings → Advanced)
+  setEffects: (updates) => ipcRenderer.invoke('setEffects', updates),
+
   // Shortcut capture
   pauseGlobalShortcuts: () => ipcRenderer.invoke('pauseGlobalShortcuts'),
   resumeGlobalShortcuts: () => ipcRenderer.invoke('resumeGlobalShortcuts'),
@@ -87,6 +90,34 @@ const api: VimyasaAPI = {
     return () => {
       ipcRenderer.removeListener('data-changed', listener)
     }
+  },
+  onItemArrived: (callback) => {
+    const listener = (_e: unknown, payload: unknown): void => {
+      const p = payload as
+        | {
+            itemId?: string
+            fromListId?: string
+            toListId?: string
+            direction?: 'left' | 'right'
+          }
+        | null
+      if (
+        p &&
+        typeof p.itemId === 'string' &&
+        typeof p.fromListId === 'string' &&
+        typeof p.toListId === 'string' &&
+        (p.direction === 'left' || p.direction === 'right')
+      ) {
+        callback({
+          itemId: p.itemId,
+          fromListId: p.fromListId,
+          toListId: p.toListId,
+          direction: p.direction
+        })
+      }
+    }
+    ipcRenderer.on('item-arrived', listener)
+    return () => ipcRenderer.removeListener('item-arrived', listener)
   },
   onContextMenuAction: (callback) => {
     const listener = (_event: unknown, data: Parameters<typeof callback>[0]): void =>
@@ -170,7 +201,19 @@ const api: VimyasaAPI = {
       ipcRenderer.on('quickadd:hidden', listener)
       return () => ipcRenderer.removeListener('quickadd:hidden', listener)
     },
-    hide: () => ipcRenderer.invoke('quickAddHide')
+    hide: () => ipcRenderer.invoke('quickAddHide'),
+    notifyItemAdded: (itemId, listId) =>
+      ipcRenderer.invoke('quickadd:notify-item-added', itemId, listId),
+    onItemAdded: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as { itemId?: string; listId?: string } | null
+        if (p && typeof p.itemId === 'string' && typeof p.listId === 'string') {
+          callback({ itemId: p.itemId, listId: p.listId })
+        }
+      }
+      ipcRenderer.on('quickadd:item-added', listener)
+      return () => ipcRenderer.removeListener('quickadd:item-added', listener)
+    }
   },
 
   // Theme event triggers

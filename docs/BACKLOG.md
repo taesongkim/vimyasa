@@ -54,9 +54,10 @@ not silently grab next-priority items.
 - **Lane:** features (with theme + aesthetics consultations later)
 - **Priority:** P1
 - **Version:** v0.1.6 (Phase 1: PR-1, PR-2, PR-3) + v0.1.7 (PR-4 prewarm)
-- **Status:** proposed → Option A + phasing approved → see [proposals/hot-list.md](./proposals/hot-list.md)
-- **Notes:** Phasing is defined in the proposal. PR-1 is schema-only,
-  ships invisibly — safe to pull into v0.1.5 if features lane has slack.
+- **Status:** proposed → Option A + phasing approved → **PR-1 + PR-2 + PR-3
+  in-flight on `hot-list` branch (features lane).** PR-4 prewarm still
+  v0.1.7. See [proposals/hot-list.md](./proposals/hot-list.md).
+- **Notes:** Phasing is defined in the proposal.
 
 ### Backup / restore user data
 - **Lane:** features
@@ -79,17 +80,39 @@ not silently grab next-priority items.
 - **Notes:** No persistence across summons. No cross-list undo (deferred
   to v0.1.10+ if ever). Estimate: 2–3 active hours.
 
+### Carry-mode motion blur (Settings → Advanced)
+- **Lane:** features (toggle); aesthetics (effect itself)
+- **Priority:** P3
+- **Version:** v0.1.6 (with carry-mode visuals)
+- **Status:** in-flight on `carry-motion-blur-toggle` branch
+  (features). Stacked on `carry-motion-blur-experiment` (aesthetics).
+  Merge order: experimental first, toggle second.
+- **Notes:** Settings → Advanced tab with single toggle "Motion blur
+  on carry-mode send". Off by default — opt-in. Persistence under
+  `effects.carryMotionBlur` in DataStore. Body class
+  `motion-blur-enabled` gates the CSS `filter: url(...)` rules in
+  globals.css; the JS RAF ramp in ListWindow's `carrySendToList` is
+  also gated. See INBOX 2026-05-05 (resolved) for the full spec
+  + tunable values.
+
 ### Move-item flow — "carry mode"
-- **Lane:** features
+- **Lane:** features (mechanism); aesthetics (visual treatment, in-flight)
 - **Priority:** P2
-- **Version:** v0.1.8
-- **Status:** idea — naming + ENTER conflict to resolve
-- **Notes:** `m` toggles carry mode on focused item. Inside carry mode:
-  number key → send to that list (incl. `0` → hot list — depends on
-  hot list shipping in v0.1.6); `j`/`k` → reorder in current list;
-  `Esc` lands. **Open:** `Enter` already archives — needs a different
-  commit key, or carry-mode reuses Esc exclusively. Suggest "carry
-  mode" as the name (or "pickup mode"); user to confirm.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
+  `keymap-onboarding` branch alongside the Enter→A archive split,
+  `r`-rename, edit-mode caret fix, and the shortcut-surface updates).
+- **Status:** in-flight. Mechanism done (features lane); aesthetics
+  visual treatment in-flight on `carry-mode-visuals` branch (CSS
+  classes + `useCarryAnimation` hook + integration with the `m` /
+  0-9 / j-k / Enter-Esc state machine features built). Naming
+  confirmed as "carry mode"; Enter conflict resolved by removing
+  Enter-archives entirely (A keeps it). Carry mode is sustained:
+  0-9 send + exit, j/k reorder + persist, Enter / Esc exit at
+  current position.
+- **Notes:** Receipt pulse on the receiving list window still needs
+  a generic `'item-arrived'` IPC broadcast from features (so future
+  flows — drag-between-lists, bulk ops, retroactively right-click
+  "Send to List" — get the same treatment for free). See INBOX.
 
 ### Focus-state visual cue (flash + glow)
 - **Lane:** themes (primary), aesthetics (timing/feel)
@@ -157,22 +180,22 @@ not silently grab next-priority items.
 ### Auto-scroll to new item added via entry form
 - **Lane:** features
 - **Priority:** P2
-- **Version:** v0.1.8
-- **Status:** idea — small win
-- **Notes:** Mechanic exists for `n` in-list (auto-scrolls focused
-  item into view). Reuse it when entry form adds an item to the
-  currently-open list whose visible area doesn't contain the new item.
-  Likely a one-IPC-event addition: `quickadd` triggers `item-added`,
-  list windows that contain that item scroll to it.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
+  `hot-list` branch alongside the hot-list PRs).
+- **Status:** in-flight (features lane).
+- **Notes:** Implemented via `quickadd:notify-item-added` IPC →
+  broadcast `quickadd:item-added` → list window scrolls the matching
+  row into view if the listId matches its active list. Pure UX hint;
+  persistence still flows through the normal createItem path.
 
 ### Deselect prior item when new item is initiated
 - **Lane:** features
 - **Priority:** P3
-- **Version:** v0.1.8
-- **Status:** idea — tiny
-- **Notes:** When `n` (or shortcut, or anything else) starts a new
-  item draft, the previously-highlighted item should lose its selection
-  state. Trivial — likely a single state-clear in the new-item handler.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (same branch).
+- **Status:** in-flight (features lane).
+- **Notes:** `startDraft` in ListWindow now clears `focusIndex` to -1
+  before flipping `isAddingItem`. The draft surface owns the spotlight
+  from that point until commit / discard.
 
 ### Scrollbar tracking lag
 - **Lane:** features (or aesthetics, dealer's choice)
@@ -183,6 +206,28 @@ not silently grab next-priority items.
   scroll position — likely a CSS smooth-scroll, transform-on-spring, or
   a debounced position-update. Should be one transition or
   request-animation-frame fix. Minor visual polish.
+
+### Unify `quickadd:item-added` + `item-arrived` events
+- **Lane:** features
+- **Priority:** P3
+- **Version:** unassigned — pull into any version with features slack
+- **Status:** idea — cleanup
+- **Notes:** Two parallel "a row just landed in this list" channels
+  exist today:
+  - `window.api.quickAdd.onItemAdded` — fires from QuickAdd's
+    `notifyItemAdded` IPC after `createItem` succeeds. ItemRow shows
+    the white-glow flash via the lazy-mount path (createdAt < 1s).
+  - `window.api.onItemArrived` — fires from main after `moveItem`.
+    ItemRow shows the same flash via the parent-driven `arrivalFlash`
+    prop.
+  Both produce identical visuals + use the same scroll-into-view
+  mechanism. They could collapse to a single `item-arrived` event
+  with a `kind: 'created' | 'moved'` discriminator (and `createItem`
+  fires it with `kind: 'created'`). The `arrivalFlash` prop becomes
+  the sole flash trigger; ItemRow's lazy-mount check on `createdAt`
+  retires. Not urgent — current code is clean and works. Worth doing
+  only when in this code anyway (e.g., adding another arrival
+  source).
 
 ---
 

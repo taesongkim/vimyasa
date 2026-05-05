@@ -32,6 +32,9 @@ function autoResizeTextarea(el: HTMLTextAreaElement | null): void {
 export function ItemRow({
   item,
   isFocused,
+  isCarrying = false,
+  sendDirection = null,
+  arrivalFlash = null,
   onFocus,
   lists,
   index = 0,
@@ -41,6 +44,20 @@ export function ItemRow({
 }: {
   item: Item
   isFocused: boolean
+  /** True when this row is the active carry-mode item — "picked up." */
+  isCarrying?: boolean
+  /** When non-null, this row is mid-send — direction encodes the slide.
+   *  isCarrying should remain true throughout the send so the lifted
+   *  background + shadow + z-index persist while .item-row-sending-*
+   *  layers the keyframe transform on top. Routed through React (not
+   *  imperative classList) because re-renders during the send would
+   *  otherwise clobber an imperatively-added class. */
+  sendDirection?: 'left' | 'right' | null
+  /** Trigger for the cross-list arrival flash. Parent passes this only
+   *  to the row whose id matches a just-arrived item; counter-keyed so
+   *  repeat arrivals (same id, two moves in a row) still fire. Reuses
+   *  the existing new-item save-flash visual. */
+  arrivalFlash?: { itemId: string; key: number } | null
   onFocus: () => void
   lists: List[]
   index?: number
@@ -90,12 +107,21 @@ export function ItemRow({
     transition
   }
 
-  // Focus + select on edit-mode entry. After-paint timing is fine here —
-  // focus is a user-perceptible action that doesn't need to be pre-paint.
+  // Focus + caret-at-end on edit-mode entry. The earlier select-all
+  // behavior made the most common operation (append a couple of words)
+  // feel destructive — the user'd type a single keystroke and watch
+  // their existing text vanish. Caret-at-end matches the typical
+  // "continue from where it left off" expectation; the user can still
+  // ⌘A if they want a select-all. After-paint timing is fine here —
+  // focus is a user-perceptible action that doesn't need to be
+  // pre-paint.
   useEffect(() => {
     if (editing) {
-      inputRef.current?.focus()
-      inputRef.current?.select()
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      const len = el.value.length
+      el.setSelectionRange(len, len)
     }
   }, [editing])
 
@@ -120,6 +146,18 @@ export function ItemRow({
       }
     }
   }, [])
+
+  // Cross-list arrival flash. Fires when the parent flags this row's
+  // id as just-arrived (carry-mode send / right-click "Send to List" /
+  // future drag-between-lists). Uses the same flashId mechanism the
+  // new-item appearance + rename-commit paths use, so the visual is
+  // identical — the user reads "this row just landed" without a new
+  // bespoke effect. Counter-keyed dep ensures repeat arrivals re-fire
+  // even when itemId stays the same.
+  useEffect(() => {
+    if (!arrivalFlash || arrivalFlash.itemId !== item.id) return
+    setFlashId(`arrival-${arrivalFlash.key}`)
+  }, [arrivalFlash, item.id])
 
   // Register copy function with parent when focused - only on focus change
   useEffect(() => {
@@ -195,13 +233,33 @@ export function ItemRow({
         ipcData: { action: 'setStatus', itemId: item.id, status: s }
       }))
 
-      const sendToSubmenu = lists
-        .filter((l) => l.id !== item.listId)
-        .map((l) => ({
+      // "Send to List" submenu. The hot list (when present + not the
+      // source) gets pinned at the top with a divider below it — it's
+      // the high-frequency target for "I'll do this today", so it's
+      // worth the visual separation from the regular roster. Right-
+      // clicking an item that's already in the hot list naturally has
+      // no hot entry (filtered as source), so the divider doesn't
+      // appear and the submenu is just the regular lists.
+      const sendable = lists.filter((l) => l.id !== item.listId)
+      const hotEntry = sendable.find((l) => l.kind === 'hot')
+      const regularEntries = sendable.filter((l) => l.kind !== 'hot')
+      const sendToSubmenu = [
+        ...(hotEntry
+          ? [
+              {
+                label: hotEntry.name,
+                ipcEvent: 'context-menu-action',
+                ipcData: { action: 'sendTo', itemId: item.id, listId: hotEntry.id }
+              },
+              { type: 'separator' as const }
+            ]
+          : []),
+        ...regularEntries.map((l) => ({
           label: l.name,
           ipcEvent: 'context-menu-action',
           ipcData: { action: 'sendTo', itemId: item.id, listId: l.id }
         }))
+      ]
 
       window.api.showContextMenu([
         { label: 'Edit', ipcEvent: 'context-menu-action', ipcData: { action: 'edit', itemId: item.id } },
@@ -271,7 +329,14 @@ export function ItemRow({
       // animate prop intentionally absent — opacity is now CSS-driven
       // via the inline style above. exit still animates because
       // AnimatePresence handles it independently of animate.
-      exit={{ opacity: 0, x: -8 }}
+      // While sending, suppress framer's exit animation entirely. The
+      // CSS keyframe owns the row's visual through unmount (forwards
+      // keeps opacity:0 + visibility:hidden); letting framer also
+      // animate opacity here causes the keyframe-vs-framer race that
+      // produced the "flash at end position" bug — framer interpolates
+      // opacity from its own tracked state (1 by default) and overrides
+      // the keyframe's forwards mid-exit.
+      exit={sendDirection ? undefined : { opacity: 0, x: -8 }}
       transition={{ duration: 0.15 }}
       // No transition-opacity class. With DragOverlay handling the
       // visual continuity (ghost smoothly snaps to target via dnd-kit's
@@ -282,6 +347,12 @@ export function ItemRow({
       // appears, all in one motion.
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
+      } ${isCarrying ? 'item-row-carrying' : ''} ${
+        sendDirection === 'left'
+          ? 'item-row-sending-left'
+          : sendDirection === 'right'
+            ? 'item-row-sending-right'
+            : ''
       }`}
       data-index={dataIndex}
       // Tag for useUpwardFlip in ListWindow. The hook measures these

@@ -61,9 +61,23 @@ function parseHash(): RouteInfo {
 export default function App() {
   const hydrate = useStore((s) => s.hydrate)
   const hydrated = useStore((s) => s.hydrated)
+  // Raw lists (includes hot). User-facing iteration filters via
+  // getRegularLists; raw is fine for id-based fallback lookups.
   const lists = useStore((s) => s.lists)
+  const carryMotionBlur = useStore((s) => s.effects.carryMotionBlur)
   const [route, setRoute] = useState<RouteInfo>(parseHash)
   const [error, setError] = useState<string | null>(null)
+
+  // Body-class gate for the carry-mode motion blur. The CSS rules in
+  // globals.css for `.item-row-sending-{left,right}` reference the
+  // SVG trail filter only inside `.motion-blur-enabled` — flipping
+  // this class on/off enables/disables the effect without touching
+  // each row. Renderer-wide so every list window in this process
+  // picks it up; cross-window sync is handled by data-changed →
+  // refresh hydrating each window's store from main.
+  useEffect(() => {
+    document.body.classList.toggle('motion-blur-enabled', carryMotionBlur)
+  }, [carryMotionBlur])
 
   useEffect(() => {
     hydrate().catch((err) => {
@@ -136,7 +150,11 @@ export default function App() {
         </GlowSurface>
       )
     case 'quickadd-fixed': {
-      const listId = route.params.listId || lists[0]?.id || ''
+      // Fallback target is the user's first REGULAR list — quick-add
+      // never targets the hot list as a default. Hot list stays
+      // dedicated to its own number-0 / Cmd+Shift+H summon.
+      const firstRegular = lists.find((l) => l.kind === 'regular')
+      const listId = route.params.listId || firstRegular?.id || ''
       return (
         <GlowSurface surface="quickadd-window" style={{ height: '100%', width: '100%' }}>
           <QuickAddFixed listId={listId} />
@@ -155,6 +173,7 @@ export default function App() {
         tab === 'shortcuts' ||
         tab === 'themes' ||
         tab === 'feedback' ||
+        tab === 'advanced' ||
         tab === 'data'
           ? tab
           : undefined
