@@ -126,7 +126,7 @@ not silently grab next-priority items.
 - **Lane:** themes
 - **Priority:** P3
 - **Version:** v0.1.9 (with focus-state cues — same lane, same release)
-- **Status:** idea — spawned from features lane INBOX note (resolved 2026-05-04)
+- **Status:** in-flight (themes lane, branch `claude/condescending-leakey-9dec29`, 2026-05-05)
 - **Notes:** Feedback window's `<textarea>` shipped bare in v0.1.5
   (no `GlowSurface` wrap). To make it participate in Theme 1 (or future
   themed treatments), register a new `feedback-input` surface in
