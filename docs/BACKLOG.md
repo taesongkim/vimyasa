@@ -222,6 +222,46 @@ not silently grab next-priority items.
   shortcuts used by apps in vimyasa's target demographic. Check before
   picking a new global hotkey. Update when new conflicts surface in
   testing or new vimyasa shortcuts ship. Last verified: 2026-05-04.
+- **[`docs/reference/voice.md`](./reference/voice.md)** — vimyasa's
+  voice and tone for user-visible copy. Two registers (in-app vs.
+  release notes), patterns to use, things to avoid. Update when voice
+  evolves (likely v0.2.0+).
+- **[`CHANGELOG.md`](../CHANGELOG.md)** — narrative version history.
+  Append a new section at top for each release that ships. The story
+  per release, not just the bullets — those live on GitHub Releases.
+- **[`docs/evolution/`](./evolution/)** — cross-version narrative arcs
+  for long-running systems. First entry: theme system. Add a new arc
+  when a system has spanned 2+ versions and is likely to keep growing.
+
+### Future Historian agent (cross-project)
+- **Lane:** coordination (preparing the supporting docs); the agent itself lives outside this repo
+- **Priority:** P3 — exploratory
+- **Version:** N/A (cross-project, lives outside vimyasa)
+- **Status:** idea — supporting docs landing in vimyasa now (CHANGELOG,
+  voice.md, evolution arcs); the agent itself is a future tooling
+  project
+- **Notes:** The dev wants a "Historian" agent that builds an animated
+  / interactive virtual museum of project evolution across all his
+  projects. Lives in a separate private repo with read access to project
+  repos, ingests git history + docs + visual artifacts, produces a
+  reflective / shareable timeline view. Vimyasa's contribution is to
+  document deliberately enough that the Historian can reconstruct the
+  story retroactively. Specifically:
+  - CHANGELOG.md (narrative, not just bullets) — landed.
+  - docs/reference/voice.md (so AI-generated copy stays on-voice as
+    the project ages) — landed.
+  - docs/evolution/ (cross-version narrative arcs) — first arc landed
+    for the theme system; add more as systems mature.
+  - **Visual artifacts** (screenshots, GIFs at each release) — NOT yet
+    landed. Worth a small `scripts/capture-release-snapshots.sh` that
+    runs at release time. Future work.
+  - **Rejected-alternatives explicitness** in proposals — going forward,
+    every proposal has an "Alternatives considered" section that names
+    what was rejected and why.
+  When the dev is ready to build the Historian itself, they'll find
+  ~75–80% of vimyasa's story already reconstructable from current
+  artifacts. The remaining gap is mostly visual + a couple of
+  retroactive narrative arcs.
 
 ### Electron major-version upgrade
 - **Lane:** features (build); coordination (proposal first)
