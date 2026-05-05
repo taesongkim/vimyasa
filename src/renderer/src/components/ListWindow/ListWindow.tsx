@@ -671,11 +671,14 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       focusedItemEditFnRef.current?.()
     },
     onM: () => {
-      // Toggle into carry mode on the focused item. No-op if nothing
-      // is focused, or already carrying (Enter / Esc / 0-9 are the
-      // exits — re-pressing m mid-carry is intentionally inert so the
-      // user can't accidentally re-arm).
-      if (!isCarrying) enterCarry()
+      // Toggle: m enters carry mode on the focused item, m again
+      // lands at current position (third land path alongside Enter
+      // and Esc). Lets the user pop in and out with the same finger.
+      if (isCarrying) {
+        exitCarry()
+      } else {
+        enterCarry()
+      }
     },
     onN: startDraft,
     onEscape: () => {
