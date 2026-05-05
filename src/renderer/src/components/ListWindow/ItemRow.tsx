@@ -34,6 +34,7 @@ export function ItemRow({
   isFocused,
   isCarrying = false,
   sendDirection = null,
+  arrivalFlash = null,
   onFocus,
   lists,
   index = 0,
@@ -52,6 +53,11 @@ export function ItemRow({
    *  imperative classList) because re-renders during the send would
    *  otherwise clobber an imperatively-added class. */
   sendDirection?: 'left' | 'right' | null
+  /** Trigger for the cross-list arrival flash. Parent passes this only
+   *  to the row whose id matches a just-arrived item; counter-keyed so
+   *  repeat arrivals (same id, two moves in a row) still fire. Reuses
+   *  the existing new-item save-flash visual. */
+  arrivalFlash?: { itemId: string; key: number } | null
   onFocus: () => void
   lists: List[]
   index?: number
@@ -140,6 +146,18 @@ export function ItemRow({
       }
     }
   }, [])
+
+  // Cross-list arrival flash. Fires when the parent flags this row's
+  // id as just-arrived (carry-mode send / right-click "Send to List" /
+  // future drag-between-lists). Uses the same flashId mechanism the
+  // new-item appearance + rename-commit paths use, so the visual is
+  // identical — the user reads "this row just landed" without a new
+  // bespoke effect. Counter-keyed dep ensures repeat arrivals re-fire
+  // even when itemId stays the same.
+  useEffect(() => {
+    if (!arrivalFlash || arrivalFlash.itemId !== item.id) return
+    setFlashId(`arrival-${arrivalFlash.key}`)
+  }, [arrivalFlash, item.id])
 
   // Register copy function with parent when focused - only on focus change
   useEffect(() => {

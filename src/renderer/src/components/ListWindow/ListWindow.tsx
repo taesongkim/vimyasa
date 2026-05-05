@@ -31,7 +31,6 @@ import { HOT_LIST_ID } from '@shared/types'
 import {
   getSendDirection,
   playBlurRamp,
-  playReceipt,
   CARRY_SEND_DURATION_MS,
   type SendDirection
 } from '../../hooks/useCarryAnimation'
@@ -59,6 +58,15 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // isn't in the DOM yet at notify time) and scrolls it into view, then
   // clears. Best-effort UX hint; the persistence path is unaffected.
   const [pendingScrollItemId, setPendingScrollItemId] = useState<string | null>(null)
+  // Item-arrival flash trigger. The new-item save flash (the white-glow
+  // overlay in ItemRow) is what users associate with "this row just
+  // landed" — reusing it for cross-list arrivals keeps the visual
+  // vocabulary tight. The counter bumps on every arrival so the same
+  // itemId arriving twice in a row still re-fires (deps change). Source
+  // window receives the broadcast too but its activeListId !== toListId
+  // so the handler bails before this state updates.
+  const [arrivalFlash, setArrivalFlash] = useState<{ itemId: string; key: number } | null>(null)
+  const arrivalCounterRef = useRef(0)
   // Carry mode — sustained "I'm holding this item" state. Entered with
   // `m` on a focused item; exits on commit (0-9 send / Enter land /
   // Esc cancel). While active:
@@ -89,12 +97,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const focusedItemEditFnRef = useRef<(() => void) | null>(null)
   const cycleTargetRef = useRef<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  // Outer motion.div ref. playReceipt applies the .list-window-receiving-*
-  // class on it to drive the inset-box-shadow pulse — needs to be the
-  // element that owns the visible window's rounded-rect chrome
-  // (glass-surface). Re-keyed on activeListId, so the ref's current
-  // value also re-binds on every cycle swap.
-  const windowRootRef = useRef<HTMLDivElement>(null)
   // Container holding the items themselves (inside the scroll container,
   // outside DndContext/SortableContext). Passed to useUpwardFlip so it
   // can find rows tagged with data-flip-id and animate ones moving up.
@@ -449,17 +451,19 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Subscribe to cross-list arrivals (carry-mode send, right-click
   // "Send to List", future drag-between-lists / bulk ops). Two
   // reactions when the arrival lands in our active list:
-  //   - `playReceipt` on the window root → inset edge pulse on the
-  //     side the item came from (sentDirection is opposite of the
-  //     receiving edge; useCarryAnimation handles that flip).
-  //   - `setPendingScrollItemId` so the same scroll-into-view effect
-  //     the entry-form-add path uses kicks in once `items` reconciles.
+  //   - `arrivalFlash` → ItemRow whose id matches replays the new-item
+  //     save flash (white-glow overlay). Same visual vocabulary as
+  //     fresh-create + rename-commit — users read "this row just
+  //     landed" without needing a new effect. Counter-bumped so a
+  //     repeat arrival of the same itemId still fires.
+  //   - `setPendingScrollItemId` so the existing scroll-into-view
+  //     effect (originally built for entry-form adds) brings the new
+  //     row into view once `items` reconciles.
   useEffect(() => {
-    return window.api.onItemArrived(({ itemId, toListId, direction }) => {
+    return window.api.onItemArrived(({ itemId, toListId }) => {
       if (toListId !== activeListId) return
-      if (windowRootRef.current) {
-        playReceipt(windowRootRef.current, direction)
-      }
+      arrivalCounterRef.current += 1
+      setArrivalFlash({ itemId, key: arrivalCounterRef.current })
       setPendingScrollItemId(itemId)
     })
   }, [activeListId])
@@ -956,7 +960,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   return (
     <motion.div
       key={activeListId}
-      ref={windowRootRef}
       initial={{ opacity: 0, x: slideEnterX }}
       animate={cyclePhase === 'out' ? { opacity: 0, x: slideExitX } : { opacity: 1, x: 0 }}
       transition={{ duration: cyclePhase === 'out' ? 0.08 : 0.1, ease: [0.25, 0.1, 0.25, 1] }}
@@ -1003,6 +1006,11 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   item={item}
                   isFocused={idx === focusIndex}
                   isCarrying={item.id === carryItemId}
+                  arrivalFlash={
+                    arrivalFlash && arrivalFlash.itemId === item.id
+                      ? arrivalFlash
+                      : null
+                  }
                   sendDirection={item.id === carryItemId ? sendDirection : null}
                   onFocus={() => setFocusIndex(idx)}
                   lists={lists}
