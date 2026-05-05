@@ -81,9 +81,9 @@ not silently grab next-priority items.
 ### Carry-mode motion blur (Settings → Advanced)
 - **Lane:** features (toggle); aesthetics (effect itself)
 - **Priority:** P3
-- **Version:** v0.1.6 — **shipped**, default ON
-- **Status:** ✅ merged in PR #28. Per human direction, default flipped from off (aesthetics' original recommendation) to ON. Off-switch lives at Settings → Advanced. The original opt-in rationale (CSS `filter:` allocates filter region even at zero stdDeviation) is preserved in the type docstring; human's call to ship on with a clear off-switch.
-- **Notes:** Settings → Advanced tab with toggle "Motion blur on carry-mode send". Persistence at `effects.carryMotionBlur`. Body class `motion-blur-enabled` gates CSS `filter: url(...)` rules; JS RAF ramp gated in ListWindow's `carrySendToList`.
+- **Version:** v0.1.6 — **shipped**, default OFF
+- **Status:** ✅ merged in PR #28; default re-flipped to OFF in a small follow-up before publish. The text-quality degradation aesthetics had originally flagged (CSS `filter: url(...)` allocates filter region for off-screen rendering even at zero stdDeviation) was confirmed during the human's pre-publish dev verification — visible enough that opt-in is the right default. Polish stays available; toggle lives at Settings → Advanced.
+- **Notes:** Settings → Advanced tab with toggle "Motion blur on carry-mode send". Persistence at `effects.carryMotionBlur`. Body class `motion-blur-enabled` gates CSS `filter: url(...)` rules; JS RAF ramp gated in ListWindow's `carrySendToList`. Future work: scope the filter tighter (or use a different technique) to flip default back to ON without the text quality trade.
 
 ### Move-item flow — "carry mode"
 - **Lane:** features (mechanism); aesthetics (visual treatment + send animation + motion blur)

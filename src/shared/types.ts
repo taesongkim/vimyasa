@@ -99,18 +99,19 @@ export type JkMode = 'standard' | 'inverse'
 
 export interface Effects {
   /** Adds a directional trailing motion blur to the carry-mode send
-   *  animation. ON by default per human direction — provides the
-   *  intended polish for the send animation. Toggle in Settings →
-   *  Advanced if it ever causes rendering issues. The blur uses CSS
-   *  `filter: url(...)` which forces off-screen rendering (text
-   *  quality may degrade slightly even at zero stdDeviation), but
-   *  the human's call: ship on, give an off-switch. See INBOX
-   *  2026-05-05 for tunables. */
+   *  animation. OFF by default — flipped from ON during v0.1.6 dev
+   *  verification (text quality degradation from CSS `filter: url(...)`
+   *  off-screen rendering was noticeable enough that opt-in is the
+   *  right default). The polish is still available — Settings →
+   *  Advanced has the toggle. May flip back to default-on in a
+   *  future version once the rendering issue is resolved (filter
+   *  scoped tighter, or a different effect technique). See INBOX
+   *  2026-05-05 for the original tunables. */
   carryMotionBlur: boolean
 }
 
 export const DEFAULT_EFFECTS: Effects = {
-  carryMotionBlur: true
+  carryMotionBlur: false
 }
 
 // ── Feedback messenger ───────────────────────────────────────────
