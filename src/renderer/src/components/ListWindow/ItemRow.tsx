@@ -32,6 +32,7 @@ function autoResizeTextarea(el: HTMLTextAreaElement | null): void {
 export function ItemRow({
   item,
   isFocused,
+  isCarrying = false,
   onFocus,
   lists,
   index = 0,
@@ -41,6 +42,10 @@ export function ItemRow({
 }: {
   item: Item
   isFocused: boolean
+  /** True when this row is the active carry-mode item — visually
+   *  treated as "picked up". Placeholder visual lives in the
+   *  `item-row-carrying` CSS class; aesthetics lane will replace it. */
+  isCarrying?: boolean
   onFocus: () => void
   lists: List[]
   index?: number
@@ -90,12 +95,21 @@ export function ItemRow({
     transition
   }
 
-  // Focus + select on edit-mode entry. After-paint timing is fine here —
-  // focus is a user-perceptible action that doesn't need to be pre-paint.
+  // Focus + caret-at-end on edit-mode entry. The earlier select-all
+  // behavior made the most common operation (append a couple of words)
+  // feel destructive — the user'd type a single keystroke and watch
+  // their existing text vanish. Caret-at-end matches the typical
+  // "continue from where it left off" expectation; the user can still
+  // ⌘A if they want a select-all. After-paint timing is fine here —
+  // focus is a user-perceptible action that doesn't need to be
+  // pre-paint.
   useEffect(() => {
     if (editing) {
-      inputRef.current?.focus()
-      inputRef.current?.select()
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      const len = el.value.length
+      el.setSelectionRange(len, len)
     }
   }, [editing])
 
@@ -302,7 +316,7 @@ export function ItemRow({
       // appears, all in one motion.
       className={`group flex gap-1 px-3 py-2 mx-1 rounded cursor-default bg-[var(--color-surface)] relative ${
         isFocused ? 'item-row-focused' : hovered ? 'item-row-hover' : ''
-      }`}
+      } ${isCarrying ? 'item-row-carrying' : ''}`}
       data-index={dataIndex}
       // Tag for useUpwardFlip in ListWindow. The hook measures these
       // elements' positions before/after each render and animates

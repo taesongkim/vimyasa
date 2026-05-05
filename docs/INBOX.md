@@ -59,6 +59,17 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-05-05 — features
+**Type:** note
+**Body:** Carry mode (`m` on a focused item) shipped in the
+`keymap-onboarding` branch with a placeholder visual: dashed accent
+outline + soft lift shadow on the row. Class `item-row-carrying` in
+`src/renderer/src/styles/globals.css`. Aesthetics lane: please
+replace with the real treatment when ready. Mechanism is stable —
+ItemRow accepts `isCarrying` boolean; styling can swap freely
+without touching the state machine in ListWindow.tsx.
+**Status:** open
+
 *(Add new entries above this line, newest first.)*
 
 ---

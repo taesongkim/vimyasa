@@ -44,6 +44,16 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // isn't in the DOM yet at notify time) and scrolls it into view, then
   // clears. Best-effort UX hint; the persistence path is unaffected.
   const [pendingScrollItemId, setPendingScrollItemId] = useState<string | null>(null)
+  // Carry mode — sustained "I'm holding this item" state. Entered with
+  // `m` on a focused item; exits on commit (0-9 send / Enter land /
+  // Esc cancel). While active:
+  //   j/k       → reorder up/down within the visible list, focus follows
+  //   0-9       → send to list N (0 = hot list, 1-9 = sortedLists[N-1])
+  //   Enter/Esc → exit at current position (semantic-only distinction)
+  // Visual treatment is a placeholder for now — see ItemRow's
+  // `item-row-carrying` class. Aesthetics lane will replace.
+  const [carryItemId, setCarryItemId] = useState<string | null>(null)
+  const isCarrying = carryItemId !== null
   // Whether a new-item draft row is currently active at the bottom of the
   // list. Toggled by the `n` shortcut and the "+ Add item" toolbar button.
   // Save-vs-discard is handled inside DraftItemRow on Enter / blur / Esc /
@@ -244,12 +254,89 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Order matters: open first so there's never a "no windows" gap.
   // Used by `0` from a regular list and `1`-`9` from the hot list (see
   // the keyboard config below). Stays as a stable helper even if the
-  // 0-key navigation gets disabled later — carry mode (planned) will
-  // reuse it for "send focused item to list N + jump there".
+  // 0-key navigation gets disabled later — carry mode reuses it.
   const swapToList = useCallback((targetId: string) => {
     void window.api.openListWindow(targetId)
     void window.api.closeWindow()
   }, [])
+
+  // ── Carry mode helpers ─────────────────────────────────────────
+  const enterCarry = useCallback(() => {
+    if (focusedItem) setCarryItemId(focusedItem.id)
+  }, [focusedItem])
+
+  const exitCarry = useCallback(() => {
+    setCarryItemId(null)
+  }, [])
+
+  // Reorder the carry item by ±1 within the visible list. Uses the
+  // FULL ordered list of items in the active list as the basis for
+  // the reorder IPC (passing only a subset would clobber other items'
+  // sortOrder, since the IPC sets sortOrder = index). Visible neighbor
+  // is the one we swap with — if a hidden item sits between, it stays
+  // put; the user perceives single-step movement in the visible roster.
+  const carryReorder = useCallback(
+    (delta: -1 | 1) => {
+      if (!carryItemId) return
+      const visibleIdx = listItems.findIndex((i) => i.id === carryItemId)
+      if (visibleIdx < 0) return
+      const newVisibleIdx = visibleIdx + delta
+      if (newVisibleIdx < 0 || newVisibleIdx >= listItems.length) return
+      const swapTargetId = listItems[newVisibleIdx].id
+      const allInList = items
+        .filter((i) => i.listId === activeListId)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+      const fullCarryIdx = allInList.findIndex((i) => i.id === carryItemId)
+      const fullTargetIdx = allInList.findIndex((i) => i.id === swapTargetId)
+      if (fullCarryIdx < 0 || fullTargetIdx < 0) return
+      const fullOrder = [...allInList]
+      ;[fullOrder[fullCarryIdx], fullOrder[fullTargetIdx]] = [
+        fullOrder[fullTargetIdx],
+        fullOrder[fullCarryIdx]
+      ]
+      reorder(
+        activeListId,
+        fullOrder.map((i) => i.id)
+      )
+      // Focus follows the carry so the highlight stays glued to the
+      // moving row instead of stranding on the fixed visible index.
+      setFocusIndex(newVisibleIdx)
+    },
+    [carryItemId, listItems, items, activeListId, reorder]
+  )
+
+  // Safety: if the carry item disappears (archived from elsewhere,
+  // deleted, or moved to another list via context menu), exit carry
+  // so we don't strand the state on a non-existent itemId. The
+  // commit paths (sendItemToList, etc.) already exit explicitly;
+  // this just covers the cross-window / cross-action edges.
+  useEffect(() => {
+    if (!carryItemId) return
+    const stillHere = items.some(
+      (i) => i.id === carryItemId && i.listId === activeListId && !i.archivedAt
+    )
+    if (!stillHere) setCarryItemId(null)
+  }, [carryItemId, items, activeListId])
+
+  const carrySendToList = useCallback(
+    (listNumber: number) => {
+      if (!carryItemId) return
+      const targetId =
+        listNumber === 0 ? HOT_LIST_ID : sortedLists[listNumber - 1]?.id
+      if (!targetId) return // No matching list — stay in carry, no-op
+      if (targetId === activeListId) {
+        // Same-list send is a no-op; treat as commit + exit.
+        exitCarry()
+        return
+      }
+      void sendItemToList(carryItemId, targetId)
+      exitCarry()
+      // The item is leaving this list; reset focus so the highlight
+      // doesn't strand on whatever happens to fall into its old slot.
+      setFocusIndex(-1)
+    },
+    [carryItemId, sortedLists, activeListId, sendItemToList, exitCarry]
+  )
 
   // Auto-scroll focused item into view
   useEffect(() => {
@@ -495,6 +582,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Keyboard navigation
   useKeyboard({
     onArrowUp: () => {
+      // In carry mode, j/k (mapped to arrow handlers via jkMode) AND
+      // arrow keys all reorder. The user is "holding" the item; every
+      // up/down primitive moves it.
+      if (isCarrying) {
+        carryReorder(-1)
+        return
+      }
       setFocusIndex((i) => {
         if (listItems.length === 0) return -1
         if (i === -1) return listItems.length - 1 // nothing selected → focus last
@@ -502,6 +596,10 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       })
     },
     onArrowDown: () => {
+      if (isCarrying) {
+        carryReorder(1)
+        return
+      }
       setFocusIndex((i) => {
         if (listItems.length === 0) return -1
         if (i === -1) return 0 // nothing selected → focus first
@@ -509,9 +607,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       })
     },
     onEnter: () => {
-      if (focusedItem) {
-        archiveItem(focusedItem.id)
-        handlePostDestructive()
+      // Enter no longer archives — A keeps that role. Frees Enter to
+      // commit + exit carry mode at the current position. Outside
+      // carry, Enter is a deliberate no-op (was a frequent accidental
+      // archive trigger after rename / move).
+      if (isCarrying) {
+        exitCarry()
       }
     },
     onSpace: () => {
@@ -562,15 +663,34 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         handlePostDestructive()
       }
     },
+    onR: () => {
+      // Same code path as the right-click → Edit context menu action
+      // and the double-click handler: focused row's startEditing was
+      // registered into focusedItemEditFnRef on focus change. Bare `r`
+      // (Cmd+R is reload, never clobber) just calls it.
+      focusedItemEditFnRef.current?.()
+    },
+    onM: () => {
+      // Toggle into carry mode on the focused item. No-op if nothing
+      // is focused, or already carrying (Enter / Esc / 0-9 are the
+      // exits — re-pressing m mid-carry is intentionally inert so the
+      // user can't accidentally re-arm).
+      if (!isCarrying) enterCarry()
+    },
     onN: startDraft,
     onEscape: () => {
       // Hierarchical Escape — step back exactly one focus level per press:
+      //   carry mode   → exit carry (item lands at current position)
       //   input focus  → blur the input             (lands in item or window focus)
       //   item focus   → clear focusIndex            (lands in window focus)
       //   window focus → close the window           (top of the stack)
       // The order matters: input check has to come first because focusIndex
       // is -1 in *both* input focus and window focus, so we can't tell them
       // apart without consulting document.activeElement.
+      if (isCarrying) {
+        exitCarry()
+        return
+      }
       const active = document.activeElement as HTMLElement | null
       const isTypingInInput =
         !!active &&
@@ -588,50 +708,69 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       }
       window.api.closeWindow()
     },
-    // Number-key navigation.
+    // Number-key navigation. Carry mode takes priority over the
+    // regular/hot navigation flows — when carrying, every number key
+    // is "send to list N" (0 = hot list).
     //
+    //   carry mode,   `0`-`9`  → send carry item to list N + exit.
     //   regular list, `1`-`9`  → in-place active-list swap (existing).
     //   regular list, `0`      → close + open the hot list.            [REMOVABLE]
     //   hot list,     `1`-`9`  → close + open regular list N.          [REMOVABLE]
     //   hot list,     `0`      → no-op.
     //
     // To revert to "regular lists only navigate 1-9 in-place; hot list
-    // ignores number keys entirely", delete the [REMOVABLE] branches
-    // (set onNumber0 to undefined in regulars, and onNumber1..9 to
-    // undefined when hot). The in-place switchToListByNumber path is
-    // unaffected. The swapToList helper stays in either case (carry
-    // mode reuses it).
-    onNumber0:
-      list?.kind === 'hot'
+    // ignores number keys entirely", delete the [REMOVABLE] branches.
+    // Carry-mode and the in-place path are unaffected.
+    onNumber0: isCarrying
+      ? () => carrySendToList(0)
+      : list?.kind === 'hot'
         ? undefined
         : () => swapToList(HOT_LIST_ID), // [REMOVABLE]
-    onNumber1: list?.kind === 'hot'
-      ? () => { const t = sortedLists[0]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(1),
-    onNumber2: list?.kind === 'hot'
-      ? () => { const t = sortedLists[1]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(2),
-    onNumber3: list?.kind === 'hot'
-      ? () => { const t = sortedLists[2]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(3),
-    onNumber4: list?.kind === 'hot'
-      ? () => { const t = sortedLists[3]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(4),
-    onNumber5: list?.kind === 'hot'
-      ? () => { const t = sortedLists[4]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(5),
-    onNumber6: list?.kind === 'hot'
-      ? () => { const t = sortedLists[5]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(6),
-    onNumber7: list?.kind === 'hot'
-      ? () => { const t = sortedLists[6]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(7),
-    onNumber8: list?.kind === 'hot'
-      ? () => { const t = sortedLists[7]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(8),
-    onNumber9: list?.kind === 'hot'
-      ? () => { const t = sortedLists[8]; if (t) swapToList(t.id) } // [REMOVABLE]
-      : () => switchToListByNumber(9),
+    onNumber1: isCarrying
+      ? () => carrySendToList(1)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[0]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(1),
+    onNumber2: isCarrying
+      ? () => carrySendToList(2)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[1]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(2),
+    onNumber3: isCarrying
+      ? () => carrySendToList(3)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[2]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(3),
+    onNumber4: isCarrying
+      ? () => carrySendToList(4)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[3]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(4),
+    onNumber5: isCarrying
+      ? () => carrySendToList(5)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[4]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(5),
+    onNumber6: isCarrying
+      ? () => carrySendToList(6)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[5]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(6),
+    onNumber7: isCarrying
+      ? () => carrySendToList(7)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[6]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(7),
+    onNumber8: isCarrying
+      ? () => carrySendToList(8)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[7]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(8),
+    onNumber9: isCarrying
+      ? () => carrySendToList(9)
+      : list?.kind === 'hot'
+        ? () => { const t = sortedLists[8]; if (t) swapToList(t.id) } // [REMOVABLE]
+        : () => switchToListByNumber(9),
     onTab: cycleToNextList
   })
 
@@ -770,6 +909,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   key={item.id}
                   item={item}
                   isFocused={idx === focusIndex}
+                  isCarrying={item.id === carryItemId}
                   onFocus={() => setFocusIndex(idx)}
                   lists={lists}
                   index={idx}

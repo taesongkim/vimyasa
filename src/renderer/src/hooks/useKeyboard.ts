@@ -14,6 +14,8 @@ interface KeyboardConfig {
   onC?: () => void
   onO?: () => void
   onA?: () => void
+  onR?: () => void
+  onM?: () => void
   onNumber0?: () => void
   onNumber1?: () => void
   onNumber2?: () => void
@@ -120,6 +122,21 @@ export function useKeyboard(config: KeyboardConfig) {
           if (!e.metaKey && !e.ctrlKey) {
             e.preventDefault()
             config.onA?.()
+          }
+          break
+        case 'r':
+        case 'R':
+          // Bare `r` only — Cmd+R is reload everywhere; never clobber it.
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            config.onR?.()
+          }
+          break
+        case 'm':
+        case 'M':
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            config.onM?.()
           }
           break
         case '0':

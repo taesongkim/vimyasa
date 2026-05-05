@@ -83,14 +83,16 @@ not silently grab next-priority items.
 ### Move-item flow — "carry mode"
 - **Lane:** features
 - **Priority:** P2
-- **Version:** v0.1.8
-- **Status:** idea — naming + ENTER conflict to resolve
-- **Notes:** `m` toggles carry mode on focused item. Inside carry mode:
-  number key → send to that list (incl. `0` → hot list — depends on
-  hot list shipping in v0.1.6); `j`/`k` → reorder in current list;
-  `Esc` lands. **Open:** `Enter` already archives — needs a different
-  commit key, or carry-mode reuses Esc exclusively. Suggest "carry
-  mode" as the name (or "pickup mode"); user to confirm.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
+  `keymap-onboarding` branch alongside the Enter→A archive split,
+  `r`-rename, edit-mode caret fix, and the shortcut-surface updates).
+- **Status:** in-flight (features lane). Naming confirmed as "carry
+  mode"; Enter conflict resolved by removing Enter-archives entirely
+  (A keeps it). Carry mode is sustained: 0-9 send + exit, j/k reorder
+  + persist, Enter / Esc exit at current position.
+- **Notes:** Visual treatment is a placeholder (dashed accent outline)
+  in this PR — aesthetics lane will polish via a follow-up. INBOX
+  note left for them.
 
 ### Focus-state visual cue (flash + glow)
 - **Lane:** themes (primary), aesthetics (timing/feel)

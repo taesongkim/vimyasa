@@ -281,6 +281,19 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.075) !important;
 }
 
+/* Carry mode (m) — placeholder visual. The row's "picked up" state.
+   Aesthetics lane will replace this with the real treatment; for now
+   we use a dashed accent outline + a soft lift shadow so the user
+   gets unambiguous "this item is held" feedback. Outline (vs. border)
+   doesn't affect layout, so reordering during carry doesn't shift
+   neighboring rows by the outline width. */
+.item-row-carrying {
+  outline: 1.5px dashed var(--color-accent);
+  outline-offset: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: outline-offset 80ms ease, box-shadow 80ms ease;
+}
+
 /* ── TipTap editor ────────────────────────────────────────────── */
 
 .tiptap {

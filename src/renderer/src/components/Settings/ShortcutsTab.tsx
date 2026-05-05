@@ -24,12 +24,26 @@ const builtinShortcutDefs: { key: keyof BuiltinShortcuts; label: string }[] = [
 const listNavigationShortcuts: { key: string; label: string; description?: string }[] = [
   { key: 'j/k', label: 'Navigate Items' },
   { key: 'Space', label: 'Cycle Status', description: 'active → done → hold → active' },
-  { key: 'Enter or a', label: 'Archive Item', description: 'Archive selected item' },
+  { key: 'a', label: 'Archive Item', description: 'Archive selected item' },
+  { key: 'r', label: 'Rename', description: 'Edit selected item text (caret lands at end)' },
   { key: 'c or ⌘C', label: 'Copy Text', description: 'Copy item text to clipboard' },
   { key: 'o or ⌘O', label: 'Open Comments', description: 'Open comments for selected item' },
   { key: 'Backspace', label: 'Delete Item', description: 'Delete selected item (with confirmation)' },
   { key: 'Escape', label: 'Deselect/Close', description: 'Deselect item or close window' },
-  { key: 'n', label: 'New Item', description: 'Focus the add item input' }
+  { key: 'n', label: 'New Item', description: 'Focus the add item input' },
+  { key: '1-9', label: 'Switch List', description: 'Jump to that list (regular lists by sortOrder)' },
+  { key: '0', label: 'Hot List', description: 'Open / focus the hot list (in carry mode: send item to hot list)' }
+]
+
+// Carry mode (m) sub-shortcuts. Rendered as its own block so the user
+// reads them as a temporary mode rather than always-on shortcuts.
+const carryModeShortcuts: { key: string; label: string; description?: string }[] = [
+  { key: 'm', label: 'Enter Carry Mode', description: 'Pick up the focused item' },
+  { key: '0', label: 'Send to Hot List', description: 'Sends the carry item to the hot list, exits carry' },
+  { key: '1-9', label: 'Send to List N', description: 'Sends to regular list N (by sortOrder), exits carry' },
+  { key: 'j/k', label: 'Reorder', description: 'Move carry item up/down by one position; carry persists' },
+  { key: 'Enter', label: 'Land + Exit', description: 'Commit at current position' },
+  { key: 'Esc', label: 'Cancel + Exit', description: 'Functionally identical to Enter; semantic-only distinction' }
 ]
 
 function formatAccelerator(accel: string): string {
@@ -181,6 +195,34 @@ export function ShortcutsTab() {
             </div>
           )
         })}
+      </div>
+
+      {/* Carry mode (m) — sub-shortcuts active only while carrying. */}
+      <div className="flex flex-col gap-1">
+        <div className="section-header">Carry Mode</div>
+        <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] mb-2">
+          Press <span className="font-mono text-[color:var(--color-accent)]">m</span> on a focused item to enter. The item is "picked up" and these keys take over until you commit / cancel.
+        </div>
+        {carryModeShortcuts.map((shortcut) => (
+          <div
+            key={shortcut.key + shortcut.label}
+            className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] opacity-80"
+          >
+            <div className="flex-1 min-w-0">
+              <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
+                {shortcut.label}
+              </span>
+              {shortcut.description && (
+                <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] mt-0.5">
+                  {shortcut.description}
+                </div>
+              )}
+            </div>
+            <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)] shrink-0">
+              {shortcut.key}
+            </span>
+          </div>
+        ))}
       </div>
 
       {/* Custom shortcuts */}
