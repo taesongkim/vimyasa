@@ -59,6 +59,110 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-05-05 — aesthetics → features
+**Type:** note
+**Body:** Asking features to add a Settings → **Advanced** tab with a
+toggle for the carry-mode motion blur visual.
+
+**Important:** the motion blur lives on the `carry-motion-blur-experiment`
+branch (off `carry-mode-visuals` → off `keymap-onboarding`). It is NOT
+in `carry-mode-visuals` (PR #27). Picking up this work means either
+merging the experimental branch into a base your toggle PR sits on, or
+rebasing on top of it. Coordinate with whoever lands the carry-mode
+visual treatment first — the toggle PR depends on the experimental
+branch landing.
+
+### What the toggle controls
+
+When **off** (default — opt-in): no motion blur. Carry mode plays the
+plain slide + fade defined in `carry-mode-visuals`. Identical visual to
+what's in PR #27.
+
+When **on**: adds a directional trailing motion blur to the send
+animation via SVG filters + JS RAF. Defined in:
+- `src/renderer/src/components/ListWindow/CarryMotionBlurFilters.tsx`
+  — SVG `<defs>` mounted inside `ListWindow`. Two filter chains
+  (`#carry-trail-left`, `#carry-trail-right`).
+- `src/renderer/src/hooks/useCarryAnimation.ts` — `playBlurRamp(direction)`
+  function that RAF-ramps the SVG filter's `stdDeviation` and trail
+  alpha from 0 → peak over the first 30% of the send.
+
+### What features needs to gate
+
+Two sites apply motion blur. **Both** must respect the toggle:
+
+1. **CSS filter application** (`src/renderer/src/styles/globals.css`,
+   in the `.item-row-sending-left` and `.item-row-sending-right`
+   blocks):
+
+   ```css
+   filter: url(#carry-trail-left);   /* and -right */
+   ```
+
+   Suggested: gate via a body class. When toggle is on, add
+   `motion-blur-enabled` to `<body>` (or the renderer root). Then
+   change CSS to:
+
+   ```css
+   .motion-blur-enabled .item-row-sending-left { filter: url(...); }
+   ```
+
+   This keeps gating in CSS — no per-row prop drilling.
+
+2. **JS RAF ramp** (`src/renderer/src/components/ListWindow/ListWindow.tsx`,
+   in `carrySendToList`, currently around line 339):
+
+   ```ts
+   playBlurRamp(direction)
+   ```
+
+   Wrap in a check: `if (motionBlurEnabled) playBlurRamp(direction)`.
+   The RAF is cheap (60 frames over 24ms) but skipping it when
+   disabled keeps the SVG attribute mutations from happening
+   unnecessarily.
+
+`<CarryMotionBlurFilters />` itself can stay mounted unconditionally —
+it's just SVG `<defs>` (zero render cost when no element references
+the filter URL). No need to gate the component.
+
+### Persistence + UI
+
+- **Setting key** (suggestion): `effects.carryMotionBlur` (boolean,
+  default `false`).
+- **UI**: new "Advanced" tab in Settings. The existing pattern in
+  `src/renderer/src/components/Settings/GeneralTab.tsx` (the
+  launch-at-login toggle) is the model — same pill-toggle markup,
+  same flat layout. Title: "Motion blur on carry-mode send" with a
+  subtitle like "Adds a directional motion-blur trail when sending
+  an item to another list. Off by default."
+- **Cross-window**: list windows need to react when the user toggles
+  in Settings. Either fire an IPC broadcast on toggle change and have
+  list windows listen, or write to a shared store the list windows
+  already subscribe to (`useStore` if you want it user-data-shaped, or
+  a new `usePreferencesStore` if it should be its own thing).
+
+### Why opt-in default
+
+The blur uses CSS `filter:` which forces off-screen rendering during
+the send. Text quality may degrade slightly even at `stdDeviation: 0`
+(filter region is allocated regardless). Opt-in keeps the default
+experience untouched while letting users who want the effect turn it
+on. Easy to flip to opt-out later if it proves stable.
+
+### Tunable values (for the toggle PR description)
+
+If features wants to surface any of these as separate sub-toggles or
+sliders later (probably not for v1):
+- `CARRY_BLUR_MAX_PX` (peak stdDeviation): 6
+- `CARRY_TRAIL_ALPHA_MAX` (peak trail alpha): 0.5
+- `CARRY_BLUR_RAMP_FRACTION` (fraction of duration spent ramping): 0.3
+- `dx` in the filter feOffset nodes (trail offset distance): ±14
+
+These all live as `export const`s in
+`src/renderer/src/hooks/useCarryAnimation.ts` and as CSS variables in
+`globals.css`.
+**Status:** open
+
 ## 2026-05-05 — aesthetics + features (joint)
 **Type:** note
 **Body:** Carry mode shipped end-to-end across two branches that have
