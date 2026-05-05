@@ -155,7 +155,13 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     // bg fades). Run in parallel with addItem so the visual signal lands
     // the instant the user hits Enter rather than after the IPC roundtrip.
     const animationPromise = submitAnim.play()
-    await addItem(selectedListId, trimmed)
+    const saved = await addItem(selectedListId, trimmed)
+    // Hint to any open list window for `selectedListId`: scroll the
+    // new item into view. Best-effort UX nudge — the createItem
+    // broadcast has already reconciled persistence; this is purely
+    // about getting the user's eye to the new row when it lands
+    // outside the visible area.
+    void window.api.quickAdd.notifyItemAdded(saved.id, selectedListId)
     await animationPromise
     // Phase 2: form slides up + fades, then we hide the (pre-warmed)
     // window. We mirror `exiting` into a ref so the closure can detect

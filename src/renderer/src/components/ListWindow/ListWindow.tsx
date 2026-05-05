@@ -38,6 +38,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const [focusIndex, setFocusIndex] = useState(-1)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
+  // When QuickAdd notifies us "I just added <itemId> to <listId>", we
+  // stash the id here. A separate effect watches `items` for the row's
+  // arrival (data-changed → refresh → re-render is async, so the row
+  // isn't in the DOM yet at notify time) and scrolls it into view, then
+  // clears. Best-effort UX hint; the persistence path is unaffected.
+  const [pendingScrollItemId, setPendingScrollItemId] = useState<string | null>(null)
   // Whether a new-item draft row is currently active at the bottom of the
   // list. Toggled by the `n` shortcut and the "+ Add item" toolbar button.
   // Save-vs-discard is handled inside DraftItemRow on Enter / blur / Esc /
@@ -265,6 +271,32 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [focusIndex])
 
+  // Subscribe to entry-form add hints. We only care about adds that
+  // landed in our active list — others go to a different list window.
+  // The actual scroll waits until the new item appears in `items`
+  // (handled by the effect below) so the DOM has the row to scroll to.
+  useEffect(() => {
+    return window.api.quickAdd.onItemAdded(({ itemId, listId }) => {
+      if (listId !== activeListId) return
+      setPendingScrollItemId(itemId)
+    })
+  }, [activeListId])
+
+  // Once the pending item shows up in `items` (refresh has reconciled),
+  // find its DOM row and scrollIntoView. Clear the pending id so a
+  // re-render doesn't re-trigger.
+  useEffect(() => {
+    if (!pendingScrollItemId) return
+    if (!items.some((i) => i.id === pendingScrollItemId)) return
+    const el = scrollContainerRef.current?.querySelector(
+      `[data-flip-id="${pendingScrollItemId}"]`
+    )
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    setPendingScrollItemId(null)
+  }, [pendingScrollItemId, items])
+
   // Listen for context menu actions from main process. Subscribed via
   // window.api.onContextMenuAction — an earlier version reached for
   // window.electron?.ipcRenderer?.on(...) which silently no-op'd
@@ -378,6 +410,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Draft handlers. The DraftItemRow owns the textarea + UX; the list
   // window owns persistence (addItem) and the visibility flag.
   const startDraft = useCallback(() => {
+    // Drop any previously-focused item — keeping the old highlight on
+    // a row while the user starts typing a NEW item is visually
+    // confusing (looks like the focused row is being edited). The
+    // draft surface owns the spotlight from this point until commit
+    // / discard.
+    setFocusIndex(-1)
     setIsAddingItem(true)
   }, [])
 

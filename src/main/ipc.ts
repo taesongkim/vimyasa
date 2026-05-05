@@ -582,6 +582,23 @@ export function registerIpcHandlers(): void {
     broadcastThemeEvent(name)
   })
 
+  // ── QuickAdd → list window: scroll-into-view hint ───────────────
+  // Fires after the entry form successfully adds an item. We re-broadcast
+  // so any open list window can find the new item by id and scroll it
+  // into view. Pure UX hint — persistence already happened in createItem;
+  // this is just "hey, the user just added that one from the entry form,
+  // make sure they can see it."
+  ipcMain.handle(
+    'quickadd:notify-item-added',
+    (_e, itemId: string, listId: string): void => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('quickadd:item-added', { itemId, listId })
+        }
+      }
+    }
+  )
+
   // ── Feedback messenger ──────────────────────────────────────────
   // PR 1: config + clientId infrastructure. No send flow yet — PR 2
   // wires the renderer window and the POST to the Worker. canSend /

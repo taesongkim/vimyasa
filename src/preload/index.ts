@@ -170,7 +170,19 @@ const api: VimyasaAPI = {
       ipcRenderer.on('quickadd:hidden', listener)
       return () => ipcRenderer.removeListener('quickadd:hidden', listener)
     },
-    hide: () => ipcRenderer.invoke('quickAddHide')
+    hide: () => ipcRenderer.invoke('quickAddHide'),
+    notifyItemAdded: (itemId, listId) =>
+      ipcRenderer.invoke('quickadd:notify-item-added', itemId, listId),
+    onItemAdded: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as { itemId?: string; listId?: string } | null
+        if (p && typeof p.itemId === 'string' && typeof p.listId === 'string') {
+          callback({ itemId: p.itemId, listId: p.listId })
+        }
+      }
+      ipcRenderer.on('quickadd:item-added', listener)
+      return () => ipcRenderer.removeListener('quickadd:item-added', listener)
+    }
   },
 
   // Theme event triggers

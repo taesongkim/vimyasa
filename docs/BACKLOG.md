@@ -158,22 +158,22 @@ not silently grab next-priority items.
 ### Auto-scroll to new item added via entry form
 - **Lane:** features
 - **Priority:** P2
-- **Version:** v0.1.8
-- **Status:** idea — small win
-- **Notes:** Mechanic exists for `n` in-list (auto-scrolls focused
-  item into view). Reuse it when entry form adds an item to the
-  currently-open list whose visible area doesn't contain the new item.
-  Likely a one-IPC-event addition: `quickadd` triggers `item-added`,
-  list windows that contain that item scroll to it.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (in-flight on
+  `hot-list` branch alongside the hot-list PRs).
+- **Status:** in-flight (features lane).
+- **Notes:** Implemented via `quickadd:notify-item-added` IPC →
+  broadcast `quickadd:item-added` → list window scrolls the matching
+  row into view if the listId matches its active list. Pure UX hint;
+  persistence still flows through the normal createItem path.
 
 ### Deselect prior item when new item is initiated
 - **Lane:** features
 - **Priority:** P3
-- **Version:** v0.1.8
-- **Status:** idea — tiny
-- **Notes:** When `n` (or shortcut, or anything else) starts a new
-  item draft, the previously-highlighted item should lose its selection
-  state. Trivial — likely a single state-clear in the new-item handler.
+- **Version:** v0.1.8 → **pulled forward to v0.1.6** (same branch).
+- **Status:** in-flight (features lane).
+- **Notes:** `startDraft` in ListWindow now clears `focusIndex` to -1
+  before flipping `isAddingItem`. The draft surface owns the spotlight
+  from that point until commit / discard.
 
 ### Scrollbar tracking lag
 - **Lane:** features (or aesthetics, dealer's choice)
