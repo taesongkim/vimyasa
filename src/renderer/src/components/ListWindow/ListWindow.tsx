@@ -27,6 +27,7 @@ import { ItemRow } from './ItemRow'
 import { DraftItemRow } from './DraftItemRow'
 import { DragGhost } from './DragGhost'
 import type { Item, ItemStatus } from '../../../../../shared/types'
+import { HOT_LIST_ID } from '@shared/types'
 
 export function ListWindow({ listId: initialListId }: { listId: string }) {
   const { items, lists, addItem, reorder, changeItemStatus, removeItem, editItem, sendItemToList, archiveItem } =
@@ -516,6 +517,15 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         return
       }
       window.api.closeWindow()
+    },
+    // `0` summons the hot list as its own (right-anchored) window —
+    // not an in-place active-list swap. createListWindow toggles in
+    // main (focused → close), so pressing `0` from inside the hot list
+    // closes it; pressing from a regular list opens / focuses the hot
+    // window while the regular list stays where it is. Cross-window
+    // slide animations are deferred (proposal "deferred questions").
+    onNumber0: () => {
+      void window.api.openListWindow(HOT_LIST_ID)
     },
     onNumber1: () => switchToListByNumber(1),
     onNumber2: () => switchToListByNumber(2),

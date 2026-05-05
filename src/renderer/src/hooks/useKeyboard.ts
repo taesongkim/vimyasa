@@ -14,6 +14,7 @@ interface KeyboardConfig {
   onC?: () => void
   onO?: () => void
   onA?: () => void
+  onNumber0?: () => void
   onNumber1?: () => void
   onNumber2?: () => void
   onNumber3?: () => void
@@ -120,6 +121,10 @@ export function useKeyboard(config: KeyboardConfig) {
             e.preventDefault()
             config.onA?.()
           }
+          break
+        case '0':
+          e.preventDefault()
+          config.onNumber0?.()
           break
         case '1':
           e.preventDefault()
