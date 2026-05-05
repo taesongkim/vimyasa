@@ -159,6 +159,15 @@ function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions)
 export function createListWindow(listId: string, position?: { x: number; y: number }): BrowserWindow {
   const existing = listWindows.get(listId)
   if (existing && !existing.isDestroyed()) {
+    // Hot list is invariant: never more than one window, and never
+    // toggle-closed by an open trigger. Any open call when hot is
+    // already up is just a focus change. Regular lists keep the
+    // existing toggle-on-focused behavior (close-when-focused) so
+    // the same shortcut still acts as an Esc-equivalent for them.
+    if (listId === HOT_LIST_ID) {
+      existing.focus()
+      return existing
+    }
     if (existing.isFocused()) {
       existing.close()
       return existing

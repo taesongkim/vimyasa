@@ -240,6 +240,17 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [sortedLists, activeListId, cyclePhase])
 
+  // Cross-side window swap. Closes the current window, opens the target.
+  // Order matters: open first so there's never a "no windows" gap.
+  // Used by `0` from a regular list and `1`-`9` from the hot list (see
+  // the keyboard config below). Stays as a stable helper even if the
+  // 0-key navigation gets disabled later — carry mode (planned) will
+  // reuse it for "send focused item to list N + jump there".
+  const swapToList = useCallback((targetId: string) => {
+    void window.api.openListWindow(targetId)
+    void window.api.closeWindow()
+  }, [])
+
   // Auto-scroll focused item into view
   useEffect(() => {
     if (focusIndex >= 0 && scrollContainerRef.current) {
@@ -283,16 +294,37 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   }, [activeListId])
 
   // Once the pending item shows up in `items` (refresh has reconciled),
-  // find its DOM row and scrollIntoView. Clear the pending id so a
-  // re-render doesn't re-trigger.
+  // find its DOM row and scroll it into view. Mirror of the focus-change
+  // auto-scroll effect above (same scrollBehavior toggle + 150ms reset)
+  // so both scroll triggers feel identical to the user — anything else
+  // would create a perceptual seam between "added via n" and "added
+  // via entry form".
   useEffect(() => {
     if (!pendingScrollItemId) return
     if (!items.some((i) => i.id === pendingScrollItemId)) return
-    const el = scrollContainerRef.current?.querySelector(
+    const container = scrollContainerRef.current
+    if (!container) {
+      setPendingScrollItemId(null)
+      return
+    }
+    const el = container.querySelector(
       `[data-flip-id="${pendingScrollItemId}"]`
     )
     if (el instanceof HTMLElement) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      const containerRect = container.getBoundingClientRect()
+      const elementRect = el.getBoundingClientRect()
+      const isAbove = elementRect.top < containerRect.top
+      const isBelow = elementRect.bottom > containerRect.bottom
+      if (isAbove || isBelow) {
+        const targetScrollTop = isAbove
+          ? container.scrollTop + elementRect.top - containerRect.top
+          : container.scrollTop + elementRect.bottom - containerRect.bottom
+        container.style.scrollBehavior = 'smooth'
+        container.scrollTo({ top: targetScrollTop })
+        setTimeout(() => {
+          container.style.scrollBehavior = ''
+        }, 150)
+      }
     }
     setPendingScrollItemId(null)
   }, [pendingScrollItemId, items])
@@ -556,24 +588,50 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       }
       window.api.closeWindow()
     },
-    // `0` summons the hot list as its own (right-anchored) window —
-    // not an in-place active-list swap. createListWindow toggles in
-    // main (focused → close), so pressing `0` from inside the hot list
-    // closes it; pressing from a regular list opens / focuses the hot
-    // window while the regular list stays where it is. Cross-window
-    // slide animations are deferred (proposal "deferred questions").
-    onNumber0: () => {
-      void window.api.openListWindow(HOT_LIST_ID)
-    },
-    onNumber1: () => switchToListByNumber(1),
-    onNumber2: () => switchToListByNumber(2),
-    onNumber3: () => switchToListByNumber(3),
-    onNumber4: () => switchToListByNumber(4),
-    onNumber5: () => switchToListByNumber(5),
-    onNumber6: () => switchToListByNumber(6),
-    onNumber7: () => switchToListByNumber(7),
-    onNumber8: () => switchToListByNumber(8),
-    onNumber9: () => switchToListByNumber(9),
+    // Number-key navigation.
+    //
+    //   regular list, `1`-`9`  → in-place active-list swap (existing).
+    //   regular list, `0`      → close + open the hot list.            [REMOVABLE]
+    //   hot list,     `1`-`9`  → close + open regular list N.          [REMOVABLE]
+    //   hot list,     `0`      → no-op.
+    //
+    // To revert to "regular lists only navigate 1-9 in-place; hot list
+    // ignores number keys entirely", delete the [REMOVABLE] branches
+    // (set onNumber0 to undefined in regulars, and onNumber1..9 to
+    // undefined when hot). The in-place switchToListByNumber path is
+    // unaffected. The swapToList helper stays in either case (carry
+    // mode reuses it).
+    onNumber0:
+      list?.kind === 'hot'
+        ? undefined
+        : () => swapToList(HOT_LIST_ID), // [REMOVABLE]
+    onNumber1: list?.kind === 'hot'
+      ? () => { const t = sortedLists[0]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(1),
+    onNumber2: list?.kind === 'hot'
+      ? () => { const t = sortedLists[1]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(2),
+    onNumber3: list?.kind === 'hot'
+      ? () => { const t = sortedLists[2]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(3),
+    onNumber4: list?.kind === 'hot'
+      ? () => { const t = sortedLists[3]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(4),
+    onNumber5: list?.kind === 'hot'
+      ? () => { const t = sortedLists[4]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(5),
+    onNumber6: list?.kind === 'hot'
+      ? () => { const t = sortedLists[5]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(6),
+    onNumber7: list?.kind === 'hot'
+      ? () => { const t = sortedLists[6]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(7),
+    onNumber8: list?.kind === 'hot'
+      ? () => { const t = sortedLists[7]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(8),
+    onNumber9: list?.kind === 'hot'
+      ? () => { const t = sortedLists[8]; if (t) swapToList(t.id) } // [REMOVABLE]
+      : () => switchToListByNumber(9),
     onTab: cycleToNextList
   })
 
