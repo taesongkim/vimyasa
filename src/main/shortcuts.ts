@@ -7,7 +7,7 @@ import {
   createShortcutsOverviewWindow
 } from './windows'
 import type { BuiltinShortcuts, List } from '../shared/types'
-import { DEFAULT_BUILTIN_SHORTCUTS, getRegularLists } from '../shared/types'
+import { DEFAULT_BUILTIN_SHORTCUTS, HOT_LIST_ID, getRegularLists } from '../shared/types'
 import { orchestrator } from './onboarding'
 
 let cycleIndex = 0
@@ -75,6 +75,14 @@ function registerBuiltinShortcuts(): void {
   // hasn't been requested. If user-rebinding lands, promote it then.
   tryRegisterBuiltin('CommandOrControl+Shift+\\', () => {
     createFeedbackWindow()
+  })
+
+  // Hot list — see docs/proposals/hot-list.md. Toggles the always-existing
+  // hot list window (focused → close, otherwise → open / focus). Same
+  // hard-coded posture as feedback-messenger; promote to BuiltinShortcuts
+  // if user-rebinding lands.
+  tryRegisterBuiltin('CommandOrControl+Shift+H', () => {
+    createListWindow(HOT_LIST_ID)
   })
 
 }

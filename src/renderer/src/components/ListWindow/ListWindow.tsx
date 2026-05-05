@@ -76,8 +76,18 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // Settings → Lists tab updates on drag-reorder. Every position-y display
   // here (list number, number-key 1–9 switching, Tab cycling) reads from
   // sortedLists so it stays in sync with what Settings shows.
+  // sortedLists drives both the title-bar list number AND the 1-9
+  // number-key navigation. Filtering to regular lists means:
+  //   - regular lists get listNumber 1..N (in user-facing order)
+  //   - hot list's findIndex returns -1, so listNumber renders as 0
+  //     (matching the proposal's "hot list holds slot 0" stance)
+  //   - 1-9 key presses stay scoped to user lists; they can't
+  //     accidentally land on the hot list
+  // PR 3 wires the actual `0` key handler that switches into the hot
+  // list — the visual `0.` on the title bar is just a free side
+  // effect of using the same source.
   const sortedLists = useMemo(
-    () => [...lists].sort((a, b) => a.sortOrder - b.sortOrder),
+    () => lists.filter((l) => l.kind !== 'hot').sort((a, b) => a.sortOrder - b.sortOrder),
     [lists]
   )
 
@@ -600,11 +610,22 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     )
   }
 
+  // Slide direction mirrors the spatial position: regular lists stack
+  // from the left and slide in from the left (-20 → 0); the hot list
+  // anchors to the right edge and slides in from the right (+20 → 0).
+  // The user develops a left/right muscle memory for "everyday work"
+  // vs. "today's commitments." If `list` is briefly undefined during
+  // a delete, default to the regular direction — the window will close
+  // shortly anyway.
+  const isHot = list?.kind === 'hot'
+  const slideEnterX = isHot ? 20 : -20
+  const slideExitX = isHot ? 30 : -30
+
   return (
     <motion.div
       key={activeListId}
-      initial={{ opacity: 0, x: -20 }}
-      animate={cyclePhase === 'out' ? { opacity: 0, x: -30 } : { opacity: 1, x: 0 }}
+      initial={{ opacity: 0, x: slideEnterX }}
+      animate={cyclePhase === 'out' ? { opacity: 0, x: slideExitX } : { opacity: 1, x: 0 }}
       transition={{ duration: cyclePhase === 'out' ? 0.08 : 0.1, ease: [0.25, 0.1, 0.25, 1] }}
       onAnimationComplete={() => {
         if (cyclePhase === 'out' && cycleTargetRef.current) {

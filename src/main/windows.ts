@@ -4,6 +4,7 @@ import { is } from '@electron-toolkit/utils'
 import { orchestrator } from './onboarding'
 import { getThemesPreloadArg } from './themes-store'
 import { instrumentWindow } from './window-logging'
+import { HOT_LIST_ID } from '../shared/types'
 
 // Re-run onboarding callout positioning whenever a host window moves /
 // resizes / shows / hides / closes — keeps the callout glued to the host.
@@ -74,6 +75,22 @@ function getRightEdgePosition(width: number, height: number): { x: number; y: nu
     x: wa.x + wa.width - width - INITIAL_X,
     y: wa.y + INITIAL_Y
   }
+}
+
+// Right-edge anchored placement for the hot list. Mirror of the
+// leftward stack used by regular lists — establishes the spatial split
+// "regular = left, hot = right" the proposal calls for.
+function calculateHotListPosition(height: number): { x: number; y: number } {
+  const cursor = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(cursor)
+  const wa = display.workArea
+  let x = wa.x + wa.width - LIST_WINDOW_WIDTH - INITIAL_X
+  let y = wa.y + INITIAL_Y
+  // Defensive clamps in case the work area is smaller than expected
+  // (rare; multi-monitor edge case where window > display height).
+  if (x < wa.x) x = wa.x
+  if (y + height > wa.y + wa.height) y = wa.y + wa.height - height - 20
+  return { x, y }
 }
 
 function calculateStackedPosition(): { x: number; y: number } {
@@ -152,7 +169,14 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
 
   const workArea = screen.getPrimaryDisplay().workArea
   const listWindowHeight = Math.round(workArea.height * 0.97)
-  const { x, y } = position || calculateStackedPosition()
+  // Hot list defaults to right-edge anchored; regular lists keep the
+  // existing leftward stack. An explicit `position` arg still wins
+  // (e.g. user-driven open at a specific coordinate via IPC).
+  const { x, y } =
+    position ||
+    (listId === HOT_LIST_ID
+      ? calculateHotListPosition(listWindowHeight)
+      : calculateStackedPosition())
   const win = makeWindow(`list:${listId}`, {
     width: LIST_WINDOW_WIDTH,
     height: listWindowHeight,
