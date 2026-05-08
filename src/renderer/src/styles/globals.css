@@ -37,6 +37,15 @@
   --font-size-lg: 18px;     /* list titles */
   --font-size-entry: 20px;  /* quick-add entry forms */
 
+  /* Alpha for the dark-mode interface bg overlay (Phase 0 of the
+     color-tokenization proposal). The overlay is pure black; this var
+     controls how much vibrancy gets dimmed. Renderer mirrors
+     `effects.devBgBaseA` from the themes-store onto this var via
+     themesStore.ts; the fallback matches DEFAULT_EFFECTS_CONFIG so any
+     window without the JS sync still paints with the chosen darkness.
+     Retires when Phase 1 introduces proper Layer 1/2/3 tokens. */
+  --bg-base-a: 0.7;
+
   /* Backgrounds (darkest → lightest, alpha-aware for transparency) */
   --color-bg: rgba(10, 10, 10, 0.85);
   --color-surface: rgba(255, 255, 255, 0.025);
@@ -263,7 +272,13 @@ html, body, #root {
 /* ── Glass tint (vibrancy handled by macOS at the window level) ── */
 
 .glass-surface {
-  background: rgba(10, 10, 10, 0.1);
+  /* Pure-black overlay over macOS vibrancy. Alpha driven by
+     `--bg-base-a` (themes-store → themesStore.ts → <html>); higher =
+     darker because more black sits in front of the vibrancy. Black
+     keeps vibrancy character at every alpha (no tint domination), so
+     the slider is effectively a "darkness amount" knob. Phase 1
+     promotes this to proper Layer 2 tokens. */
+  background: rgba(0, 0, 0, var(--bg-base-a, 0.1));
 }
 
 /* ── Scroll-edge fade ─────────────────────────────────────────────

@@ -92,6 +92,13 @@ not silently grab next-priority items.
 - **Status:** ✅ merged in PR #28. Mechanism + visual treatment + send animation + receipt pulse on receiver all landed in one delivery.
 - **Notes:** Carry mode is sustained — 0-9 sends + exits, j/k reorders + persists, Enter / Esc exit at current position. `m` also lands (toggle, not just enter). Item-arrived IPC broadcast handles cross-window receipt pulse + auto-scroll. Right-click "Send to List" inherits the same treatment for free.
 
+### Phase 0: dark-mode darkness slider + token plumbing
+- **Lane:** themes
+- **Priority:** P2
+- **Version:** v0.1.7
+- **Status:** in-flight (themes lane, branch `color-tokenization-phase-0`, 2026-05-08)
+- **Notes:** First slice of [proposals/color-tokenization.md](./proposals/color-tokenization.md). Dev-only slider in `ThemeDevPanel.tsx` controlling OKLCH lightness of the dark-mode interface bg; wires `--bg-base-l` on `<html>` and converts the existing `.glass-surface` rule to `oklch(var(--bg-base-l) var(--bg-base-c, 0.02) var(--hue, 230) / 0.1)`. Persists temporary `effects.devBgBaseL` in themes-store (retires once Phase 1 bakes the value into Layer 2). No Layer 1/2/3 taxonomy yet, no Settings UI, no Magic Colors changes.
+
 ### Focus-state visual cue (flash + glow)
 - **Lane:** themes (primary), aesthetics (timing/feel)
 - **Priority:** P2

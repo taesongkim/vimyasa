@@ -12,6 +12,7 @@
 import { create } from 'zustand'
 import {
   defaultThemesState,
+  type EffectsConfig,
   type SurfaceConfig,
   type SurfaceId,
   type ThemesState
@@ -26,7 +27,23 @@ interface ThemesStoreState extends ThemesState {
   setMasterEnabled: (enabled: boolean) => Promise<void>
   setSurfaceEnabled: (surfaceId: SurfaceId, enabled: boolean) => Promise<void>
   setSurfaceConfig: (surfaceId: SurfaceId, config: SurfaceConfig) => Promise<void>
+  setEffects: (partial: Partial<EffectsConfig>) => Promise<void>
   reset: () => Promise<void>
+}
+
+/** Mirror selected `effects` fields onto `<html>` as CSS variables so
+ *  globals.css can compose them into rules like `.glass-surface`'s
+ *  background. Runs once on initial state read and again on every
+ *  cross-window broadcast — every renderer in this Electron process
+ *  picks up the new value live, no reload needed.
+ *
+ *  Currently only `--bg-base-a` is mirrored (Phase 0 dev-bg slider —
+ *  alpha for the pure-black overlay over vibrancy). When Phase 1's
+ *  proper token system lands, this whole helper either retires or
+ *  expands to mirror the full token set. */
+function applyEffectsToDOM(effects: EffectsConfig): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.style.setProperty('--bg-base-a', String(effects.devBgBaseA))
 }
 
 // Read the preload-injected snapshot synchronously. Only null if the
@@ -38,12 +55,16 @@ function readInitial(): ThemesState {
 
 export const useThemesStore = create<ThemesStoreState>((set) => {
   const initial = readInitial()
+  // Mirror onto `<html>` ASAP so the first paint already has the right
+  // background lightness (no flash from default → user value).
+  applyEffectsToDOM(initial.effects)
 
   // Install the cross-window broadcast subscription exactly once, when the
   // store is first created in this renderer. Each renderer's window has its
   // own subscription. Lives until the renderer exits — no cleanup needed.
   if (typeof window !== 'undefined' && window.api?.themes?.onChanged) {
     window.api.themes.onChanged((next) => {
+      applyEffectsToDOM(next.effects)
       set({ ...next })
     })
   }
@@ -62,21 +83,31 @@ export const useThemesStore = create<ThemesStoreState>((set) => {
 
     setMasterEnabled: async (enabled) => {
       const next = await window.api.themes.setMasterEnabled(enabled)
+      applyEffectsToDOM(next.effects)
       set({ ...next })
     },
 
     setSurfaceEnabled: async (surfaceId, enabled) => {
       const next = await window.api.themes.setSurfaceEnabled(surfaceId, enabled)
+      applyEffectsToDOM(next.effects)
       set({ ...next })
     },
 
     setSurfaceConfig: async (surfaceId, config) => {
       const next = await window.api.themes.setSurfaceConfig(surfaceId, config)
+      applyEffectsToDOM(next.effects)
+      set({ ...next })
+    },
+
+    setEffects: async (partial) => {
+      const next = await window.api.themes.setEffects(partial)
+      applyEffectsToDOM(next.effects)
       set({ ...next })
     },
 
     reset: async () => {
       const next = await window.api.themes.reset()
+      applyEffectsToDOM(next.effects)
       set({ ...next })
     }
   }

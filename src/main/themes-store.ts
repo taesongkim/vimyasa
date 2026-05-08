@@ -9,6 +9,7 @@ import {
   DEFAULT_PARTICLE_CONFIG,
   DEFAULT_BURST_CONFIG,
   DEFAULT_TRIGGER_CONFIG,
+  DEFAULT_EFFECTS_CONFIG,
   defaultThemesState,
   defaultThemeDevPresetsState,
   defaultSurfaceConfig,
@@ -17,7 +18,8 @@ import {
   type ThemeDevPresetsState,
   type ThemeDevPreset,
   type SurfaceId,
-  type SurfaceConfig
+  type SurfaceConfig,
+  type EffectsConfig
 } from '../shared/themes'
 
 // ── Themes (production) ─────────────────────────────────────────
@@ -37,10 +39,32 @@ export function getThemesState(): ThemesState {
     schemaVersion: themesStore.get('schemaVersion'),
     masterEnabled: themesStore.get('masterEnabled'),
     activeTheme: themesStore.get('activeTheme'),
-    surfaces: themesStore.get('surfaces')
+    surfaces: themesStore.get('surfaces'),
+    // `effects` may be undefined for stores that predate v7; the v6→v7
+    // migration below populates it from DEFAULT_EFFECTS_CONFIG.
+    effects: themesStore.get('effects') as EffectsConfig | undefined as EffectsConfig
   }
   let mutated = false
   let surfaces = { ...raw.surfaces } as Record<SurfaceId, SurfaceConfig>
+  // Field-shape normalization: v7 originally landed `devBgBaseL` (OKLCH
+  // lightness with fixed alpha) but flipped to `devBgBaseA` (alpha for a
+  // pure-black overlay) before merge — see schema docs in shared/themes.ts.
+  // Stores written between the two shapes (dev installs only — nothing
+  // shipped) get backfilled to the new default rather than carrying a
+  // dead field. Cast to widen so we can probe legacy shape without a
+  // schema-version bump.
+  const rawEffects = raw.effects as
+    | (Partial<EffectsConfig> & { devBgBaseL?: number })
+    | undefined
+  const hasNewShape = rawEffects != null && typeof rawEffects.devBgBaseA === 'number'
+  let effects: EffectsConfig = hasNewShape
+    ? (rawEffects as EffectsConfig)
+    : { ...DEFAULT_EFFECTS_CONFIG }
+  if (rawEffects != null && !hasNewShape) {
+    // Old shape detected — replace wholesale. Renderer never sees the
+    // stale field.
+    mutated = true
+  }
 
   // ── Schema migrations ─────────────────────────────────────────
   // Each step describes the surfaces + master state that became part
@@ -87,6 +111,17 @@ export function getThemesState(): ThemesState {
     // preserved.
     surfaces = { ...surfaces, 'feedback-input': defaultSurfaceConfig('feedback-input') }
     schemaVersion = 6
+    mutated = true
+  }
+  if (schemaVersion < 7) {
+    // v7: introduced `effects` namespace (Phase 0 of the color-tokenization
+    // proposal). Backfills `devBgBaseA` (alpha for the pure-black overlay
+    // painted on top of vibrancy in `.glass-surface`). Existing user
+    // state for surfaces is untouched. The `effects ?? { ... }` above
+    // already handles the load case; this just bumps the version + flags
+    // mutation.
+    effects = raw.effects ?? { ...DEFAULT_EFFECTS_CONFIG }
+    schemaVersion = 7
     mutated = true
   }
 
@@ -180,9 +215,10 @@ export function getThemesState(): ThemesState {
     themesStore.set('schemaVersion', schemaVersion)
     themesStore.set('masterEnabled', masterEnabled)
     themesStore.set('surfaces', surfaces)
-    return { ...raw, schemaVersion, masterEnabled, surfaces }
+    themesStore.set('effects', effects)
+    return { ...raw, schemaVersion, masterEnabled, surfaces, effects }
   }
-  return raw
+  return { ...raw, effects }
 }
 
 export function setThemesState(next: ThemesState): ThemesState {
@@ -190,6 +226,7 @@ export function setThemesState(next: ThemesState): ThemesState {
   themesStore.set('masterEnabled', next.masterEnabled)
   themesStore.set('activeTheme', next.activeTheme)
   themesStore.set('surfaces', next.surfaces)
+  themesStore.set('effects', next.effects)
   return next
 }
 

@@ -82,6 +82,7 @@ function Slider({
   min,
   max,
   step,
+  decimals,
   onChange
 }: {
   label: string
@@ -89,8 +90,14 @@ function Slider({
   min: number
   max: number
   step: number
+  /** Decimal places shown next to the slider. Defaults to 2 for sub-1
+   *  steps and 0 for integer steps — fine for most knobs. Pass an
+   *  explicit value (e.g. 3 for the bg-darkness slider's 0.005 step)
+   *  when the default precision would round away meaningful detail. */
+  decimals?: number
   onChange: (v: number) => void
 }) {
+  const fixed = decimals ?? (step < 1 ? 2 : 0)
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
@@ -98,7 +105,7 @@ function Slider({
           {label}
         </span>
         <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] font-mono tabular-nums">
-          {value.toFixed(step < 1 ? 2 : 0)}
+          {value.toFixed(fixed)}
         </span>
       </div>
       <input
@@ -149,9 +156,11 @@ export function ThemeDevPanel() {
   const hydrate = useThemesStore((s) => s.hydrate)
   const masterEnabled = useThemesStore((s) => s.masterEnabled)
   const surfaces = useThemesStore((s) => s.surfaces)
+  const effects = useThemesStore((s) => s.effects)
   const setMasterEnabled = useThemesStore((s) => s.setMasterEnabled)
   const setSurfaceEnabled = useThemesStore((s) => s.setSurfaceEnabled)
   const setSurfaceConfig = useThemesStore((s) => s.setSurfaceConfig)
+  const setEffects = useThemesStore((s) => s.setEffects)
 
   const [selectedSurface, setSelectedSurface] = useState<SurfaceId>('quickadd-window')
   const [presets, setPresets] = useState<ThemeDevPreset[]>([])
@@ -260,6 +269,26 @@ export function ThemeDevPanel() {
       </div>
 
       <div className="no-drag flex-1 overflow-y-auto px-1">
+        {/* Phase 0 of the color-tokenization proposal — temporary slider
+            for tuning the dark-mode interface bg's OKLCH lightness.
+            Retires once the chosen value is baked into Layer 2 in
+            Phase 1. See docs/proposals/color-tokenization.md. */}
+        <Section title="Interface background">
+          <Slider
+            label="Background darkness"
+            value={effects.devBgBaseA}
+            min={0.05}
+            max={0.9}
+            step={0.01}
+            decimals={2}
+            onChange={(v) => void setEffects({ devBgBaseA: v })}
+          />
+          <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] leading-snug">
+            Higher = darker (more black sits over the vibrancy). Bake the value
+            into Layer 2 once it lands right.
+          </span>
+        </Section>
+
         {/* Master + surface picker */}
         <Section title="Scope">
           <ToggleRow

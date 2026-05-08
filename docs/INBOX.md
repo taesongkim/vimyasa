@@ -59,6 +59,15 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-05-08 — themes
+**Type:** note
+**Body:** Phase 0 of color-tokenization landed (PR #33). Two findings worth Phase 1's attention before baking the Layer 2 dark-mode bg token:
+
+**1. Chosen value: alpha 0.7.** Justin dialed this in via the dev slider. The new default in `DEFAULT_EFFECTS_CONFIG.devBgBaseA` and the `--bg-base-a` fallback in `:root` both ship at 0.7. When Phase 1 builds the Layer 2 token taxonomy, the dark-mode bg-base token should map to whatever produces this same look (effectively `rgba(0, 0, 0, 0.7)` painted over `vibrancy: 'under-window'`).
+
+**2. Decision 6 of the proposal needs revisiting.** The proposal said "instead of changing opacity (which would lose vibrancy character), only the OKLCH lightness component drops." That reasoning held for a *colored* overlay where bumping alpha lets the tint dominate over vibrancy's color-picking. But for a **pure-black** overlay it's wrong — black has no color to dominate with, so raising alpha just dims vibrancy uniformly while preserving its character. Phase 0 ended up flipping to pure-black + variable alpha mid-iteration because L-tuning at fixed 0.1 alpha produced nearly-imperceptible changes (the original mechanism was solving a problem that didn't exist). Phase 1 should decide: keep OKLCH-decomposable tokens for *future color modes* (where chroma/hue matter), but the dark-mode bg-base specifically can stay as a simple `rgba(0, 0, 0, A)` since it's neutral by design. Worth a one-line amendment to Decision 6.
+**Status:** open
+
 *(Add new entries above this line, newest first.)*
 
 ---
