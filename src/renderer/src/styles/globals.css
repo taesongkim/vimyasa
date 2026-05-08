@@ -37,6 +37,14 @@
   --font-size-lg: 18px;     /* list titles */
   --font-size-entry: 20px;  /* quick-add entry forms */
 
+  /* OKLCH lightness for the dark-mode interface bg (Phase 0 of the
+     color-tokenization proposal). Renderer mirrors `effects.devBgBaseL`
+     from the themes-store onto this var via themesStore.ts; this fallback
+     ~matches the previous hardcoded rgb(10,10,10). The chroma + hue
+     args are inlined into rules using this var (oklch's `var(--name, fallback)`
+     pattern) until Phase 1 introduces proper Layer 1/2/3 tokens. */
+  --bg-base-l: 0.145;
+
   /* Backgrounds (darkest → lightest, alpha-aware for transparency) */
   --color-bg: rgba(10, 10, 10, 0.85);
   --color-surface: rgba(255, 255, 255, 0.025);
@@ -263,7 +271,11 @@ html, body, #root {
 /* ── Glass tint (vibrancy handled by macOS at the window level) ── */
 
 .glass-surface {
-  background: rgba(10, 10, 10, 0.1);
+  /* OKLCH lightness driven by `--bg-base-l` (themes-store → themesStore.ts →
+     <html>); chroma + hue inlined as fallbacks (Phase 1 of color-tokenization
+     promotes them to vars). Opacity 0.1 preserved so vibrancy / under-window
+     translucency reads identically — only the L component is variable. */
+  background: oklch(var(--bg-base-l) 0.02 230 / 0.1);
 }
 
 /* ── Scroll-edge fade ─────────────────────────────────────────────

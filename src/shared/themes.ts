@@ -250,10 +250,39 @@ export type ThemeId = 'border-beam'
  *    change actually reaches existing stores.
  *  - 5 → 6: Theme 1 added `feedback-input` to the bake (feedback window
  *    textarea — mirror of quickadd-input, same Magic Colors styling).
+ *  - 6 → 7: added `effects` namespace with `devBgBaseL` — Phase 0 of the
+ *    color-tokenization proposal (dev-only slider for the dark-mode bg
+ *    OKLCH lightness). Temporary; retires when Phase 1 bakes the value
+ *    into Layer 2 tokens.
  *
  *  Each step is applied incrementally in `getThemesState` so a user
- *  on v1 picks up everything; a user already on v5 only picks up v6. */
-export const CURRENT_SCHEMA_VERSION = 6 as const
+ *  on v1 picks up everything; a user already on v6 only picks up v7. */
+export const CURRENT_SCHEMA_VERSION = 7 as const
+
+/** Top-level "effects" namespace — non-surface theme knobs that don't
+ *  fit the per-surface SurfaceConfig shape. Currently a single dev-only
+ *  knob for the dark-mode interface background's OKLCH lightness; the
+ *  brief lives in docs/proposals/color-tokenization.md (Phase 0).
+ *
+ *  This whole namespace is expected to retire (or radically reshape)
+ *  once Phase 1 lands the proper Layer 1/2/3 token system. Treat
+ *  fields here as ephemeral. */
+export interface EffectsConfig {
+  /** OKLCH lightness component for the dark-mode interface background.
+   *  Range 0.05–0.30; 0 = pure black, 1 = pure white. Renderer mirrors
+   *  this onto `<html>` as the `--bg-base-l` CSS variable; globals.css
+   *  composes it with hardcoded chroma/hue fallbacks into the
+   *  `.glass-surface` background color. */
+  devBgBaseL: number
+}
+
+/** Default ~matches the perceptual lightness of the previous hardcoded
+ *  `rgb(10, 10, 10)` interface background. Computed via OKLCH conversion
+ *  for that grey; small mismatch is acceptable since the slider is for
+ *  iteration anyway. */
+export const DEFAULT_EFFECTS_CONFIG: EffectsConfig = {
+  devBgBaseL: 0.145
+}
 
 export interface ThemesState {
   schemaVersion: number
@@ -261,6 +290,8 @@ export interface ThemesState {
   masterEnabled: boolean
   activeTheme: ThemeId
   surfaces: Record<SurfaceId, SurfaceConfig>
+  /** Top-level non-surface theme knobs. See EffectsConfig docs. */
+  effects: EffectsConfig
 }
 
 // Defaults below mirror the upstream `border-beam` md/dark preset
@@ -446,7 +477,8 @@ export function defaultThemesState(): ThemesState {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     masterEnabled: true,
     activeTheme: 'border-beam',
-    surfaces
+    surfaces,
+    effects: { ...DEFAULT_EFFECTS_CONFIG }
   }
 }
 
@@ -511,6 +543,10 @@ export interface ThemesAPI {
   setSurfaceEnabled: (surfaceId: SurfaceId, enabled: boolean) => Promise<ThemesState>
   /** Replace one surface's full config (used by dev panel + Themes tab presets). */
   setSurfaceConfig: (surfaceId: SurfaceId, config: SurfaceConfig) => Promise<ThemesState>
+  /** Patch the top-level effects namespace. Partial — only listed fields
+   *  are overwritten; others preserved. Currently used by the Phase 0
+   *  dev-bg darkness slider; expected to retire alongside `EffectsConfig`. */
+  setEffects: (partial: Partial<EffectsConfig>) => Promise<ThemesState>
   /** Reset to defaults — useful escape hatch during experimentation. */
   reset: () => Promise<ThemesState>
   /** Fired whenever any window mutates the themes state. Receives the full new state. */

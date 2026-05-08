@@ -27,7 +27,8 @@ import type {
   ThemesState,
   ThemeDevPreset,
   ThemeEventName,
-  ThemeEventPayload
+  ThemeEventPayload,
+  EffectsConfig
 } from '../shared/themes'
 
 function now(): string {
@@ -572,6 +573,20 @@ export function registerIpcHandlers(): void {
       const next: ThemesState = {
         ...cur,
         surfaces: { ...cur.surfaces, [surfaceId]: config }
+      }
+      const saved = setThemesState(next)
+      broadcastThemesChanged(saved)
+      return saved
+    }
+  )
+
+  ipcMain.handle(
+    'themes:setEffects',
+    (_e, partial: Partial<EffectsConfig>): ThemesState => {
+      const cur = getThemesState()
+      const next: ThemesState = {
+        ...cur,
+        effects: { ...cur.effects, ...partial }
       }
       const saved = setThemesState(next)
       broadcastThemesChanged(saved)
