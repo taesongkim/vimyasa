@@ -92,7 +92,19 @@ not silently grab next-priority items.
 - **Status:** ✅ merged in PR #28. Mechanism + visual treatment + send animation + receipt pulse on receiver all landed in one delivery.
 - **Notes:** Carry mode is sustained — 0-9 sends + exits, j/k reorders + persists, Enter / Esc exit at current position. `m` also lands (toggle, not just enter). Item-arrived IPC broadcast handles cross-window receipt pulse + auto-scroll. Right-click "Send to List" inherits the same treatment for free.
 
-### Phase 0: dark-mode darkness slider + token plumbing
+### Window-content load speed — hyper-fast first-summon for entry form, list, hot list
+- **Lane:** features (primary) + aesthetics (perceived-snappiness consults)
+- **Priority:** P2
+- **Version:** unassigned — **needs deeper pass with coordination** to scope (probably one or more proposals depending on root cause spread)
+- **Status:** idea (2026-05-08, observed during v0.1.7 dev verification)
+- **Notes:** Justin observed inconsistent content-appear speed across windows during v0.1.7 dev verification. The bar he wants: **hyper-fast even on first load**, for entry form, list windows, and hot list specifically. Existing prewarm patterns (QuickAdd is already prewarmed; see `docs/architecture/quickadd-prewarm.md`) help but don't fully solve perceived speed.
+  Investigation areas worth a coordination scoping pass:
+  - **Quantify the inconsistency.** Capture summon-to-painted timings per window type (cold, warm, post-restart). No-DevTools options: log to terminal from main, render a transient FPS/timing readout in dev mode, or have a tester report perceived ranges.
+  - **List-window prewarming.** QuickAdd is prewarmed; list windows are not. Pattern is documented in `docs/architecture/quickadd-prewarm.md` with notes on what list-window prewarm needs (per-listId map, scroll/focus state preservation, AnimatePresence costs with hundreds of items).
+  - **Hot list prewarming.** Same pattern, single-instance — naturally easier to prewarm than per-listId list windows. Originally PR-4 of the hot-list proposal.
+  - **First-paint paint-blockers.** Anything synchronous between window-show and content-paint (theme hydration is already sync per the prewarm pattern; verify nothing else is blocking).
+  - **Animation timing perception.** A 250ms fade-up may *feel* slow even if the data is ready instantly. Aesthetics consult.
+  Coordinate with the `Hot list PR-4 prewarm` line in the v0.1.6 hot list entry — that's the same surface for hot list.
 - **Lane:** themes
 - **Priority:** P2
 - **Version:** v0.1.7 — **shipped**
