@@ -17,14 +17,14 @@ iteration · `P3` someday/maybe.
 
 ## Versioning roadmap
 
-Live release: **v0.1.6**. Planned next sequence:
+Live release: **v0.1.7**. Planned next sequence:
 
 | Version | Theme | Primary contents |
 |---|---|---|
 | ~~**v0.1.5**~~ | ~~Feedback messenger~~ | ✅ Shipped — Cmd+Shift+\\ feedback window, Cloudflare Worker → Resend → email pipeline. |
-| ~~**v0.1.6**~~ | ~~Hot list + carry mode + capture-flow polish~~ | ✅ Shipped — hot list (`Cmd+Shift+H`, holds 0, slides from right), carry mode (`m` to pick up, 0-9 to send, j/k to reorder, Enter/Esc to land), Enter→A archive change, `r` for rename, edit caret fix, motion blur on send (default ON, toggle in Settings → Advanced), auto-scroll to entry-form adds, deselect-on-new-draft, `item-arrived` receipt pulse. Carry mode + the two usability wins were pulled forward from v0.1.8. |
-| **v0.1.7** | Release-notes-in-update + Undo | Surface GitHub release notes in the auto-update prompt window (was v0.1.6). Undo with 3–5 step in-memory ring buffer. `Cmd+Z` / `Cmd+Shift+Z`, in-session only, single-list scope. Hot list PR-4 prewarm if there's slack. |
-| **v0.1.8** | Custom entry-form commands + slack | Slash-command system per [proposals/custom-entry-commands.md](./proposals/custom-entry-commands.md) (PR #24 still awaiting copy + version sign-off; defaulting to v0.1.8 unless human pulls forward). Anything unfinished from v0.1.7 lands here. |
+| ~~**v0.1.6**~~ | ~~Hot list + carry mode + capture-flow polish~~ | ✅ Shipped — hot list (`Cmd+Shift+H`, holds 0, slides from right), carry mode (`m` to pick up, 0-9 to send, j/k to reorder, Enter/Esc to land), Enter→A archive change, `r` for rename, edit caret fix, motion blur on send (default OFF, toggle in Settings → Advanced), auto-scroll to entry-form adds, deselect-on-new-draft, `item-arrived` receipt pulse. Carry mode + the two usability wins were pulled forward from v0.1.8. |
+| ~~**v0.1.7**~~ | ~~Darker dark mode + Phase 0 of color tokenization~~ | ✅ Shipped — interface backgrounds darkened (alpha 0.7 over pure-black, preserving translucency); dev-only `ThemeDevPanel` slider for live tuning; Decision 6 of color-tokenization proposal amended post-implementation. Foundation for Phase 1+ (full tokenization, light mode, cross-project extraction). |
+| **v0.1.8** | Phase 1 tokenization OR Release-notes-in-update + Undo | TBD which slot opens first. Phase 1 = tokenize current dark mode in vimyasa per [proposals/color-tokenization.md](./proposals/color-tokenization.md) (no user-visible change, validates token taxonomy). Release-notes-in-update + Undo from the previous v0.1.7 plan slipped here. Plus custom commands from [proposals/custom-entry-commands.md](./proposals/custom-entry-commands.md) if PR #24 lands first. |
 | **v0.1.9** | Focus-state cues + backup + themed feedback input | Themes lane: focus-changed event + flash/glow via existing magic-colors infra. `feedback-input` surface bake. Features lane: discover existing export, ship tested import. |
 | **v0.1.10** | Polish + bug bash + audit | Mystery flicker root-cause hunt. Onboarding dim z-order. Scrollbar lag. Coordination: auto-update integrity audit. |
 | **v0.2.0** (someday) | Real Theme 2 + switcher | Path B from theme-system docs, or first significant new surface area. Reserved for genuinely big change. |
@@ -71,7 +71,7 @@ not silently grab next-priority items.
 ### Undo / redo
 - **Lane:** features
 - **Priority:** P2
-- **Version:** v0.1.7
+- **Version:** v0.1.8 (was v0.1.7; pushed back as v0.1.7 shipped Phase 0 of color-tokenization instead)
 - **Status:** scoped → 3–5 step in-memory ring buffer, in-session only,
   single-list scope. `Cmd+Z` / `Cmd+Shift+Z`. Covers add / edit /
   archive / delete (and reorder if cheap).
@@ -95,9 +95,37 @@ not silently grab next-priority items.
 ### Phase 0: dark-mode darkness slider + token plumbing
 - **Lane:** themes
 - **Priority:** P2
-- **Version:** v0.1.7
-- **Status:** in-flight (themes lane, branch `color-tokenization-phase-0`, 2026-05-08)
-- **Notes:** First slice of [proposals/color-tokenization.md](./proposals/color-tokenization.md). Dev-only slider in `ThemeDevPanel.tsx` controlling OKLCH lightness of the dark-mode interface bg; wires `--bg-base-l` on `<html>` and converts the existing `.glass-surface` rule to `oklch(var(--bg-base-l) var(--bg-base-c, 0.02) var(--hue, 230) / 0.1)`. Persists temporary `effects.devBgBaseL` in themes-store (retires once Phase 1 bakes the value into Layer 2). No Layer 1/2/3 taxonomy yet, no Settings UI, no Magic Colors changes.
+- **Version:** v0.1.7 — **shipped**
+- **Status:** ✅ merged in PR #33. Mid-iteration pivot from OKLCH-lightness tuning to pure-black-with-alpha (Decision 6 of the proposal got amended in real time; see proposal footnote and INBOX 2026-05-08 — themes). Final baked default: alpha `0.7` over pure black.
+- **Notes:** Slider stays in `ThemeDevPanel` as dev-only tooling for Phase 1+ iteration. `effects.devBgBaseA` persists in themes-store as the source of truth for the dark-mode bg darkness; Phase 1 will fold this into the Layer 2 taxonomy.
+
+### Phase 1: tokenize current dark mode (no user-visible change)
+- **Lane:** themes (primary), aesthetics (legibility audit if needed)
+- **Priority:** P2
+- **Version:** v0.1.8 (provisional)
+- **Status:** idea — proposal locked, ready to scope
+- **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 1. Restructure existing dark-mode interface colors into Layer 1 (raw OKLCH palette) + Layer 2 (semantic dark-mode mappings) + Layer 3 (component shims where needed). All existing colors preserved as tokens; bg-base default carries forward the v0.1.7 alpha 0.7 pure-black. No light mode work yet, no package extraction yet. Deliverable: vimyasa renders identically to v0.1.7 but powered by tokens. **Decision 6 amendment applies:** dark-mode bg-base specifically can use `rgba(0, 0, 0, var(--bg-base-a))` directly OR `oklch(0 0 0 / var(--bg-base-a))` — both produce same color; Phase 1 picks based on shape symmetry preference.
+
+### Phase 2: light mode
+- **Lane:** themes (primary), aesthetics (legibility tuning), features (Settings tab)
+- **Priority:** P2
+- **Version:** v0.1.9 (provisional)
+- **Status:** idea — proposal locked, awaits Phase 1 landing
+- **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 2. Add Layer 2 light-mode mappings, Settings → Appearance toggle (Auto / Light / Dark), audit every component for legibility under light mode. Reverses the dark-mode-only-by-intent stance (memory entry `user_role.md` should update post-merge). Auto follows `prefers-color-scheme`.
+
+### Phase 3: cross-project extraction (design-tokens-justin)
+- **Lane:** coordination (package setup), themes (consumer wiring)
+- **Priority:** P3
+- **Version:** v0.1.9 or v0.1.10 (provisional)
+- **Status:** idea — proposal locked
+- **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 3. Move Layer 1 + Layer 2 + mode CSS to a separate private repo (working name `design-tokens-justin`); vimyasa consumes via npm. Component shims (Layer 3) stay per-project. Writual will consume from the same package when its design lane starts. Final repo name + npm package name + visibility (private vs scoped public) deferred to scope-time.
+
+### Phase 4: color-mode derivation prep
+- **Lane:** themes
+- **Priority:** P3
+- **Version:** v0.2.0+
+- **Status:** idea — proposal locked
+- **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 4. Set up token system for future color-mode switching via `data-color-mode` attribute. No actual color modes shipped — just the architectural readiness. A future v0.2.x picks the modes.
 
 ### Focus-state visual cue (flash + glow)
 - **Lane:** themes (primary), aesthetics (timing/feel)
@@ -115,7 +143,7 @@ not silently grab next-priority items.
 ### Release notes in auto-update prompt
 - **Lane:** features (primary), aesthetics (visual treatment)
 - **Priority:** P2
-- **Version:** v0.1.7 (was v0.1.6 — pushed because the v0.1.6 release filled with hot list + carry mode + capture-flow)
+- **Version:** v0.1.8 (was v0.1.7; v0.1.7 became the Phase 0 darker-dark-mode release instead)
 - **Status:** idea — quick scope only, not yet a proposal
 - **Notes:** When the auto-update flow shows the "update available"
   message, include the GitHub release notes (markdown body of the

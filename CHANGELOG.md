@@ -10,6 +10,36 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.7 — *Darker dark mode* (2026-05-08)
+
+A small, focused release. The interface backgrounds — entry form,
+list windows — now use a darker overlay while keeping the same
+translucent vibrancy character. Tuned to alpha `0.7` over a pure-black
+base via a dev-panel slider iteration session.
+
+Behind the scenes, this is the first commit of a multi-version effort
+to fully tokenize vimyasa's interface colors and add a real light
+mode. The full design lives in
+[`docs/proposals/color-tokenization.md`](docs/proposals/color-tokenization.md);
+v0.1.7 is the smallest possible step that validates the architectural
+direction. The dev-panel slider stays in `ThemeDevPanel` for future
+iteration on neighboring tokens.
+
+The architecture got refined in real time during implementation —
+the original "tune OKLCH lightness, keep alpha" reasoning didn't
+survive contact with a pure-black overlay (no chroma to dominate
+vibrancy with means alpha is the natural knob). Themes lane caught
+it, captured the insight in INBOX, and the proposal carries a
+footnote pointing at the amendment. OKLCH-component decomposition
+still applies for future color modes where chroma and hue matter;
+the dark-mode bg is just a degenerate case where simpler is fine.
+
+Future versions will land the full tokenization (Phase 1: invisible
+restructuring), then light mode (Phase 2), then extract to a
+cross-project shared system (Phase 3).
+
+---
+
 ## v0.1.6 — *Hot list, carry mode, capture-flow polish* (2026-05-05)
 
 The capture-flow release. The headline is the **Hot list** — a second

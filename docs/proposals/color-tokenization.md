@@ -109,6 +109,24 @@ The slider is `is.dev`-gated dev tooling. Once the value lands, bake
 into Layer 2 default and remove the slider (or keep the dev panel
 for future iteration on other tokens).
 
+> **Amendment (2026-05-08, post-Phase 0).** During Phase 0
+> implementation, themes lane found that the original "lower OKLCH
+> lightness, fixed opacity" reasoning was wrong for a **pure-black**
+> overlay. Black has no chroma to dominate vibrancy with, so raising
+> alpha just dims the backdrop uniformly while preserving its
+> color-picking character. L-tuning at fixed alpha 0.1 produced
+> nearly-imperceptible changes — the original mechanism was solving a
+> problem that didn't exist for neutral overlays. Phase 0 ended up
+> using `rgba(0, 0, 0, var(--bg-base-a))` with alpha as the variable
+> knob. Baked default: alpha `0.7`. **OKLCH-component decomposition
+> (Decision 5) still applies for future color modes** where chroma
+> and hue matter; dark-mode bg-base specifically is a degenerate case
+> (L=0, C=0, alpha-only) where `oklch(0 0 0 / A)` and `rgba(0,0,0,A)`
+> produce the same color and the simpler form is fine. Phase 1 will
+> bake the alpha-driven default while structuring the Layer 2 token
+> taxonomy. See [INBOX 2026-05-08 — themes](../INBOX.md) for the
+> finding that drove the amendment.
+
 ## Architecture
 
 ### Token file layout (in the cross-project repo)
