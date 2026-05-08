@@ -250,10 +250,16 @@ export type ThemeId = 'border-beam'
  *    change actually reaches existing stores.
  *  - 5 → 6: Theme 1 added `feedback-input` to the bake (feedback window
  *    textarea — mirror of quickadd-input, same Magic Colors styling).
- *  - 6 → 7: added `effects` namespace with `devBgBaseL` — Phase 0 of the
+ *  - 6 → 7: added `effects` namespace with `devBgBaseA` — Phase 0 of the
  *    color-tokenization proposal (dev-only slider for the dark-mode bg
- *    OKLCH lightness). Temporary; retires when Phase 1 bakes the value
- *    into Layer 2 tokens.
+ *    overlay alpha; the overlay itself is pure black, so alpha alone
+ *    controls how much vibrancy gets dimmed). Temporary; retires when
+ *    Phase 1 bakes the value into Layer 2 tokens. Originally drafted
+ *    as `devBgBaseL` (OKLCH lightness with fixed alpha) but that
+ *    mechanism produces nearly-imperceptible changes at 0.1 alpha; the
+ *    pure-black-overlay-with-variable-alpha shape is simpler and gives
+ *    the slider a useful range. See INBOX 2026-05-08 themes note for
+ *    the trail and a flag back to Decision 6 of the proposal.
  *
  *  Each step is applied incrementally in `getThemesState` so a user
  *  on v1 picks up everything; a user already on v6 only picks up v7. */
@@ -261,27 +267,33 @@ export const CURRENT_SCHEMA_VERSION = 7 as const
 
 /** Top-level "effects" namespace — non-surface theme knobs that don't
  *  fit the per-surface SurfaceConfig shape. Currently a single dev-only
- *  knob for the dark-mode interface background's OKLCH lightness; the
+ *  knob for the dark-mode interface background overlay's alpha; the
  *  brief lives in docs/proposals/color-tokenization.md (Phase 0).
  *
  *  This whole namespace is expected to retire (or radically reshape)
  *  once Phase 1 lands the proper Layer 1/2/3 token system. Treat
  *  fields here as ephemeral. */
 export interface EffectsConfig {
-  /** OKLCH lightness component for the dark-mode interface background.
-   *  Range 0.05–0.30; 0 = pure black, 1 = pure white. Renderer mirrors
-   *  this onto `<html>` as the `--bg-base-l` CSS variable; globals.css
-   *  composes it with hardcoded chroma/hue fallbacks into the
-   *  `.glass-surface` background color. */
-  devBgBaseL: number
+  /** Alpha for the pure-black overlay painted on top of macOS vibrancy
+   *  in `.glass-surface`. 0 = vibrancy untouched (no overlay); 1 =
+   *  fully opaque black (vibrancy invisible). Renderer mirrors this
+   *  onto `<html>` as the `--bg-base-a` CSS variable; globals.css
+   *  composes it into `.glass-surface` as `rgba(0, 0, 0, var(--bg-base-a))`.
+   *
+   *  Black-overlay-with-variable-alpha (rather than colored-overlay-
+   *  with-variable-lightness) keeps vibrancy character intact at every
+   *  alpha — the overlay only dims, it doesn't tint. */
+  devBgBaseA: number
 }
 
-/** Default ~matches the perceptual lightness of the previous hardcoded
- *  `rgb(10, 10, 10)` interface background. Computed via OKLCH conversion
- *  for that grey; small mismatch is acceptable since the slider is for
- *  iteration anyway. */
+/** 0.7 was dialed in via the dev-panel slider on 2026-05-08 — far
+ *  darker than the original 0.1 (which was effectively just-vibrancy).
+ *  This is the Phase 0 bake: new installs ship with the noticeably-
+ *  darker background out of the box. The slider stays in the dev panel
+ *  for further iteration / Phase 1's per-token tuning. Coordination
+ *  picks this value up for the Layer 2 token in Phase 1. */
 export const DEFAULT_EFFECTS_CONFIG: EffectsConfig = {
-  devBgBaseL: 0.145
+  devBgBaseA: 0.7
 }
 
 export interface ThemesState {

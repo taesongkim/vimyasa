@@ -37,11 +37,13 @@ interface ThemesStoreState extends ThemesState {
  *  cross-window broadcast — every renderer in this Electron process
  *  picks up the new value live, no reload needed.
  *
- *  Currently only `--bg-base-l` is mirrored (Phase 0 dev-bg slider).
- *  When the chroma + hue knobs land, add them here too. */
+ *  Currently only `--bg-base-a` is mirrored (Phase 0 dev-bg slider —
+ *  alpha for the pure-black overlay over vibrancy). When Phase 1's
+ *  proper token system lands, this whole helper either retires or
+ *  expands to mirror the full token set. */
 function applyEffectsToDOM(effects: EffectsConfig): void {
   if (typeof document === 'undefined') return
-  document.documentElement.style.setProperty('--bg-base-l', String(effects.devBgBaseL))
+  document.documentElement.style.setProperty('--bg-base-a', String(effects.devBgBaseA))
 }
 
 // Read the preload-injected snapshot synchronously. Only null if the

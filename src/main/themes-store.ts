@@ -46,7 +46,25 @@ export function getThemesState(): ThemesState {
   }
   let mutated = false
   let surfaces = { ...raw.surfaces } as Record<SurfaceId, SurfaceConfig>
-  let effects: EffectsConfig = raw.effects ?? { ...DEFAULT_EFFECTS_CONFIG }
+  // Field-shape normalization: v7 originally landed `devBgBaseL` (OKLCH
+  // lightness with fixed alpha) but flipped to `devBgBaseA` (alpha for a
+  // pure-black overlay) before merge — see schema docs in shared/themes.ts.
+  // Stores written between the two shapes (dev installs only — nothing
+  // shipped) get backfilled to the new default rather than carrying a
+  // dead field. Cast to widen so we can probe legacy shape without a
+  // schema-version bump.
+  const rawEffects = raw.effects as
+    | (Partial<EffectsConfig> & { devBgBaseL?: number })
+    | undefined
+  const hasNewShape = rawEffects != null && typeof rawEffects.devBgBaseA === 'number'
+  let effects: EffectsConfig = hasNewShape
+    ? (rawEffects as EffectsConfig)
+    : { ...DEFAULT_EFFECTS_CONFIG }
+  if (rawEffects != null && !hasNewShape) {
+    // Old shape detected — replace wholesale. Renderer never sees the
+    // stale field.
+    mutated = true
+  }
 
   // ── Schema migrations ─────────────────────────────────────────
   // Each step describes the surfaces + master state that became part
@@ -97,9 +115,11 @@ export function getThemesState(): ThemesState {
   }
   if (schemaVersion < 7) {
     // v7: introduced `effects` namespace (Phase 0 of the color-tokenization
-    // proposal). Backfill from defaults; existing user state for surfaces
-    // is untouched. The `effects ?? { ... }` above already handles the
-    // load case; this just bumps the version + flags mutation.
+    // proposal). Backfills `devBgBaseA` (alpha for the pure-black overlay
+    // painted on top of vibrancy in `.glass-surface`). Existing user
+    // state for surfaces is untouched. The `effects ?? { ... }` above
+    // already handles the load case; this just bumps the version + flags
+    // mutation.
     effects = raw.effects ?? { ...DEFAULT_EFFECTS_CONFIG }
     schemaVersion = 7
     mutated = true

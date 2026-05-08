@@ -276,15 +276,16 @@ export function ThemeDevPanel() {
         <Section title="Interface background">
           <Slider
             label="Background darkness"
-            value={effects.devBgBaseL}
+            value={effects.devBgBaseA}
             min={0.05}
-            max={0.3}
-            step={0.005}
-            decimals={3}
-            onChange={(v) => void setEffects({ devBgBaseL: v })}
+            max={0.9}
+            step={0.01}
+            decimals={2}
+            onChange={(v) => void setEffects({ devBgBaseA: v })}
           />
           <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] leading-snug">
-            Lower = darker. Bake the value into Layer 2 once it lands right.
+            Higher = darker (more black sits over the vibrancy). Bake the value
+            into Layer 2 once it lands right.
           </span>
         </Section>
 
