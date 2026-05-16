@@ -418,7 +418,7 @@ export function ItemRow({
           <textarea
             ref={inputRef}
             rows={1}
-            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
+            className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
             style={{ lineHeight: '1.5rem' }}
             value={text}
             onChange={(e) => setText(e.target.value.replace(/\n/g, ' '))}
@@ -468,7 +468,7 @@ export function ItemRow({
         }}
       >
         <button
-          className="no-drag p-1 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag p-1 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={(e) => {
             e.stopPropagation()
             copyItemWithFeedback()

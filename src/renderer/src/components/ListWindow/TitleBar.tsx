@@ -76,7 +76,7 @@ export function TitleBar({
         {editing ? (
           <input
             ref={inputRef}
-            className="no-drag bg-transparent text-[length:var(--font-size-lg)] font-medium font-tight heading-tracking text-[color:var(--color-text)] outline-none border-b border-[var(--color-border-focus)] w-full"
+            className="no-drag bg-transparent text-[length:var(--font-size-lg)] font-medium font-tight heading-tracking text-[color:var(--color-text-primary)] outline-none border-b border-[var(--color-border-focus)] w-full"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={commitEdit}
@@ -103,7 +103,7 @@ export function TitleBar({
         {/* Settings dropdown */}
         <div ref={menuRef} className="relative">
           <button
-            className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+            className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
             onClick={() => { setMenuOpen(!menuOpen); setConfirmDelete(false) }}
             title="List settings"
           >
@@ -116,17 +116,17 @@ export function TitleBar({
 
           {menuOpen && (
             <div
-              className="absolute right-0 top-8 z-50 min-w-[140px] py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[rgb(19,19,19)]"
+              className="absolute right-0 top-8 z-50 min-w-[140px] py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-menu)]"
               style={{ boxShadow: 'var(--shadow-tooltip)' }}
             >
               <button
-                className="w-full text-left px-3 py-1.5 text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+                className="w-full text-left px-3 py-1.5 text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
                 onClick={() => { startEditing(); setMenuOpen(false) }}
               >
                 Rename list
               </button>
               <button
-                className="w-full text-left px-3 py-1.5 text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+                className="w-full text-left px-3 py-1.5 text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
                 onClick={() => { window.api.openArchive(list.id); setMenuOpen(false) }}
               >
                 View archive
@@ -148,7 +148,7 @@ export function TitleBar({
 
         {/* Close button */}
         <button
-          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
           title="Close (Esc)"
         >

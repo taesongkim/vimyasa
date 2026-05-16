@@ -174,7 +174,7 @@ export function FeedbackWindow() {
       <button
         type="button"
         onClick={openFeedbackSettings}
-        className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] underline transition-default cursor-pointer"
+        className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] underline transition-default cursor-pointer"
       >
         Settings/Feedback
       </button>
@@ -207,12 +207,12 @@ export function FeedbackWindow() {
       <div data-submit-fade className="no-drag flex justify-center">
         <div className="text-[length:var(--font-size-md)] font-medium flex items-center gap-2">
           <JkMailIcon />
-          <span className="text-[color:var(--color-text)]">Note to Justin</span>
+          <span className="text-[color:var(--color-text-primary)]">Note to Justin</span>
           <span className="text-[color:var(--color-text-muted)]"> | Sending as </span>
           <button
             type="button"
             onClick={openFeedbackSettings}
-            className={`no-drag text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:underline transition-default cursor-pointer ${
+            className={`no-drag text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:underline transition-default cursor-pointer ${
               // When it's "Anonymous" the word doesn't read as a name, so
               // a default underline signals click-ability up front. With
               // a real name set, the hover underline is enough.
@@ -227,7 +227,7 @@ export function FeedbackWindow() {
       {/* Body — input OR success/limit/error overlay */}
       {status === 'success' ? (
         <div className="flex-1 flex items-center justify-center">
-          <span className="text-[length:var(--font-size-md)] text-[color:var(--color-text)] font-medium">
+          <span className="text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] font-medium">
             Message sent. Thanks!
           </span>
         </div>
@@ -269,7 +269,7 @@ export function FeedbackWindow() {
                 void handleSend()
               }
             }}
-            className="no-drag flex-1 w-full resize-none bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
+            className="no-drag flex-1 w-full resize-none bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
           />
         </GlowSurface>
       )}
@@ -288,7 +288,7 @@ export function FeedbackWindow() {
             type="button"
             onClick={() => void handleSend()}
             disabled={status !== 'idle' || text.trim().length === 0}
-            className="no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-50 disabled:cursor-not-allowed"
+            className="no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send / ⌘↵
           </button>
@@ -309,7 +309,7 @@ function JkMailIcon() {
       viewBox="0 0 228 151"
       fill="currentColor"
       aria-hidden="true"
-      className="text-[color:var(--color-text)] flex-shrink-0"
+      className="text-[color:var(--color-text-primary)] flex-shrink-0"
       style={{ transform: 'rotate(-18deg)' }}
     >
       <path d="M61.63,72.48L3.76,131.86c-1.34,1.37-3.67.43-3.67-1.49V22.74c0-1.81,2.12-2.81,3.51-1.64l57.87,48.25c.96.8,1.03,2.24.16,3.14Z" />

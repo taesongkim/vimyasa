@@ -211,15 +211,15 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
             onClick={() => setDropdownOpen(!dropdownOpen)}
           >
             <span className="text-[color:var(--color-text-muted)]">Add to</span>
-            <span className="text-[color:var(--color-text)]">{selectedList?.name || 'Unknown'}</span>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-[color:var(--color-text)] mt-px">
+            <span className="text-[color:var(--color-text-primary)]">{selectedList?.name || 'Unknown'}</span>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-[color:var(--color-text-primary)] mt-px">
               <path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
 
           {dropdownOpen && (
             <div
-              className="absolute left-1/2 -translate-x-1/2 top-8 z-50 min-w-[140px] max-h-[64px] overflow-y-auto py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[rgb(19,19,19)]"
+              className="absolute left-1/2 -translate-x-1/2 top-8 z-50 min-w-[140px] max-h-[64px] overflow-y-auto py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-menu)]"
               style={{ boxShadow: 'var(--shadow-tooltip)' }}
             >
               {regularLists.map((list) => (
@@ -228,7 +228,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
                   className={`w-full text-left px-3 py-0.5 text-[length:var(--font-size-xs)] transition-default ${
                     list.id === selectedListId
                       ? 'text-[color:var(--color-accent)]'
-                      : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)]'
+                      : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)]'
                   }`}
                   onClick={() => {
                     setSelectedListId(list.id)
@@ -248,7 +248,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       <GlowSurface surface="quickadd-input" style={{ display: 'block', width: '100%' }}>
         <input
           ref={handleInputRef}
-          className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
+          className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text-primary)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
           placeholder=""
           value={text}
           onChange={(e) => setText(e.target.value)}

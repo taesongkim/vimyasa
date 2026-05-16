@@ -37,47 +37,104 @@
   --font-size-lg: 18px;     /* list titles */
   --font-size-entry: 20px;  /* quick-add entry forms */
 
-  /* Alpha for the dark-mode interface bg overlay (Phase 0 of the
-     color-tokenization proposal). The overlay is pure black; this var
-     controls how much vibrancy gets dimmed. Renderer mirrors
-     `effects.devBgBaseA` from the themes-store onto this var via
-     themesStore.ts; the fallback matches DEFAULT_EFFECTS_CONFIG so any
-     window without the JS sync still paints with the chosen darkness.
-     Retires when Phase 1 introduces proper Layer 1/2/3 tokens. */
+  /* ── Color tokenization (Phase 1 of color-tokenization proposal) ──
+     Two-layer system: Layer 1 (raw palette) + Layer 2 (semantic dark
+     mode). Phase 2 will add a parallel Layer 2 light-mode block. Phase
+     3 may extract Layer 1 + Layer 2 into a cross-project package.
+     Layer 3 (component shims) only added when a component genuinely
+     diverges — none today.
+
+     See docs/proposals/color-tokenization.md for the full design.
+
+     Naming convention:
+       --palette-*  = Layer 1 raw value (atom)
+       --color-*    = Layer 2 semantic name (molecule, references Layer 1)
+       --bg-base-*  = OKLCH component knobs per Decision 5; future color
+                      modes override --hue to tint interface tokens. */
+
+  /* ── Layer 1: raw palette ───────────────────────────────────── */
+
+  /* OKLCH component knobs for the bg-base overlay (Decision 5 plus
+     Decision 6 amendment). The overlay is pure-black at L=0, C=0 in
+     dark mode — vibrancy provides all the visible character — so alpha
+     alone is the user-facing darkness knob (mirrored from
+     effects.devBgBaseA in themes-store via themesStore.ts). Future
+     color modes can tint by setting --bg-base-l / --bg-base-c / --hue
+     to non-zero values; the same composition formula stays. */
+  --hue: 230;
+  --bg-base-l: 0;
+  --bg-base-c: 0;
   --bg-base-a: 0.7;
 
-  /* Backgrounds (darkest → lightest, alpha-aware for transparency) */
-  --color-bg: rgba(10, 10, 10, 0.85);
-  --color-surface: rgba(255, 255, 255, 0.025);
-  --color-surface-hover: rgba(26, 26, 26, 0.7);
-  --color-border: var(--white-priority-1);
-  --color-border-focus: rgba(51, 51, 51, 0.8);
+  /* Neutral gray ramp — lightness-keyed (chroma 0). Suffix tracks
+     approximate OKLCH lightness so future light-mode counterparts read
+     legibly side-by-side (e.g. light-mode --palette-gray-91 inverts
+     toward L 0.09). Flat hex for now; can be converted to oklch()
+     calls in Phase 2 if light mode needs perceptual interpolation. */
+  --palette-gray-91: #e0e0e0;     /* primary text */
+  --palette-gray-65: #909090;     /* muted text */
+  --palette-gray-62: #888888;     /* secondary text */
+  --palette-text-ghost: rgba(212, 212, 212, 0.4);  /* alpha-faded gray-86 */
 
-  /* Text (brightest → dimmest) */
-  --color-text: #e0e0e0;
-  --color-text-secondary: #888888;
-  --color-text-muted: #909090;
-  --color-text-ghost: rgba(212, 212, 212, 0.4);
+  /* Accent + status hues. Standalone palette entries — they don't
+     ride the gray ramp because their chroma is non-zero. */
+  --palette-accent: #60a5fa;
+  --palette-accent-hover: #3b82f6;
+  --palette-success: #4ade80;
+  --palette-warning: #fb923c;
+  --palette-error: #f87171;
 
-  /* Accents (semantic only — never decorative) */
-  --color-accent: #60a5fa;
-  --color-accent-hover: #3b82f6;
-  --color-green: #4ade80;
-  --color-amber: #fb923c;
-  --color-red: #f87171;
+  /* Surface tints. `surface-strong` is the opaque dropdown/menu base
+     used by FilterBar, TitleBar, QuickAdd dropdown, ListsTab modal —
+     it sits over vibrancy with enough opacity to read crisply. */
+  --palette-surface-faint: rgba(255, 255, 255, 0.025);
+  --palette-surface-strong: rgb(19, 19, 19);
+  --palette-border-subtle: rgba(255, 255, 255, 0.08);
+  --palette-border-focus: rgba(51, 51, 51, 0.8);
+  --palette-overlay-hover: rgba(255, 255, 255, 0.015);
+  --palette-overlay-active: rgba(255, 255, 255, 0.06);
+  --palette-overlay-backdrop: rgba(0, 0, 0, 0.3);
 
-  /* Surface opacity layers */
-  --card-bg: rgba(255, 255, 255, 0.035);
-  --card-border: rgba(255, 255, 255, 0.07);
-  --hover-highlight: rgba(255, 255, 255, 0.015);
-  --active-bg: rgba(255, 255, 255, 0.06);
-  --selection-highlight: rgba(255, 255, 255, 0.15);
-  --backdrop-dim: rgba(0, 0, 0, 0.3);
-
-  /* Generalized white priority system */
+  /* White-alpha priority scale — scrollbar / accent-edge / hover.
+     Kept as a coherent triplet so usage sites pick the right tier. */
   --white-priority-1: rgba(255, 255, 255, 0.08);  /* scrollbar track, border elements */
   --white-priority-2: rgba(255, 255, 255, 0.3);   /* scrollbar thumb, content shadows */
   --white-priority-3: rgba(255, 255, 255, 0.5);   /* hover states, emphasized elements */
+
+  /* ── Layer 2: semantic dark mode ────────────────────────────── */
+
+  /* Backgrounds */
+  --color-bg-base: oklch(var(--bg-base-l) var(--bg-base-c) var(--hue) / var(--bg-base-a));
+  --color-bg-menu: var(--palette-surface-strong);
+  --color-surface: var(--palette-surface-faint);
+
+  /* Borders */
+  --color-border: var(--palette-border-subtle);
+  --color-border-focus: var(--palette-border-focus);
+
+  /* Text — bright → dim */
+  --color-text-primary: var(--palette-gray-91);
+  --color-text-secondary: var(--palette-gray-62);
+  --color-text-muted: var(--palette-gray-65);
+  --color-text-ghost: var(--palette-text-ghost);
+
+  /* Accents */
+  --color-accent: var(--palette-accent);
+  --color-accent-hover: var(--palette-accent-hover);
+
+  /* Status (kept under their color names — `--color-green` etc. — to
+     avoid an unrelated rename sweep. Phase 2+ can fold these into
+     `--color-success` / `--color-warning` / `--color-error` if light
+     mode needs hue-shifted variants.) */
+  --color-green: var(--palette-success);
+  --color-amber: var(--palette-warning);
+  --color-red: var(--palette-error);
+
+  /* Overlay scale (consumed directly by components — no further
+     semantic wrapping today). */
+  --hover-highlight: var(--palette-overlay-hover);
+  --active-bg: var(--palette-overlay-active);
+  --backdrop-dim: var(--palette-overlay-backdrop);
 
   /* Shadows */
   --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -163,7 +220,7 @@
 html, body, #root {
   height: 100%;
   background: transparent;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
   -webkit-font-smoothing: antialiased;
@@ -272,13 +329,14 @@ html, body, #root {
 /* ── Glass tint (vibrancy handled by macOS at the window level) ── */
 
 .glass-surface {
-  /* Pure-black overlay over macOS vibrancy. Alpha driven by
-     `--bg-base-a` (themes-store → themesStore.ts → <html>); higher =
-     darker because more black sits in front of the vibrancy. Black
-     keeps vibrancy character at every alpha (no tint domination), so
-     the slider is effectively a "darkness amount" knob. Phase 1
-     promotes this to proper Layer 2 tokens. */
-  background: rgba(0, 0, 0, var(--bg-base-a, 0.1));
+  /* Dark-mode interface background — pure-black overlay over macOS
+     vibrancy. Composed in Layer 2 (`--color-bg-base`) from the OKLCH
+     component knobs (`--bg-base-l`/`-c`/`-a`/`--hue`); the user-facing
+     darkness knob is `--bg-base-a`, mirrored from effects.devBgBaseA
+     in themes-store via themesStore.ts. Black keeps vibrancy character
+     at every alpha (no tint domination over the color-picking that
+     vibrancy already does). */
+  background: var(--color-bg-base);
 }
 
 /* ── Scroll-edge fade ─────────────────────────────────────────────
@@ -555,7 +613,7 @@ html, body, #root {
   border-radius: var(--radius-md);
   font-family: var(--font-sans);
   font-size: var(--font-size-xs);
-  color: var(--color-text);
+  color: var(--color-text-primary);
   z-index: 100;
 }
 .onb-controls h3 {
@@ -563,7 +621,7 @@ html, body, #root {
   font-size: var(--font-size-sm);
   font-weight: 500;
   margin-bottom: 10px;
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 .onb-controls label {
   display: block;
@@ -576,7 +634,7 @@ html, body, #root {
   margin-bottom: 4px;
 }
 .onb-controls label .val {
-  color: var(--color-text);
+  color: var(--color-text-primary);
   font-family: var(--font-mono);
   font-size: 10px;
 }
@@ -608,7 +666,7 @@ html, body, #root {
 }
 .onb-controls button:hover {
   background: rgba(255, 255, 255, 0.12);
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 .onb-dim-close {
   position: fixed;
@@ -617,7 +675,7 @@ html, body, #root {
   font-family: var(--font-sans);
   font-size: var(--font-size-xs);
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   /* Solid panel so the button reads clearly against the heavy dim. */
   background: rgb(38, 38, 42);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -658,7 +716,7 @@ html, body, #root {
   box-shadow: var(--shadow-panel);
   padding: 16px 18px;
   gap: 12px;
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 
 /* Welcome screen — same left-aligned text and same padding as the
@@ -728,7 +786,7 @@ html, body, #root {
   transition: var(--motion-hover);
 }
 .onb-dismiss:hover {
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 
 /* Title */
@@ -737,7 +795,7 @@ html, body, #root {
   font-weight: 500;
   font-size: var(--font-size-md);
   letter-spacing: -0.01em;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   line-height: 1.35;
 }
 
@@ -757,7 +815,7 @@ html, body, #root {
   margin-top: 8px;
 }
 .onb-emphasis {
-  color: var(--color-text);
+  color: var(--color-text-primary);
   font-weight: 500;
 }
 
@@ -901,7 +959,7 @@ html, body, #root {
 }
 .onb-btn-secondary:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 .onb-btn-primary {
   background: var(--color-accent);
@@ -920,7 +978,7 @@ html, body, #root {
    tells the user which one is the primary action. */
 .onb-btn-glow {
   background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text);
+  color: var(--color-text-primary);
   border-color: rgba(255, 255, 255, 0.1);
 }
 .onb-btn-glow:hover:not(:disabled) {

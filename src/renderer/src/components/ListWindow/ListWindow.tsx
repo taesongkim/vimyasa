@@ -1068,7 +1068,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           add-item button without restructuring. */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-t border-[var(--color-border)]">
         <button
-          className="no-drag flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag flex items-center gap-1.5 px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={startDraft}
           title="Add item (N)"
         >

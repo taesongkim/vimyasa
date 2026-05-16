@@ -36,7 +36,7 @@ export function JkModeToggle({ size = 'sm' }: { size?: 'sm' | 'xs' }) {
             aria-pressed={active}
             className={`no-drag ${padX} ${padY} ${fontSize} rounded-[var(--radius-xs)] transition-default ${
               active
-                ? 'bg-[var(--active-bg)] text-[color:var(--color-text)]'
+                ? 'bg-[var(--active-bg)] text-[color:var(--color-text-primary)]'
                 : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
             }`}
           >

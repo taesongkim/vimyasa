@@ -123,7 +123,7 @@ export function ShortcutsTab() {
             key={def.key}
             className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
           >
-            <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
+            <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text-primary)]">
               {def.label}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -138,7 +138,7 @@ export function ShortcutsTab() {
                     ✓
                   </button>
                   <button
-                    className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text)] transition-default px-1"
+                    className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text-primary)] transition-default px-1"
                     onClick={cancelEditingBuiltin}
                     title="Cancel"
                   >
@@ -177,7 +177,7 @@ export function ShortcutsTab() {
               className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] opacity-80"
             >
               <div className="flex-1 min-w-0">
-                <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
+                <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text-primary)]">
                   {shortcut.label}
                 </span>
                 {(isJk || shortcut.description) && (
@@ -209,7 +209,7 @@ export function ShortcutsTab() {
             className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] opacity-80"
           >
             <div className="flex-1 min-w-0">
-              <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
+              <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text-primary)]">
                 {shortcut.label}
               </span>
               {shortcut.description && (
@@ -241,7 +241,7 @@ export function ShortcutsTab() {
               className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text)]">
+                <span className="text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text-primary)]">
                   {actionLabels[s.action]}
                 </span>
                 {targetList && (
@@ -276,7 +276,7 @@ export function ShortcutsTab() {
           <div className="flex items-center gap-2">
             <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] w-16 shrink-0">Action</span>
             <select
-              className="flex-1 bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
+              className="flex-1 bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
               value={newAction}
               onChange={(e) => setNewAction(e.target.value as ShortcutAction)}
             >
@@ -293,7 +293,7 @@ export function ShortcutsTab() {
             <div className="flex items-center gap-2">
               <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] w-16 shrink-0">Target</span>
               <select
-                className="flex-1 bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
+                className="flex-1 bg-[var(--color-surface)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] focus:border-[var(--color-accent)] rounded-[var(--radius-sm)] px-2 py-1.5 outline-none transition-default"
                 value={newTarget}
                 onChange={(e) => setNewTarget(e.target.value)}
               >
