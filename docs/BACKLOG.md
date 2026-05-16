@@ -112,11 +112,12 @@ not silently grab next-priority items.
 - **Notes:** Slider stays in `ThemeDevPanel` as dev-only tooling for Phase 1+ iteration. `effects.devBgBaseA` persists in themes-store as the source of truth for the dark-mode bg darkness; Phase 1 will fold this into the Layer 2 taxonomy.
 
 ### Phase 1: tokenize current dark mode (no user-visible change)
-- **Lane:** themes (primary), aesthetics (legibility audit if needed)
+- **Lane:** themes
 - **Priority:** P2
-- **Version:** v0.1.8
-- **Status:** in-flight (themes lane, branch `color-tokenization-phase-1`, 2026-05-10)
-- **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 1. Restructure existing dark-mode interface colors into Layer 1 (raw OKLCH palette) + Layer 2 (semantic dark-mode mappings) + Layer 3 (component shims where needed). All existing colors preserved as tokens; bg-base default carries forward the v0.1.7 alpha 0.7 pure-black. Deliverable: vimyasa renders identically to v0.1.7 but powered by tokens. **Decision 6 amendment applies:** dark-mode bg-base specifically can use `rgba(0, 0, 0, var(--bg-base-a))` directly OR `oklch(0 0 0 / var(--bg-base-a))` — both produce same color; Phase 1 picks based on shape symmetry preference. **Ships before Phase 2** as a separate PR (invisible-change validation; easier to revert if anything subtly breaks).
+- **Version:** v0.1.8 — **shipped (PR #38, 2026-05-13)**
+- **Status:** ✅ merged. Layer 1 raw palette + Layer 2 semantic dark in `:root`. 18-component sweep renaming `--color-text` → `--color-text-primary`. Two new tokens: `--color-bg-base` (OKLCH-decomposed with alpha-driven darkness) and `--color-bg-menu` (replaces inline `rgb(19,19,19)` in FilterBar / TitleBar / dropdowns / ListsTab modal). Five dead tokens removed (zero callsites verified). Decision 6 amendment honored: `oklch(L=0 C=0 / alpha)` for dark-mode bg-base. Visual diff vs. v0.1.7: zero (user-verified pre-merge).
+- **Notes:** Bundled a cross-lane "live About section" addition with explicit lane-violation disclosure (user asked mid-Phase-1; themes pushed back once per WORKFLOW, user repeated, did inline). New `app:getInfo` IPC + dev-build readout block in Settings → General (gated by `is.dev`). No follow-up BACKLOG entry needed for the About piece — complete fix to a real bug (stale hardcoded v0.1.0 string).
+- **Out of scope (per spec, deferred):** light mode (Phase 2), Settings → Appearance toggle (Phase 2), Magic Colors / Theme 1 surface constants (stay theme-specific), cross-project extraction (Phase 3), onboarding-tour-specific surfaces (`.onb-callout`, `.onb-controls`, `.onb-dim-close` — one-off heavy-glass surfaces, not interface tokens).
 
 ### Phase 2: light mode + Settings → Appearance
 - **Lane:** themes (Layer 2 light mappings + legibility tuning), features (Settings tab), aesthetics (legibility audit)
