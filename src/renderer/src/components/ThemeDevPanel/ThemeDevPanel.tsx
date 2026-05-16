@@ -64,7 +64,7 @@ function Segmented<T extends string>({
           key={opt}
           className={`flex-1 px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium transition-default ${
             value === opt
-              ? 'bg-[var(--active-bg)] text-[color:var(--color-text)]'
+              ? 'bg-[var(--active-bg)] text-[color:var(--color-text-primary)]'
               : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
           }`}
           onClick={() => onChange(opt)}
@@ -254,7 +254,7 @@ export function ThemeDevPanel() {
           Theme Dev · Border Beam
         </span>
         <button
-          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -301,7 +301,7 @@ export function ThemeDevPanel() {
               Surface
             </span>
             <select
-              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none"
+              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] outline-none"
               value={selectedSurface}
               onChange={(e) => setSelectedSurface(e.target.value as SurfaceId)}
             >
@@ -454,7 +454,7 @@ export function ThemeDevPanel() {
                   const raw = e.target.value
                   update({ borderRadius: raw === '' ? undefined : Number(raw) })
                 }}
-                className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none"
+                className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] outline-none"
               />
             </div>
           </div>
@@ -469,7 +469,7 @@ export function ThemeDevPanel() {
             Variant + palette + colors are inherited from the primary above.
           </div>
           <button
-            className="px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-40"
+            className="px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-40"
             disabled={c.extraBeams.length >= 3}
             onClick={() =>
               update({
@@ -616,7 +616,7 @@ export function ThemeDevPanel() {
                   ))}
                 </div>
                 <button
-                  className="mt-1 px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+                  className="mt-1 px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
                   onClick={() => update({ paletteOverride: undefined })}
                   disabled={!c.paletteOverride || c.paletteOverride.every((v) => v == null)}
                 >
@@ -664,7 +664,7 @@ export function ThemeDevPanel() {
               value={c.innerShadow}
               onChange={(e) => update({ innerShadow: e.target.value })}
               placeholder="rgba(255, 255, 255, 0.27)"
-              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none font-mono"
+              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] outline-none font-mono"
             />
           </div>
         </Section>
@@ -694,7 +694,7 @@ export function ThemeDevPanel() {
               value={p.color}
               onChange={(e) => updateParticles({ color: e.target.value })}
               placeholder="auto"
-              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none font-mono"
+              className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] outline-none font-mono"
             />
           </div>
           <Slider
@@ -882,7 +882,7 @@ export function ThemeDevPanel() {
                     key={name}
                     className={`px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium transition-default ${
                       on
-                        ? 'bg-[var(--color-accent)] text-[color:var(--color-text)]'
+                        ? 'bg-[var(--color-accent)] text-[color:var(--color-text-primary)]'
                         : 'bg-[var(--color-surface)] text-[color:var(--color-text-muted)] border border-[var(--color-border)] hover:text-[color:var(--color-text-secondary)]'
                     }`}
                     onClick={() => {
@@ -908,7 +908,7 @@ export function ThemeDevPanel() {
           />
           <div className="flex gap-1 mt-1">
             <button
-              className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+              className="px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
               onClick={() => void window.api.themeEvents.fire('manual-test')}
             >
               Test fire (manual-test)
@@ -930,10 +930,10 @@ export function ThemeDevPanel() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleSavePreset()
               }}
-              className="flex-1 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text)] border border-[var(--color-border)] outline-none"
+              className="flex-1 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] outline-none"
             />
             <button
-              className="px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-40"
+              className="px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-40"
               disabled={!newPresetLabel.trim()}
               onClick={() => void handleSavePreset()}
             >
@@ -951,11 +951,11 @@ export function ThemeDevPanel() {
                 key={p.id}
                 className="flex items-center justify-between gap-2 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)]"
               >
-                <span className="flex-1 text-[length:var(--font-size-xs)] text-[color:var(--color-text)] truncate">
+                <span className="flex-1 text-[length:var(--font-size-xs)] text-[color:var(--color-text-primary)] truncate">
                   {p.label}
                 </span>
                 <button
-                  className="px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+                  className="px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
                   onClick={() => void handleApplyPreset(p)}
                 >
                   Apply
@@ -974,7 +974,7 @@ export function ThemeDevPanel() {
         {/* Copy clipboard */}
         <Section title="Export">
           <button
-            className="px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+            className="px-2 py-1 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium bg-[var(--active-bg)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
             onClick={() => void handleCopyConfig()}
           >
             {copyFeedback === 'copied' ? 'Copied to clipboard' : 'Copy current config as JSON'}

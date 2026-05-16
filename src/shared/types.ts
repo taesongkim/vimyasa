@@ -270,6 +270,17 @@ export interface VimyasaAPI {
   revealDataFile: () => Promise<void>
   getLoginItemSettings: () => Promise<{ openAtLogin: boolean }>
   setLoginItemSettings: (openAtLogin: boolean) => Promise<void>
+  /** App metadata for Settings → About. Always returns version + isDev +
+   *  electronVersion; gitBranch/gitSha are populated only in dev builds
+   *  (production binaries skip the git shell-out — git isn't reliably
+   *  present, and version alone is enough there). */
+  getAppInfo: () => Promise<{
+    version: string
+    isDev: boolean
+    electronVersion: string
+    gitBranch: string | null
+    gitSha: string | null
+  }>
   importData: (data: DataStore) => Promise<void>
   resetData: () => Promise<void>
 

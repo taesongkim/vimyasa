@@ -40,7 +40,7 @@ export function SettingsWindow({ initialTab }: { initialTab?: SettingsTab }) {
       <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <span className="text-[length:var(--font-size-base)] font-tight heading-tracking font-semibold">Settings</span>
         <button
-          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -56,7 +56,7 @@ export function SettingsWindow({ initialTab }: { initialTab?: SettingsTab }) {
             key={tab.key}
             className={`no-drag px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] font-medium transition-default ${
               activeTab === tab.key
-                ? 'bg-[var(--active-bg)] text-[color:var(--color-text)]'
+                ? 'bg-[var(--active-bg)] text-[color:var(--color-text-primary)]'
                 : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] hover:bg-[var(--hover-highlight)]'
             }`}
             onClick={() => setActiveTab(tab.key)}

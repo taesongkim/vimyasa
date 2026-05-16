@@ -1,4 +1,6 @@
-import { ipcMain, BrowserWindow, shell } from 'electron'
+import { ipcMain, BrowserWindow, shell, app } from 'electron'
+import { is } from '@electron-toolkit/utils'
+import { execSync } from 'node:child_process'
 import { v4 as uuid } from 'uuid'
 import { store } from './store'
 import { createListInStore } from './lists'
@@ -117,6 +119,34 @@ function broadcastThemeEvent(
 export function registerIpcHandlers(): void {
   // ── Lifecycle ───────────────────────────────────────────────────
   ipcMain.handle('ping', () => 'pong')
+
+  // ── App info (version / dev-build info) ─────────────────────────
+  // Surface app metadata for the Settings → About section so the user
+  // can verify which build they're running. In dev, also surfaces the
+  // current git branch + short SHA so multi-worktree iteration is
+  // self-evidently labeled in the UI. Production builds skip the git
+  // shell-out (git isn't reliably present in shipped binaries; the
+  // version alone is enough).
+  ipcMain.handle('app:getInfo', () => {
+    const baseInfo = {
+      version: app.getVersion(),
+      isDev: is.dev,
+      electronVersion: process.versions.electron,
+      gitBranch: null as string | null,
+      gitSha: null as string | null
+    }
+    if (!is.dev) return baseInfo
+    try {
+      const opts = { cwd: app.getAppPath(), encoding: 'utf8' as const, timeout: 1000 }
+      const branch = execSync('git rev-parse --abbrev-ref HEAD', opts).trim()
+      const sha = execSync('git rev-parse --short HEAD', opts).trim()
+      return { ...baseInfo, gitBranch: branch, gitSha: sha }
+    } catch {
+      // Git not available or not in a repo — fall back to base info.
+      // No log spam; this is dev-only convenience metadata.
+      return baseInfo
+    }
+  })
 
   // ── Data — read ─────────────────────────────────────────────────
   ipcMain.handle('getAll', (): DataStore => {

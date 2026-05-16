@@ -4,7 +4,7 @@ import { THEME_ATTRIBUTIONS } from '@shared/themes'
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <button
-      className="underline text-[color:var(--color-accent)] hover:text-[color:var(--color-text)] transition-default"
+      className="underline text-[color:var(--color-accent)] hover:text-[color:var(--color-text-primary)] transition-default"
       onClick={() => window.api.openExternal(href)}
     >
       {children}

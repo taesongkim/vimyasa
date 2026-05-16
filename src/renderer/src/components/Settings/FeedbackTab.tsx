@@ -95,7 +95,7 @@ export function FeedbackTab() {
               ;(e.target as HTMLInputElement).blur()
             }
           }}
-          className="mt-1 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text)] text-[length:var(--font-size-sm)] focus:outline-none focus:border-[var(--color-accent)]"
+          className="mt-1 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-primary)] text-[length:var(--font-size-sm)] focus:outline-none focus:border-[var(--color-accent)]"
         />
       </div>
 
@@ -130,7 +130,7 @@ export function FeedbackTab() {
               ;(e.target as HTMLInputElement).blur()
             }
           }}
-          className="w-20 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text)] text-[length:var(--font-size-sm)] text-right focus:outline-none focus:border-[var(--color-accent)]"
+          className="w-20 px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-primary)] text-[length:var(--font-size-sm)] text-right focus:outline-none focus:border-[var(--color-accent)]"
         />
       </div>
     </div>

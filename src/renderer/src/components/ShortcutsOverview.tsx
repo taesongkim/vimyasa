@@ -70,7 +70,7 @@ export function ShortcutsOverview() {
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-[var(--color-border)]">
-          <h1 className="text-[length:var(--font-size-lg)] font-semibold text-[color:var(--color-text)]">
+          <h1 className="text-[length:var(--font-size-lg)] font-semibold text-[color:var(--color-text-primary)]">
             Keyboard Shortcuts
           </h1>
           <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)]">
@@ -92,7 +92,7 @@ export function ShortcutsOverview() {
                 .filter(([key, accel]) => !['CommandOrControl+Shift+A', 'CommandOrControl+Shift+J'].includes(accel))
                 .map(([key, accel]) => (
                 <div key={key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)]">
-                  <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
+                  <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)]">
                     {key === 'openFirstList' ? 'Open First List' : 'Quick Add (First List)'}
                   </span>
                   <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)]">
@@ -109,7 +109,7 @@ export function ShortcutsOverview() {
                 return (
                   <div key={s.id} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)]">
                     <div>
-                      <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
+                      <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)]">
                         {s.action === 'openList' ? 'Open List' :
                          s.action === 'quickAddFixed' ? 'Quick Add' :
                          'Cycle All Lists'}
@@ -130,7 +130,7 @@ export function ShortcutsOverview() {
               {/* Static global shortcuts */}
               {globalShortcuts.map((shortcut) => (
                 <div key={shortcut.key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)]">
-                  <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
+                  <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)]">
                     {shortcut.label}
                   </span>
                   <span className="text-[length:var(--font-size-sm)] font-mono text-[color:var(--color-accent)]">
@@ -155,7 +155,7 @@ export function ShortcutsOverview() {
                 return (
                   <div key={shortcut.key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)] opacity-90">
                     <div className="min-w-0">
-                      <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
+                      <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)]">
                         {shortcut.label}
                       </span>
                       {(description || isJk) && (
@@ -190,7 +190,7 @@ export function ShortcutsOverview() {
               {carryModeShortcuts.map((shortcut) => (
                 <div key={shortcut.key + shortcut.label} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)] opacity-90">
                   <div className="min-w-0">
-                    <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
+                    <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)]">
                       {shortcut.label}
                     </span>
                     {shortcut.description && (
@@ -216,7 +216,7 @@ export function ShortcutsOverview() {
               {entryFormShortcuts.map((shortcut) => (
                 <div key={shortcut.key} className="flex items-center justify-between px-3 py-2 rounded bg-[var(--color-surface)] opacity-90">
                   <div>
-                    <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text)]">
+                    <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-primary)]">
                       {shortcut.label}
                     </span>
                     <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)]">

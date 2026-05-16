@@ -96,7 +96,7 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
         <textarea
           ref={textareaRef}
           rows={1}
-          className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
+          className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
           style={{ lineHeight: '1.5rem' }}
           value={text}
           // Strip newlines on every change so an item never carries \n

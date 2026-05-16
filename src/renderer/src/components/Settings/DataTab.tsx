@@ -74,7 +74,7 @@ export function DataTab() {
           <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">Download a JSON backup</div>
         </div>
         <button
-          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={handleExport}
         >
           Export
@@ -88,7 +88,7 @@ export function DataTab() {
           <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">Restore from a JSON backup</div>
         </div>
         <button
-          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={handleImport}
         >
           Import

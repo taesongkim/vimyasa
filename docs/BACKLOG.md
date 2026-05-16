@@ -115,7 +115,7 @@ not silently grab next-priority items.
 - **Lane:** themes (primary), aesthetics (legibility audit if needed)
 - **Priority:** P2
 - **Version:** v0.1.8
-- **Status:** ready to dispatch — proposal locked
+- **Status:** in-flight (themes lane, branch `color-tokenization-phase-1`, 2026-05-10)
 - **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 1. Restructure existing dark-mode interface colors into Layer 1 (raw OKLCH palette) + Layer 2 (semantic dark-mode mappings) + Layer 3 (component shims where needed). All existing colors preserved as tokens; bg-base default carries forward the v0.1.7 alpha 0.7 pure-black. Deliverable: vimyasa renders identically to v0.1.7 but powered by tokens. **Decision 6 amendment applies:** dark-mode bg-base specifically can use `rgba(0, 0, 0, var(--bg-base-a))` directly OR `oklch(0 0 0 / var(--bg-base-a))` — both produce same color; Phase 1 picks based on shape symmetry preference. **Ships before Phase 2** as a separate PR (invisible-change validation; easier to revert if anything subtly breaks).
 
 ### Phase 2: light mode + Settings → Appearance

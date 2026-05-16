@@ -132,6 +132,7 @@ const api: VimyasaAPI = {
   revealDataFile: () => ipcRenderer.invoke('revealDataFile'),
   getLoginItemSettings: () => ipcRenderer.invoke('getLoginItemSettings'),
   setLoginItemSettings: (openAtLogin) => ipcRenderer.invoke('setLoginItemSettings', openAtLogin),
+  getAppInfo: () => ipcRenderer.invoke('app:getInfo'),
   importData: (data) => ipcRenderer.invoke('importData', data),
   resetData: () => ipcRenderer.invoke('resetData'),
 

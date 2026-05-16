@@ -40,7 +40,7 @@ export function FilterDropdown({
         className={`no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] transition-default ${
           active !== 'all'
             ? 'text-[color:var(--color-accent)]'
-            : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)]'
+            : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)]'
         }`}
         onClick={() => setOpen(!open)}
         title="Filter"
@@ -57,7 +57,7 @@ export function FilterDropdown({
 
       {open && (
         <div
-          className="absolute right-0 top-8 z-50 min-w-[120px] py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[rgb(19,19,19)]"
+          className="absolute right-0 top-8 z-50 min-w-[120px] py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-menu)]"
           style={{ boxShadow: 'var(--shadow-tooltip)' }}
         >
           {filters.map((f) => (
@@ -66,7 +66,7 @@ export function FilterDropdown({
               className={`w-full flex items-center justify-between px-3 py-1.5 text-[length:var(--font-size-xs)] transition-default ${
                 active === f.key
                   ? 'text-[color:var(--color-accent)]'
-                  : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)]'
+                  : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)]'
               }`}
               onClick={() => {
                 onChange(f.key)

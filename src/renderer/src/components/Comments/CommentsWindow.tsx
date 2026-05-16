@@ -65,14 +65,14 @@ function CommentNode({
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-default">
             {depth === 0 && (
               <button
-                className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text)] px-2 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+                className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text-primary)] px-2 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
                 onClick={() => onReply(comment.id)}
               >
                 Reply
               </button>
             )}
             <button
-              className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text)] px-2 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
+              className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text-primary)] px-2 py-0.5 rounded-[var(--radius-xs)] hover:bg-[var(--hover-highlight)] transition-default"
               onClick={() => onEdit(comment)}
             >
               Edit
@@ -87,7 +87,7 @@ function CommentNode({
         </div>
         {/* Comment text */}
         <div
-          className="text-[length:var(--font-size-md)] text-[color:var(--color-text)] leading-relaxed break-words"
+          className="text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] leading-relaxed break-words"
           dangerouslySetInnerHTML={{ __html: linkify(comment.text) }}
         />
       </div>
@@ -193,10 +193,10 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
       {/* Title bar */}
       <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <span className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] truncate flex-1">
-          Comments on: <span className="text-[color:var(--color-text)]">{item?.text || 'Unknown item'}</span>
+          Comments on: <span className="text-[color:var(--color-text-primary)]">{item?.text || 'Unknown item'}</span>
         </span>
         <button
-          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="no-drag w-6 h-6 flex items-center justify-center rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => window.api.closeWindow()}
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -234,7 +234,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
               {editing ? 'Editing comment' : 'Replying to comment'}
             </span>
             <button
-              className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text)]"
+              className="text-[length:var(--font-size-micro)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text-primary)]"
               onClick={handleCancel}
             >
               Cancel
@@ -243,7 +243,7 @@ export function CommentsWindow({ itemId }: { itemId: string }) {
         )}
         <textarea
           ref={inputRef}
-          className="w-full bg-[var(--color-surface)] text-[length:var(--font-size-md)] text-[color:var(--color-text)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default resize-none"
+          className="w-full bg-[var(--color-surface)] text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none border border-[var(--color-border)] focus:border-[var(--color-accent)] transition-default resize-none"
           placeholder={replyTo ? 'Write a reply...' : 'Add a comment...'}
           rows={2}
           value={text}

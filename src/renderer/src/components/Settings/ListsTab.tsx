@@ -55,14 +55,14 @@ function SortableListItem({ list, index, onEdit, onDelete }: SortableListItemPro
       </span>
 
       {/* List name */}
-      <span className="flex-1 text-[length:var(--font-size-md)] text-[color:var(--color-text)] truncate">
+      <span className="flex-1 text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] truncate">
         {list.name}
       </span>
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
         <button
-          className="p-1.5 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+          className="p-1.5 rounded-[var(--radius-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
           onClick={() => onEdit(list)}
           title="Edit list"
         >
@@ -169,7 +169,7 @@ export function ListsTab() {
     <div className="p-4 space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-[length:var(--font-size-base)] font-medium text-[color:var(--color-text)] mb-1">
+        <h2 className="text-[length:var(--font-size-base)] font-medium text-[color:var(--color-text-primary)] mb-1">
           Manage Lists
         </h2>
         <p className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
@@ -208,13 +208,13 @@ export function ListsTab() {
       {/* Edit dialog */}
       {editingList && (
         <div className="fixed inset-0 bg-[var(--backdrop-dim)] flex items-center justify-center z-50">
-          <div className="bg-[rgb(19,19,19)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-4 min-w-[320px]">
-            <h3 className="text-[length:var(--font-size-md)] font-medium text-[color:var(--color-text)] mb-3">
+          <div className="bg-[var(--color-bg-menu)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-4 min-w-[320px]">
+            <h3 className="text-[length:var(--font-size-md)] font-medium text-[color:var(--color-text-primary)] mb-3">
               Edit List Name
             </h3>
             <input
               type="text"
-              className="w-full p-2 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[color:var(--color-text)] text-[length:var(--font-size-sm)] outline-none focus:border-[var(--color-accent)]"
+              className="w-full p-2 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[color:var(--color-text-primary)] text-[length:var(--font-size-sm)] outline-none focus:border-[var(--color-accent)]"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
@@ -226,7 +226,7 @@ export function ListsTab() {
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
-                className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[var(--hover-highlight)] transition-default"
+                className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
                 onClick={handleCancelEdit}
               >
                 Cancel
