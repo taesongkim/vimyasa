@@ -323,7 +323,36 @@ not silently grab next-priority items.
   user windows reliably (especially full-screen apps). Investigation:
   check `dim-overlay.ts` for the `setAlwaysOnTop(true, level)` call.
 
-### Onboarding tour: tester saw 3 entries fail to save during tour
+### Auto-updater EPIPE crash on closed-stdio main process
+- **Lane:** features (defensive fix in auto-updater logger wrapping)
+- **Priority:** P3
+- **Version:** unassigned (bug-bash candidate; possibly v0.1.10)
+- **Status:** open — reproducible by launching binary with stdio that closes mid-run
+- **Notes:** Observed 2026-05-09 during a demo prep. Stack trace:
+  `Error: write EPIPE` at `MacUpdater.executeDownload` → `console.log`
+  → `Writable.write` → `_write` → `Socket._write` → `EPIPE`. Cause: the
+  app was launched as a child of a Bash process (via
+  `Vimyasa --version` from coordination's tooling); when the parent
+  Bash closed its stdio, the app's stdout pipe broke, but
+  electron-updater's logger kept trying to write `console.log` lines
+  during update-check / download. Each write throws an uncaught
+  exception in main → Electron's "JavaScript error in main process"
+  crash dialog.
+  Real-world impact: rare. Normal users launch via Finder / Spotlight
+  / Dock (launchd-managed stdio, no parent). But any tester launching
+  via terminal in a shell that loses stdio reproduces it.
+  Defensive fix candidates:
+  - Wrap `electron-updater`'s logger in try/catch (electron-updater
+    accepts a custom logger via `autoUpdater.logger`).
+  - Replace its logger with one that detects EPIPE and silently
+    discards.
+  - Suppress auto-update entirely when `process.stdout.isTTY` is false
+    AND parent process is detached (too aggressive — would skip
+    legitimate auto-updates for many users).
+  Most likely the first option: a thin wrapper around the default
+  logger that swallows EPIPE on write.
+  Real low priority — the audit-update integrity work in v0.1.10 is a
+  natural moment to also touch this.
 - **Lane:** features
 - **Priority:** P3
 - **Version:** unassigned (bug-bash candidate; possibly v0.1.10)
