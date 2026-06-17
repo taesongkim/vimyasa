@@ -120,11 +120,18 @@ not silently grab next-priority items.
 - **Out of scope (per spec, deferred):** light mode (Phase 2), Settings → Appearance toggle (Phase 2), Magic Colors / Theme 1 surface constants (stay theme-specific), cross-project extraction (Phase 3), onboarding-tour-specific surfaces (`.onb-callout`, `.onb-controls`, `.onb-dim-close` — one-off heavy-glass surfaces, not interface tokens).
 
 ### Phase 2: light mode + Settings → Appearance
-- **Lane:** themes (Layer 2 light mappings + legibility tuning), features (Settings tab), aesthetics (legibility audit)
+- **Lane:** themes (foundation, shipped); features (Settings tab, pending); aesthetics (legibility audit, done in dev)
 - **Priority:** P2
-- **Version:** v0.1.8 (with Phase 1)
-- **Status:** themes-side in-flight (branch `color-tokenization-phase-2`, 2026-05-18). Features-side Settings → Appearance tab pending, will rebase on themes PR.
-- **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 2. Add Layer 2 light-mode mappings, Settings → Appearance tab with three radio options (**Light / Dark / Auto**, in that order — Mac System Settings convention). **Default is Dark** (preserves v0.1.7 behavior for testers, no surprise on update; reverses the original proposal's auto-default decision). Auto follows `prefers-color-scheme`. Audit every component for legibility under light mode. Magic Colors (Theme 1 surfaces) stay unaffected — they're theme-specific, not interface tokens. Vimyasa remains "dark-mode-default-by-intent" with opt-in light/auto — `user_role.md` memory doesn't fully reverse, just gains a footnote about opt-in light.
+- **Version:** v0.1.8
+- **Status:** themes-side ✅ shipped (PR #40, 2026-05-18). Features-side Settings → Appearance tab pending — rebases on Phase 2 main; coordinated via INBOX 2026-05-18 themes→features (open entry until features merges).
+- **Notes:** Themes shipped: Layer 2 light-mode mappings via `[data-appearance="light"]` selector + auto-mode mirror via `@media (prefers-color-scheme: light)`. Schema v7 → v8 with new `appearance: 'light' | 'dark' | 'auto'` field (default `'dark'` for existing users). `effects.devBgBaseA` split into per-mode `devBgBaseDarkA` (0.8) / `devBgBaseLightA` (0.95). `themes:setAppearance` IPC wired through preload + zustand + cross-window broadcast. Dev panel got new Appearance segmented control + per-mode bg-darkness sliders (range bumped 0.05 → 1.0). Magic Colors legibility approved live in dev — Theme 1 surfaces stay as-is for v0.1.8 (option (c) in INBOX; future paths recorded if a tester later flags). Features-side: build `AppearanceTab.tsx` mirroring `GeneralTab` / `AdvancedTab`, three radio options (Light / Dark / Auto, default Dark), copy locked from proposal A1–A7, consume `useThemesStore((s) => s.appearance)` + call `themes.setAppearance(mode)`.
+
+### Vibrancy material — adapt to vimyasa's app-level appearance
+- **Lane:** features (BrowserWindow lifecycle), coordination (proposal scoping)
+- **Priority:** P2
+- **Version:** unassigned — **needs deeper pass with coordination** to scope
+- **Status:** idea (2026-05-18, surfaced by themes lane during Phase 2 ship as out-of-scope-for-v0.1.8 caveat)
+- **Notes:** macOS `vibrancy: 'under-window'` auto-adapts to the *system* appearance but NOT to vimyasa's *app-level* `appearance` setting. So a user who explicitly picks Light while the macOS system is Dark gets a white CSS overlay over dark vibrancy — readable but not ideal. Same caveat in reverse: Dark-in-vimyasa over Light-system. Fix: main-process `setVibrancy(material)` call on appearance change with a mode-appropriate material (light-mode candidates: `'sidebar'`, `'titlebar'`; dark-mode: keep current `'under-window'` or pick a darker named material). Touches BrowserWindow lifecycle (all summon paths — QuickAdd prewarm, list windows, feedback, settings, hot list). Wants its own coordination scoping pass to: (1) confirm the right material per mode by visual A/B, (2) decide whether `'auto'` mode lets the system handle it or whether vimyasa always sets explicitly, (3) handle the cross-window broadcast → main-process IPC for live updates. Candidate for v0.1.9 or v0.1.10 polish window.
 
 ### Phase 3: cross-project extraction (design-tokens-justin)
 - **Lane:** coordination (package setup), themes (consumer wiring)
