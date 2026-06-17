@@ -30,8 +30,10 @@ import type {
   ThemeDevPreset,
   ThemeEventName,
   ThemeEventPayload,
-  EffectsConfig
+  EffectsConfig,
+  Appearance
 } from '../shared/themes'
+import { APPEARANCE_VALUES } from '../shared/themes'
 
 function now(): string {
   return new Date().toISOString()
@@ -618,6 +620,24 @@ export function registerIpcHandlers(): void {
         ...cur,
         effects: { ...cur.effects, ...partial }
       }
+      const saved = setThemesState(next)
+      broadcastThemesChanged(saved)
+      return saved
+    }
+  )
+
+  ipcMain.handle(
+    'themes:setAppearance',
+    (_e, appearance: Appearance): ThemesState => {
+      // Validate input; ignore unrecognized values silently and return
+      // current state. The Settings → Appearance UI only sends one of
+      // the three valid values, so this is just defense-in-depth against
+      // a malformed renderer call.
+      if (!(APPEARANCE_VALUES as readonly string[]).includes(appearance)) {
+        return getThemesState()
+      }
+      const cur = getThemesState()
+      const next: ThemesState = { ...cur, appearance }
       const saved = setThemesState(next)
       broadcastThemesChanged(saved)
       return saved

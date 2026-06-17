@@ -180,6 +180,7 @@ const api: VimyasaAPI = {
     setSurfaceConfig: (surfaceId, config) =>
       ipcRenderer.invoke('themes:setSurfaceConfig', surfaceId, config),
     setEffects: (partial) => ipcRenderer.invoke('themes:setEffects', partial),
+    setAppearance: (appearance) => ipcRenderer.invoke('themes:setAppearance', appearance),
     reset: () => ipcRenderer.invoke('themes:reset'),
     onChanged: (callback) => {
       const listener = (_e: unknown, state: unknown): void => callback(state as never)

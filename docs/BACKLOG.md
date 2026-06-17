@@ -123,7 +123,7 @@ not silently grab next-priority items.
 - **Lane:** themes (Layer 2 light mappings + legibility tuning), features (Settings tab), aesthetics (legibility audit)
 - **Priority:** P2
 - **Version:** v0.1.8 (with Phase 1)
-- **Status:** ready to dispatch after Phase 1 lands
+- **Status:** themes-side in-flight (branch `color-tokenization-phase-2`, 2026-05-18). Features-side Settings → Appearance tab pending, will rebase on themes PR.
 - **Notes:** Per [proposals/color-tokenization.md](./proposals/color-tokenization.md) Phase 2. Add Layer 2 light-mode mappings, Settings → Appearance tab with three radio options (**Light / Dark / Auto**, in that order — Mac System Settings convention). **Default is Dark** (preserves v0.1.7 behavior for testers, no surprise on update; reverses the original proposal's auto-default decision). Auto follows `prefers-color-scheme`. Audit every component for legibility under light mode. Magic Colors (Theme 1 surfaces) stay unaffected — they're theme-specific, not interface tokens. Vimyasa remains "dark-mode-default-by-intent" with opt-in light/auto — `user_role.md` memory doesn't fully reverse, just gains a footnote about opt-in light.
 
 ### Phase 3: cross-project extraction (design-tokens-justin)
