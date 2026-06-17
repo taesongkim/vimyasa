@@ -59,6 +59,27 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-05-18 — themes → features
+**Type:** note
+**Body:** Phase 2 of color-tokenization landed on `color-tokenization-phase-2` (PR pending). Features can now build the user-facing Settings → Appearance tab on top of the themes-store field. Handoff details:
+
+**Store API.** `themes.setAppearance(mode: 'light' | 'dark' | 'auto')` — already wired through IPC + preload + renderer zustand. Reads from `useThemesStore((s) => s.appearance)`. Cross-window broadcast on change (same plumbing as motion blur). Schema v7 → v8 with `'dark'` as the migration default (preserves v0.1.7 behavior for existing users; no surprise mode switch on update).
+
+**UI shape (recommendation, not blocking).** Per Decision 4 of the proposal + Apple HIG: three radio options in order **Light / Dark / Auto** (Light first matches macOS System Settings convention). Section title `"Appearance"`. Subtitle on Auto: something like `"Follows your macOS system setting."` — copy your call. The proposal had A1–A7 copy candidates if you want a starting point.
+
+**Where it goes.** Looks like there's no Appearance tab in `Settings/` yet — easiest path is a new `AppearanceTab.tsx` mirroring `GeneralTab` / `AdvancedTab` layout. Add the tab to `SettingsWindow.tsx` tab list. The "Theme: Auto / Light / Dark" radio group is the only control for now; future color modes (Phase 4) sit in the same tab.
+
+**No coordination blocker — your PR rebases on Phase 2 once it merges.** I've also added a Segmented control in `ThemeDevPanel` mirroring the same IPC so themes-side iteration on light tokens can continue without waiting on the Settings tab (dev-only, won't conflict with your work). Leaving it in place after merge — useful Phase 2+ dev knob alongside the bg darkness slider.
+
+**Vibrancy material caveat (out of scope for v0.1.8, worth knowing).** The macOS `vibrancy: 'under-window'` material auto-adapts to the system mode but NOT to vimyasa's app-level appearance setting. So a user who explicitly picks Light while system is Dark gets a white CSS overlay over dark vibrancy — readable but not ideal. A clean fix is a main-process `setVibrancy(material)` call on appearance change with a light material like `'sidebar'` or `'titlebar'`, but it touches BrowserWindow lifecycle and probably wants its own coordination scoping pass.
+**Status:** open
+
+## 2026-05-18 — themes
+**Type:** note
+**Body:** Magic Colors visibility check for Phase 2 (per the dispatch brief: "If they read poorly: surface to human via INBOX with options ... Do NOT decide unilaterally."). Justin tested live in dev with the new `ThemeDevPanel` → Appearance segmented control and confirmed light-mode legibility reads well overall — no Magic Colors regression flagged. Theme 1 surfaces (`quickadd-input`, `list-item-edit`, `list-add-new`, `feedback-input`) stay as-is for v0.1.8 ship — option (c) "leave as-is" effectively chosen. If a tester later reports the rainbow palette reading oppressive on a light bg, the two follow-up paths remain on the table: (a) per-mode `paletteOverride` in `THEME_1_SURFACE_OVERRIDES`, or (b) auto-disable Theme 1 in light via a `baseActive` gate in `GlowSurface`. Tracked here so future-self knows the decision trail.
+**Status:** resolved
+**Resolved (2026-05-18 — themes, dev verification):** Light-mode legibility approved; Magic Colors stay unchanged in v0.1.8.
+
 *(Add new entries above this line, newest first.)*
 
 ---

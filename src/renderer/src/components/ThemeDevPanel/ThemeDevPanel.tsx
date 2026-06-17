@@ -6,10 +6,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useThemesStore } from '../../store/themesStore'
 import {
+  APPEARANCE_VALUES,
   SURFACE_IDS,
   SURFACE_LABELS,
   THEME_EVENT_NAMES,
   defaultSurfaceConfig,
+  type Appearance,
   type SurfaceId,
   type SurfaceConfig,
   type ThemeDevPreset,
@@ -157,10 +159,12 @@ export function ThemeDevPanel() {
   const masterEnabled = useThemesStore((s) => s.masterEnabled)
   const surfaces = useThemesStore((s) => s.surfaces)
   const effects = useThemesStore((s) => s.effects)
+  const appearance = useThemesStore((s) => s.appearance)
   const setMasterEnabled = useThemesStore((s) => s.setMasterEnabled)
   const setSurfaceEnabled = useThemesStore((s) => s.setSurfaceEnabled)
   const setSurfaceConfig = useThemesStore((s) => s.setSurfaceConfig)
   const setEffects = useThemesStore((s) => s.setEffects)
+  const setAppearance = useThemesStore((s) => s.setAppearance)
 
   const [selectedSurface, setSelectedSurface] = useState<SurfaceId>('quickadd-window')
   const [presets, setPresets] = useState<ThemeDevPreset[]>([])
@@ -269,23 +273,53 @@ export function ThemeDevPanel() {
       </div>
 
       <div className="no-drag flex-1 overflow-y-auto px-1">
-        {/* Phase 0 of the color-tokenization proposal — temporary slider
-            for tuning the dark-mode interface bg's OKLCH lightness.
-            Retires once the chosen value is baked into Layer 2 in
-            Phase 1. See docs/proposals/color-tokenization.md. */}
-        <Section title="Interface background">
-          <Slider
-            label="Background darkness"
-            value={effects.devBgBaseA}
-            min={0.05}
-            max={0.9}
-            step={0.01}
-            decimals={2}
-            onChange={(v) => void setEffects({ devBgBaseA: v })}
+        {/* Phase 2 of color-tokenization — appearance mode picker.
+            Features lane builds the user-facing Settings → Appearance
+            tab; this dev-panel control mirrors the same `themes.setAppearance`
+            IPC for live tuning of light-mode tokens. Order matches the
+            macOS System Settings convention (Light / Dark / Auto). */}
+        <Section title="Appearance">
+          <Segmented<Appearance>
+            value={appearance}
+            options={APPEARANCE_VALUES}
+            onChange={(v) => void setAppearance(v)}
           />
           <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] leading-snug">
-            Higher = darker (more black sits over the vibrancy). Bake the value
-            into Layer 2 once it lands right.
+            Mirrors onto &lt;html data-appearance&gt;. Auto follows the macOS
+            system setting via prefers-color-scheme.
+          </span>
+        </Section>
+
+        {/* Bg-base alpha tuning — per-mode pair (Phase 2 split). Each
+            slider drives a distinct store field (devBgBaseDarkA /
+            devBgBaseLightA), mirrored onto <html> as two CSS vars, and
+            globals.css's appearance selectors pick the active one. Both
+            stay visible regardless of current appearance so cross-mode
+            iteration doesn't require flipping back and forth. */}
+        <Section title="Interface background">
+          <Slider
+            label="Dark mode darkness"
+            value={effects.devBgBaseDarkA}
+            min={0.05}
+            max={1}
+            step={0.01}
+            decimals={2}
+            onChange={(v) => void setEffects({ devBgBaseDarkA: v })}
+          />
+          <Slider
+            label="Light mode lightness"
+            value={effects.devBgBaseLightA}
+            min={0.05}
+            max={1}
+            step={0.01}
+            decimals={2}
+            onChange={(v) => void setEffects({ devBgBaseLightA: v })}
+          />
+          <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] leading-snug">
+            Higher = more overlay over vibrancy (darker in dark, lighter in
+            light). Each mode tunes independently. Bake new defaults into
+            <code className="font-mono">DEFAULT_EFFECTS_CONFIG</code> when
+            values land right.
           </span>
         </Section>
 

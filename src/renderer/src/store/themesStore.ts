@@ -12,6 +12,7 @@
 import { create } from 'zustand'
 import {
   defaultThemesState,
+  type Appearance,
   type EffectsConfig,
   type SurfaceConfig,
   type SurfaceId,
@@ -28,6 +29,7 @@ interface ThemesStoreState extends ThemesState {
   setSurfaceEnabled: (surfaceId: SurfaceId, enabled: boolean) => Promise<void>
   setSurfaceConfig: (surfaceId: SurfaceId, config: SurfaceConfig) => Promise<void>
   setEffects: (partial: Partial<EffectsConfig>) => Promise<void>
+  setAppearance: (appearance: Appearance) => Promise<void>
   reset: () => Promise<void>
 }
 
@@ -43,7 +45,27 @@ interface ThemesStoreState extends ThemesState {
  *  expands to mirror the full token set. */
 function applyEffectsToDOM(effects: EffectsConfig): void {
   if (typeof document === 'undefined') return
-  document.documentElement.style.setProperty('--bg-base-a', String(effects.devBgBaseA))
+  // Mirror BOTH per-mode alphas onto <html>. CSS picks which is active:
+  //   - :root resolves --bg-base-a to var(--bg-base-dark-a, ...)
+  //   - [data-appearance="light"] AND the auto+system-light media query
+  //     re-bind --bg-base-a to var(--bg-base-light-a, ...)
+  // No conditional JS needed; mode-switching stays purely declarative.
+  document.documentElement.style.setProperty('--bg-base-dark-a', String(effects.devBgBaseDarkA))
+  document.documentElement.style.setProperty('--bg-base-light-a', String(effects.devBgBaseLightA))
+}
+
+/** Mirror the appearance mode onto <html data-appearance="..."> so the
+ *  CSS in globals.css picks the right Layer 2 mapping. Three selector
+ *  paths consume this:
+ *    - default :root (no attribute set or "dark")
+ *    - [data-appearance="light"]
+ *    - [data-appearance="auto"] + @media (prefers-color-scheme: light)
+ *
+ *  Same lifecycle as applyEffectsToDOM — runs on initial state read, every
+ *  cross-window broadcast, and every local setter. */
+function applyAppearanceToDOM(appearance: Appearance): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.setAttribute('data-appearance', appearance)
 }
 
 // Read the preload-injected snapshot synchronously. Only null if the
@@ -56,8 +78,10 @@ function readInitial(): ThemesState {
 export const useThemesStore = create<ThemesStoreState>((set) => {
   const initial = readInitial()
   // Mirror onto `<html>` ASAP so the first paint already has the right
-  // background lightness (no flash from default → user value).
+  // background lightness + appearance mode (no flash from default → user
+  // value, no flash from dark → light on auto-light system).
   applyEffectsToDOM(initial.effects)
+  applyAppearanceToDOM(initial.appearance)
 
   // Install the cross-window broadcast subscription exactly once, when the
   // store is first created in this renderer. Each renderer's window has its
@@ -65,6 +89,7 @@ export const useThemesStore = create<ThemesStoreState>((set) => {
   if (typeof window !== 'undefined' && window.api?.themes?.onChanged) {
     window.api.themes.onChanged((next) => {
       applyEffectsToDOM(next.effects)
+      applyAppearanceToDOM(next.appearance)
       set({ ...next })
     })
   }
@@ -84,30 +109,42 @@ export const useThemesStore = create<ThemesStoreState>((set) => {
     setMasterEnabled: async (enabled) => {
       const next = await window.api.themes.setMasterEnabled(enabled)
       applyEffectsToDOM(next.effects)
+      applyAppearanceToDOM(next.appearance)
       set({ ...next })
     },
 
     setSurfaceEnabled: async (surfaceId, enabled) => {
       const next = await window.api.themes.setSurfaceEnabled(surfaceId, enabled)
       applyEffectsToDOM(next.effects)
+      applyAppearanceToDOM(next.appearance)
       set({ ...next })
     },
 
     setSurfaceConfig: async (surfaceId, config) => {
       const next = await window.api.themes.setSurfaceConfig(surfaceId, config)
       applyEffectsToDOM(next.effects)
+      applyAppearanceToDOM(next.appearance)
       set({ ...next })
     },
 
     setEffects: async (partial) => {
       const next = await window.api.themes.setEffects(partial)
       applyEffectsToDOM(next.effects)
+      applyAppearanceToDOM(next.appearance)
+      set({ ...next })
+    },
+
+    setAppearance: async (appearance) => {
+      const next = await window.api.themes.setAppearance(appearance)
+      applyEffectsToDOM(next.effects)
+      applyAppearanceToDOM(next.appearance)
       set({ ...next })
     },
 
     reset: async () => {
       const next = await window.api.themes.reset()
       applyEffectsToDOM(next.effects)
+      applyAppearanceToDOM(next.appearance)
       set({ ...next })
     }
   }

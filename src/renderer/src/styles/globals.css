@@ -55,16 +55,20 @@
   /* ── Layer 1: raw palette ───────────────────────────────────── */
 
   /* OKLCH component knobs for the bg-base overlay (Decision 5 plus
-     Decision 6 amendment). The overlay is pure-black at L=0, C=0 in
-     dark mode — vibrancy provides all the visible character — so alpha
-     alone is the user-facing darkness knob (mirrored from
-     effects.devBgBaseA in themes-store via themesStore.ts). Future
-     color modes can tint by setting --bg-base-l / --bg-base-c / --hue
-     to non-zero values; the same composition formula stays. */
+     Decision 6 amendment). In dark mode the overlay is pure-black at
+     L=0, C=0; in light mode L flips to 1 (see [data-appearance="light"]
+     block further down). Vibrancy provides the visible character at
+     both ends; alpha is the user-facing knob.
+
+     Phase 2 split the alpha into per-mode pair so each appearance has
+     its own bake + slider. JS sets `--bg-base-dark-a` and
+     `--bg-base-light-a` on <html> from `effects.devBgBaseDarkA` /
+     `devBgBaseLightA`; CSS resolves `--bg-base-a` to whichever is
+     active per the appearance selector. */
   --hue: 230;
   --bg-base-l: 0;
   --bg-base-c: 0;
-  --bg-base-a: 0.7;
+  --bg-base-a: var(--bg-base-dark-a, 0.8);
 
   /* Neutral gray ramp — lightness-keyed (chroma 0). Suffix tracks
      approximate OKLCH lightness so future light-mode counterparts read
@@ -136,6 +140,14 @@
   --active-bg: var(--palette-overlay-active);
   --backdrop-dim: var(--palette-overlay-backdrop);
 
+  /* Row state backgrounds — focused / hover / carrying. Phase 1 left
+     these inline in the rules below; Phase 2 tokenizes them so light
+     mode flips them from white-tinted (over dark surfaces) to black-
+     tinted (over light surfaces). */
+  --color-row-hover: rgba(255, 255, 255, 0.075);
+  --color-row-focused: rgba(255, 255, 255, 0.1);
+  --color-row-carrying: rgba(255, 255, 255, 0.14);
+
   /* Shadows */
   --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.3);
@@ -203,6 +215,105 @@
   --carry-trail-offset: 14px;
   --carry-dim-multiplier: 0.5; /* multiplies onto each non-carried row's existing opacity */
   --carry-receipt-duration: 360ms;
+}
+
+/* ── Layer 2: light mode overrides (Phase 2 of color-tokenization) ──
+   Applied when:
+     - <html data-appearance="light">  (user explicitly picked Light)
+     - <html data-appearance="auto"> AND system is light (auto follows
+       prefers-color-scheme via the @media block further down)
+
+   Dark stays the :root default — preserves v0.1.7 behavior for every
+   user who doesn't opt in, and gives a safe fallback if a window paints
+   before themesStore mirrors data-appearance onto <html>.
+
+   Only Layer 1 palette tokens + the row-state semantic tokens are
+   redefined here. Layer 2 --color-* tokens that already compose from
+   Layer 1 (--color-text-primary, --color-border, etc.) flip
+   automatically because their referenced palette values change.
+
+   Backdrop dim (--palette-overlay-backdrop) intentionally stays dark in
+   both modes — it sits behind a foreground panel, so it always wants
+   to darken the content underneath. */
+
+[data-appearance="light"] {
+  /* OKLCH bg overlay: flip from black (L=0) to white (L=1) and re-bind
+     --bg-base-a to the light-mode alpha. Each mode has its own baked
+     default + dev slider, so tuning one doesn't affect the other. */
+  --bg-base-l: 1;
+  --bg-base-a: var(--bg-base-light-a, 0.9);
+
+  /* Gray ramp — inverts toward dark on light. Suffix naming keeps the
+     lightness scale legible (palette-gray-91 was L≈0.91 in dark; in
+     light it's the inverse, L≈0.12). */
+  --palette-gray-91: #1a1a1a;
+  --palette-gray-65: #555555;
+  --palette-gray-62: #6b6b6b;
+  --palette-text-ghost: rgba(40, 40, 40, 0.4);
+
+  /* Accent + status — bumped a notch darker so they stay readable
+     against bright surfaces. Apple HIG light-mode palette feel. */
+  --palette-accent: #2563eb;
+  --palette-accent-hover: #1d4ed8;
+  --palette-success: #16a34a;
+  --palette-warning: #d97706;
+  --palette-error: #dc2626;
+
+  /* Surface tints flip from white-tinted (over dark) to black-tinted
+     (over light). The strong menu surface goes near-white so dropdowns
+     read crisply over the vibrancy. */
+  --palette-surface-faint: rgba(0, 0, 0, 0.025);
+  --palette-surface-strong: rgb(248, 248, 248);
+  --palette-border-subtle: rgba(0, 0, 0, 0.1);
+  --palette-border-focus: rgba(140, 140, 140, 0.8);
+  --palette-overlay-hover: rgba(0, 0, 0, 0.04);
+  --palette-overlay-active: rgba(0, 0, 0, 0.08);
+  /* --palette-overlay-backdrop stays dark — see header comment. */
+
+  /* White-priority scale → black-priority. Names preserved to avoid
+     a renaming sweep; the "priority" semantic is what matters. */
+  --white-priority-1: rgba(0, 0, 0, 0.1);
+  --white-priority-2: rgba(0, 0, 0, 0.3);
+  --white-priority-3: rgba(0, 0, 0, 0.5);
+
+  /* Row state backgrounds — black-tinted so hover/focus/carrying read
+     against the light bg. */
+  --color-row-hover: rgba(0, 0, 0, 0.04);
+  --color-row-focused: rgba(0, 0, 0, 0.08);
+  --color-row-carrying: rgba(0, 0, 0, 0.1);
+}
+
+/* Auto mode follows the macOS system setting. CSS spec doesn't let a
+   media query and an attribute selector combine into one block without
+   preprocessing, so we duplicate the light overrides under the @media
+   wrapper. Keep this block in sync with [data-appearance="light"]
+   above — any change to one needs to land in the other. */
+@media (prefers-color-scheme: light) {
+  [data-appearance="auto"] {
+    --bg-base-l: 1;
+    --bg-base-a: var(--bg-base-light-a, 0.9);
+    --palette-gray-91: #1a1a1a;
+    --palette-gray-65: #555555;
+    --palette-gray-62: #6b6b6b;
+    --palette-text-ghost: rgba(40, 40, 40, 0.4);
+    --palette-accent: #2563eb;
+    --palette-accent-hover: #1d4ed8;
+    --palette-success: #16a34a;
+    --palette-warning: #d97706;
+    --palette-error: #dc2626;
+    --palette-surface-faint: rgba(0, 0, 0, 0.025);
+    --palette-surface-strong: rgb(248, 248, 248);
+    --palette-border-subtle: rgba(0, 0, 0, 0.1);
+    --palette-border-focus: rgba(140, 140, 140, 0.8);
+    --palette-overlay-hover: rgba(0, 0, 0, 0.04);
+    --palette-overlay-active: rgba(0, 0, 0, 0.08);
+    --white-priority-1: rgba(0, 0, 0, 0.1);
+    --white-priority-2: rgba(0, 0, 0, 0.3);
+    --white-priority-3: rgba(0, 0, 0, 0.5);
+    --color-row-hover: rgba(0, 0, 0, 0.04);
+    --color-row-focused: rgba(0, 0, 0, 0.08);
+    --color-row-carrying: rgba(0, 0, 0, 0.1);
+  }
 }
 
 /* ── Base Reset ───────────────────────────────────────────────── */
@@ -374,11 +485,11 @@ html, body, #root {
 /* ── Focus / Item states ──────────────────────────────────────── */
 
 .item-row-focused {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: var(--color-row-focused) !important;
 }
 
 .item-row-hover {
-  background: rgba(255, 255, 255, 0.075) !important;
+  background: var(--color-row-hover) !important;
 }
 
 /* Carry mode visuals (.item-row-carrying, .list-carrying, send + receipt
@@ -1026,9 +1137,11 @@ html, body, #root {
      overflow-x: hidden. The send keyframes preserve this Y, so the row
      stays elevated as it flies off (no Y "snap-back" mid-animation). */
   transform: translateY(var(--carry-lift-y));
-  /* Slightly brighter than .item-row-focused (rgba 0.10) so the carried
-     row reads as one rung above "selected." */
-  background: rgba(255, 255, 255, 0.14) !important;
+  /* Slightly brighter than .item-row-focused so the carried row reads
+     as one rung above "selected." Light mode flips to a stronger black
+     tint via the --color-row-carrying token in the [data-appearance]
+     block. */
+  background: var(--color-row-carrying) !important;
   /* Soft drop shadow only — both layers tight, similar in size, no
      long spread below the row. Sits on top of vibrancy without going
      opaque-black. */

@@ -14,12 +14,14 @@ import {
   defaultThemeDevPresetsState,
   defaultSurfaceConfig,
   SURFACE_IDS,
+  APPEARANCE_VALUES,
   type ThemesState,
   type ThemeDevPresetsState,
   type ThemeDevPreset,
   type SurfaceId,
   type SurfaceConfig,
-  type EffectsConfig
+  type EffectsConfig,
+  type Appearance
 } from '../shared/themes'
 
 // ── Themes (production) ─────────────────────────────────────────
@@ -42,28 +44,40 @@ export function getThemesState(): ThemesState {
     surfaces: themesStore.get('surfaces'),
     // `effects` may be undefined for stores that predate v7; the v6→v7
     // migration below populates it from DEFAULT_EFFECTS_CONFIG.
-    effects: themesStore.get('effects') as EffectsConfig | undefined as EffectsConfig
+    effects: themesStore.get('effects') as EffectsConfig | undefined as EffectsConfig,
+    // `appearance` may be undefined for stores that predate v8; the
+    // v7→v8 migration below defaults to 'dark' (no surprise on update).
+    appearance: themesStore.get('appearance') as Appearance | undefined as Appearance
   }
   let mutated = false
   let surfaces = { ...raw.surfaces } as Record<SurfaceId, SurfaceConfig>
-  // Field-shape normalization: v7 originally landed `devBgBaseL` (OKLCH
-  // lightness with fixed alpha) but flipped to `devBgBaseA` (alpha for a
-  // pure-black overlay) before merge — see schema docs in shared/themes.ts.
-  // Stores written between the two shapes (dev installs only — nothing
-  // shipped) get backfilled to the new default rather than carrying a
-  // dead field. Cast to widen so we can probe legacy shape without a
-  // schema-version bump.
+  // Field-shape normalization for `effects`. Two prior shapes exist:
+  //   - v7 first iteration:  { devBgBaseL: number }   (Phase 0 OKLCH-lightness draft)
+  //   - v7 final shipped:    { devBgBaseA: number }   (Phase 0 pure-black-alpha, v0.1.7 release)
+  //   - v8 current:          { devBgBaseDarkA: number, devBgBaseLightA: number }
+  // Cast wide so we can probe each legacy field without a schema bump.
   const rawEffects = raw.effects as
-    | (Partial<EffectsConfig> & { devBgBaseL?: number })
+    | (Partial<EffectsConfig> & { devBgBaseL?: number; devBgBaseA?: number })
     | undefined
-  const hasNewShape = rawEffects != null && typeof rawEffects.devBgBaseA === 'number'
-  let effects: EffectsConfig = hasNewShape
-    ? (rawEffects as EffectsConfig)
-    : { ...DEFAULT_EFFECTS_CONFIG }
-  if (rawEffects != null && !hasNewShape) {
-    // Old shape detected — replace wholesale. Renderer never sees the
-    // stale field.
+  const hasV8Shape =
+    rawEffects != null &&
+    typeof rawEffects.devBgBaseDarkA === 'number' &&
+    typeof rawEffects.devBgBaseLightA === 'number'
+  let effects: EffectsConfig
+  if (hasV8Shape) {
+    effects = rawEffects as EffectsConfig
+  } else if (rawEffects != null && typeof rawEffects.devBgBaseA === 'number') {
+    // v7 shipped shape — carry the user's dialed-in dark alpha forward as
+    // the dark default; light gets the v8 default (Justin's 0.9 bake).
+    // Preserves Phase 0 tuning for everyone updating from v0.1.7.
+    effects = {
+      devBgBaseDarkA: rawEffects.devBgBaseA,
+      devBgBaseLightA: DEFAULT_EFFECTS_CONFIG.devBgBaseLightA
+    }
     mutated = true
+  } else {
+    effects = { ...DEFAULT_EFFECTS_CONFIG }
+    if (rawEffects != null) mutated = true
   }
 
   // ── Schema migrations ─────────────────────────────────────────
@@ -117,11 +131,26 @@ export function getThemesState(): ThemesState {
     // v7: introduced `effects` namespace (Phase 0 of the color-tokenization
     // proposal). Backfills `devBgBaseA` (alpha for the pure-black overlay
     // painted on top of vibrancy in `.glass-surface`). Existing user
-    // state for surfaces is untouched. The `effects ?? { ... }` above
-    // already handles the load case; this just bumps the version + flags
-    // mutation.
-    effects = raw.effects ?? { ...DEFAULT_EFFECTS_CONFIG }
+    // state for surfaces is untouched. The shape-normalization step
+    // above already mapped any legacy `devBgBaseA` into the v8 pair;
+    // this just bumps the version + flags mutation.
     schemaVersion = 7
+    mutated = true
+  }
+  // Appearance handling — Phase 2 of color-tokenization. Validate against
+  // the known value set so legacy/corrupt persisted values don't propagate
+  // unrecognized data-appearance attributes to the renderer (which would
+  // silently fall back to dark via the default CSS).
+  let appearance: Appearance =
+    raw.appearance != null && (APPEARANCE_VALUES as readonly string[]).includes(raw.appearance)
+      ? raw.appearance
+      : 'dark'
+  if (schemaVersion < 8) {
+    // v8: added `appearance` field ('light' | 'dark' | 'auto'). Default
+    // 'dark' for existing users so v0.1.7 behavior is preserved exactly —
+    // no surprise mode switch on update.
+    appearance = raw.appearance ?? 'dark'
+    schemaVersion = 8
     mutated = true
   }
 
@@ -216,9 +245,10 @@ export function getThemesState(): ThemesState {
     themesStore.set('masterEnabled', masterEnabled)
     themesStore.set('surfaces', surfaces)
     themesStore.set('effects', effects)
-    return { ...raw, schemaVersion, masterEnabled, surfaces, effects }
+    themesStore.set('appearance', appearance)
+    return { ...raw, schemaVersion, masterEnabled, surfaces, effects, appearance }
   }
-  return { ...raw, effects }
+  return { ...raw, effects, appearance }
 }
 
 export function setThemesState(next: ThemesState): ThemesState {
@@ -227,6 +257,7 @@ export function setThemesState(next: ThemesState): ThemesState {
   themesStore.set('activeTheme', next.activeTheme)
   themesStore.set('surfaces', next.surfaces)
   themesStore.set('effects', next.effects)
+  themesStore.set('appearance', next.appearance)
   return next
 }
 

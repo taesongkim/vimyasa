@@ -260,41 +260,65 @@ export type ThemeId = 'border-beam'
  *    pure-black-overlay-with-variable-alpha shape is simpler and gives
  *    the slider a useful range. See INBOX 2026-05-08 themes note for
  *    the trail and a flag back to Decision 6 of the proposal.
+ *  - 7 → 8: added `appearance` field ('light' | 'dark' | 'auto') —
+ *    Phase 2 of color-tokenization. Default 'dark' so existing users
+ *    on v7 see no change on update (preserves v0.1.7 behavior).
+ *    Renderer mirrors the value onto <html data-appearance="..."> for
+ *    CSS-only mode switching via the [data-appearance="light"] and
+ *    [data-appearance="auto"] + @media (prefers-color-scheme: light)
+ *    selectors in globals.css.
  *
  *  Each step is applied incrementally in `getThemesState` so a user
- *  on v1 picks up everything; a user already on v6 only picks up v7. */
-export const CURRENT_SCHEMA_VERSION = 7 as const
+ *  on v1 picks up everything; a user already on v7 only picks up v8. */
+export const CURRENT_SCHEMA_VERSION = 8 as const
 
 /** Top-level "effects" namespace — non-surface theme knobs that don't
- *  fit the per-surface SurfaceConfig shape. Currently a single dev-only
- *  knob for the dark-mode interface background overlay's alpha; the
- *  brief lives in docs/proposals/color-tokenization.md (Phase 0).
+ *  fit the per-surface SurfaceConfig shape. Originally a single alpha
+ *  knob (Phase 0 — `devBgBaseA`); Phase 2 split it into per-mode pair
+ *  (dark + light) so each appearance has its own baked default and
+ *  can be tuned independently from the dev panel.
  *
  *  This whole namespace is expected to retire (or radically reshape)
- *  once Phase 1 lands the proper Layer 1/2/3 token system. Treat
- *  fields here as ephemeral. */
+ *  once Phase 3 extracts the token system to a cross-project package.
+ *  Treat fields here as ephemeral. */
 export interface EffectsConfig {
   /** Alpha for the pure-black overlay painted on top of macOS vibrancy
-   *  in `.glass-surface`. 0 = vibrancy untouched (no overlay); 1 =
-   *  fully opaque black (vibrancy invisible). Renderer mirrors this
-   *  onto `<html>` as the `--bg-base-a` CSS variable; globals.css
-   *  composes it into `.glass-surface` as `rgba(0, 0, 0, var(--bg-base-a))`.
-   *
-   *  Black-overlay-with-variable-alpha (rather than colored-overlay-
-   *  with-variable-lightness) keeps vibrancy character intact at every
-   *  alpha — the overlay only dims, it doesn't tint. */
-  devBgBaseA: number
+   *  when appearance is 'dark' (or 'auto' + system is dark). 0 =
+   *  vibrancy untouched; 1 = fully opaque black. Renderer mirrors
+   *  this onto `<html>` as the `--bg-base-dark-a` CSS variable;
+   *  globals.css picks it up via `--bg-base-a` in the dark-mode
+   *  resolution. Phase 0 originally landed as `devBgBaseA`; Phase 2
+   *  renames + splits — see the v8 migration in themes-store.ts. */
+  devBgBaseDarkA: number
+  /** Alpha for the pure-white overlay painted on top of macOS vibrancy
+   *  when appearance is 'light' (or 'auto' + system is light). Same
+   *  composition formula as dark, just `--bg-base-l: 1` instead of 0;
+   *  higher alpha = lighter (more white sits over the vibrancy). */
+  devBgBaseLightA: number
 }
 
-/** 0.7 was dialed in via the dev-panel slider on 2026-05-08 — far
- *  darker than the original 0.1 (which was effectively just-vibrancy).
- *  This is the Phase 0 bake: new installs ship with the noticeably-
- *  darker background out of the box. The slider stays in the dev panel
- *  for further iteration / Phase 1's per-token tuning. Coordination
- *  picks this value up for the Layer 2 token in Phase 1. */
+/** Dark = 0.8, Light = 0.95 picked by Justin on 2026-05-18 — dark
+ *  bumped one notch from the v0.1.7 Phase 0 value (0.7) for slightly
+ *  more contrast; light tuned to 0.95 to sit cleanly above the
+ *  vibrancy almost-fully-opaque (the remaining 0.05 of vibrancy
+ *  bleed gives the surface a subtle living-feel rather than flat
+ *  white). Sliders in the dev panel remain for further iteration. */
 export const DEFAULT_EFFECTS_CONFIG: EffectsConfig = {
-  devBgBaseA: 0.7
+  devBgBaseDarkA: 0.8,
+  devBgBaseLightA: 0.95
 }
+
+/** User-facing appearance mode (Phase 2 of color-tokenization).
+ *  - 'dark' — force dark interface tokens (current v0.1.7 behavior).
+ *  - 'light' — force light interface tokens.
+ *  - 'auto' — follow macOS system setting via `prefers-color-scheme`.
+ *
+ *  The renderer mirrors this onto `<html data-appearance="...">`; the
+ *  CSS in globals.css picks the right Layer 2 mapping via attribute
+ *  selectors + a media query for auto. */
+export type Appearance = 'light' | 'dark' | 'auto'
+
+export const APPEARANCE_VALUES: readonly Appearance[] = ['light', 'dark', 'auto'] as const
 
 export interface ThemesState {
   schemaVersion: number
@@ -304,6 +328,8 @@ export interface ThemesState {
   surfaces: Record<SurfaceId, SurfaceConfig>
   /** Top-level non-surface theme knobs. See EffectsConfig docs. */
   effects: EffectsConfig
+  /** User-facing appearance mode. Default 'dark'; see Appearance docs. */
+  appearance: Appearance
 }
 
 // Defaults below mirror the upstream `border-beam` md/dark preset
@@ -490,7 +516,10 @@ export function defaultThemesState(): ThemesState {
     masterEnabled: true,
     activeTheme: 'border-beam',
     surfaces,
-    effects: { ...DEFAULT_EFFECTS_CONFIG }
+    effects: { ...DEFAULT_EFFECTS_CONFIG },
+    // 'dark' default preserves v0.1.7 behavior. Users opt into 'light'
+    // or 'auto' via Settings → Appearance (features-lane PR).
+    appearance: 'dark'
   }
 }
 
@@ -559,6 +588,10 @@ export interface ThemesAPI {
    *  are overwritten; others preserved. Currently used by the Phase 0
    *  dev-bg darkness slider; expected to retire alongside `EffectsConfig`. */
   setEffects: (partial: Partial<EffectsConfig>) => Promise<ThemesState>
+  /** Set the user-facing appearance mode. Wired from Settings → Appearance
+   *  (features lane). Renderer mirrors onto <html data-appearance>; CSS
+   *  switches Layer 2 tokens via attribute selector + media query. */
+  setAppearance: (appearance: Appearance) => Promise<ThemesState>
   /** Reset to defaults — useful escape hatch during experimentation. */
   reset: () => Promise<ThemesState>
   /** Fired whenever any window mutates the themes state. Receives the full new state. */
