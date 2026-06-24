@@ -172,6 +172,7 @@ export default function App() {
         tab === 'lists' ||
         tab === 'shortcuts' ||
         tab === 'themes' ||
+        tab === 'appearance' ||
         tab === 'feedback' ||
         tab === 'advanced' ||
         tab === 'data'
