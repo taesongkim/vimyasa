@@ -204,7 +204,10 @@ export interface VimyasaAPI {
   deleteItem: (id: string) => Promise<void>
   setItemStatus: (id: string, status: ItemStatus) => Promise<Item>
   moveItem: (id: string, targetListId: string) => Promise<Item>
-  reorderItems: (listId: string, orderedIds: string[]) => Promise<void>
+  /** Reorder items. When `silent` is true, the reorder does NOT push
+   *  an undo entry — used by carry-mode j/k where the whole session
+   *  captures one aggregate entry on commit. */
+  reorderItems: (listId: string, orderedIds: string[], silent?: boolean) => Promise<void>
 
   // Comments
   createComment: (itemId: string, text: string, parentId?: string | null) => Promise<Comment>
@@ -301,6 +304,51 @@ export interface VimyasaAPI {
 
   // Feedback messenger — PR 1 ships config + clientId; PR 2 adds send flow
   feedback: FeedbackAPI
+
+  // Undo / redo (v0.1.8). In-memory cross-window log; main is the
+  // source of truth, renderer mirrors via onChanged.
+  undo: UndoAPI
+}
+
+// ── Undo / redo ─────────────────────────────────────────────────
+
+export interface UndoSnapshot {
+  /** Number of entries currently in the undo log (0..MAX_DEPTH). */
+  undoDepth: number
+  /** Number of entries currently in the redo stack (0..MAX_DEPTH). */
+  redoDepth: number
+}
+
+export interface UndoApplyResult {
+  /** Item id the inverse touched (when knowable). Renderer can
+   *  scroll the row into view + move focus to it. `null` for entry
+   *  kinds where multiple items shift (e.g. reorder). */
+  affectedItemId: string | null
+}
+
+export interface UndoAPI {
+  /** Pull current snapshot. Used on mount to backfill any window
+   *  that came up after the most recent broadcast. */
+  get: () => Promise<UndoSnapshot>
+  /** Pop the most recent undo entry + apply its inverse. Returns
+   *  null if the log was empty. */
+  performUndo: () => Promise<UndoApplyResult | null>
+  /** Symmetric counterpart to performUndo. */
+  performRedo: () => Promise<UndoApplyResult | null>
+  /** Manually push an aggregate 'reorder' entry without mutating the
+   *  store. Used by carry-mode commit (Enter / Esc land) to record
+   *  the whole-session move as a single undo step — the per-j/k
+   *  reorders themselves use `reorderItems(silent=true)` to avoid
+   *  flooding the log. */
+  pushReorderEntry: (
+    listId: string,
+    oldOrder: string[],
+    newOrder: string[]
+  ) => Promise<void>
+  /** Fires whenever the undo / redo depths change. Renderer Zustand
+   *  store mirrors via this subscription (same pattern as
+   *  themes.onChanged). */
+  onChanged: (callback: (snapshot: UndoSnapshot) => void) => () => void
 }
 
 export interface OnboardingCalloutPayload {

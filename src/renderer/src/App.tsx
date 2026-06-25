@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from './store/useStore'
 import { useThemesStore } from './store/themesStore'
+import { useGlobalUndo } from './hooks/useGlobalUndo'
 import { ListWindow } from './components/ListWindow/ListWindow'
 import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
 import { FeedbackWindow } from './components/Feedback/FeedbackWindow'
@@ -67,6 +68,14 @@ export default function App() {
   const carryMotionBlur = useStore((s) => s.effects.carryMotionBlur)
   const [route, setRoute] = useState<RouteInfo>(parseHash)
   const [error, setError] = useState<string | null>(null)
+
+  // Cmd+Z / Cmd+Shift+Z global handler. Installed for every renderer
+  // (every BrowserWindow) so the shortcut is responsive regardless
+  // of which window has focus. The order-sensitive logic (edit-mode
+  // cancel → carry-mode restore → log pop) lives inside the hook;
+  // components opt in via `data-undo-cancel` attributes + window-
+  // level `undo-check-carry` listeners.
+  useGlobalUndo()
 
   // Body-class gate for the carry-mode motion blur. The CSS rules in
   // globals.css for `.item-row-sending-{left,right}` reference the

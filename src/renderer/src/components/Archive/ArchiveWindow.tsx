@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { StatusDot } from '../shared/StatusDot'
+import { ConfirmDeleteDialog } from '../ListWindow/ConfirmDeleteDialog'
 import { getRegularLists } from '@shared/types'
 
 export function ArchiveWindow({ listId }: { listId?: string }) {
@@ -12,7 +13,10 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
   // correctly even if it came from the hot list.
   const filterableLists = getRegularLists(lists)
   const [selectedListId, setSelectedListId] = useState<string | 'all'>(listId || 'all')
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  // Permanent delete confirmation. Same modal pattern as ListWindow —
+  // the dispatch brief paired the dialog with the v0.1.8 Undo work,
+  // so every permanent-delete trigger in the app routes through it.
+  const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null)
 
   const archivedItems = useMemo(() => {
     return items
@@ -21,18 +25,12 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
       .sort((a, b) => new Date(b.archivedAt!).getTime() - new Date(a.archivedAt!).getTime())
   }, [items, selectedListId])
 
-  const handleDelete = (id: string) => {
-    if (confirmDelete === id) {
-      removeItem(id)
-      setConfirmDelete(null)
-    } else {
-      setConfirmDelete(id)
-      setTimeout(() => setConfirmDelete(null), 2000)
-    }
+  const handleDelete = (id: string): void => {
+    setPendingDeleteItemId(id)
   }
 
   return (
-    <div className="flex flex-col h-full glass-surface px-4 py-2">
+    <div className="flex flex-col h-full glass-surface px-4 py-2 relative">
       {/* Title bar */}
       <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
         <span className="text-[length:var(--font-size-base)] font-tight heading-tracking font-semibold">Archive</span>
@@ -105,14 +103,10 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
                     Restore
                   </button>
                   <button
-                    className={`no-drag px-2 py-0.5 rounded-[var(--radius-xs)] text-[length:var(--font-size-micro)] font-medium transition-default ${
-                      confirmDelete === item.id
-                        ? 'bg-[var(--color-red)] text-white'
-                        : 'text-[color:var(--color-red)] hover:bg-[var(--hover-highlight)]'
-                    }`}
+                    className="no-drag px-2 py-0.5 rounded-[var(--radius-xs)] text-[length:var(--font-size-micro)] font-medium text-[color:var(--color-red)] hover:bg-[var(--hover-highlight)] transition-default"
                     onClick={() => handleDelete(item.id)}
                   >
-                    {confirmDelete === item.id ? 'Confirm' : 'Delete'}
+                    Delete
                   </button>
                 </div>
               </motion.div>
@@ -125,6 +119,24 @@ export function ArchiveWindow({ listId }: { listId?: string }) {
           </div>
         )}
       </div>
+
+      {pendingDeleteItemId && (() => {
+        const target = archivedItems.find((i) => i.id === pendingDeleteItemId)
+        if (!target) {
+          setPendingDeleteItemId(null)
+          return null
+        }
+        return (
+          <ConfirmDeleteDialog
+            itemText={target.text}
+            onCancel={() => setPendingDeleteItemId(null)}
+            onConfirm={() => {
+              removeItem(target.id)
+              setPendingDeleteItemId(null)
+            }}
+          />
+        )
+      })()}
     </div>
   )
 }

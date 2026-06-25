@@ -26,6 +26,7 @@ import { type FilterType } from './FilterBar'
 import { ItemRow } from './ItemRow'
 import { DraftItemRow } from './DraftItemRow'
 import { DragGhost } from './DragGhost'
+import { ConfirmDeleteDialog } from './ConfirmDeleteDialog'
 import type { Item, ItemStatus } from '../../../../../shared/types'
 import { HOT_LIST_ID } from '@shared/types'
 import {
@@ -50,7 +51,11 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const [activeListId, setActiveListId] = useState(initialListId)
   const [filter, setFilter] = useState<FilterType>('all')
   const [focusIndex, setFocusIndex] = useState(-1)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  // Permanent delete confirmation. Paired with v0.1.8 Undo — undo
+  // doesn't cover permanent delete, so the modal makes the
+  // destructive action explicit. Backspace + context-menu Delete
+  // both flow through this state instead of acting directly.
+  const [pendingDeleteItemId, setPendingDeleteItemId] = useState<string | null>(null)
   const [cyclePhase, setCyclePhase] = useState<'idle' | 'out' | 'in'>('idle')
   // When QuickAdd notifies us "I just added <itemId> to <listId>", we
   // stash the id here. A separate effect watches `items` for the row's
@@ -290,13 +295,52 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   }, [])
 
   // ── Carry mode helpers ─────────────────────────────────────────
-  const enterCarry = useCallback(() => {
-    if (focusedItem) setCarryItemId(focusedItem.id)
-  }, [focusedItem])
+  // Snapshot the full ordered ids of the carry item's list as it
+  // was when carry started. Two purposes:
+  //   1. Cmd+Z while carrying restores to this snapshot, so the user
+  //      can back out of a botched pickup (j/k drift) without leaving
+  //      a trail.
+  //   2. On normal carry exit (Enter / Esc / m re-press at current
+  //      position), if the order changed, we push ONE 'reorder' undo
+  //      entry from snapshot → current. The per-j/k reorders during
+  //      the session use `silent=true` so we don't flood the log
+  //      with intermediate steps.
+  const carryStartingOrderRef = useRef<string[] | null>(null)
+  const carryStartingListIdRef = useRef<string | null>(null)
 
+  const enterCarry = useCallback(() => {
+    if (!focusedItem) return
+    const snapshot = items
+      .filter((i) => i.listId === activeListId)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((i) => i.id)
+    carryStartingOrderRef.current = snapshot
+    carryStartingListIdRef.current = activeListId
+    setCarryItemId(focusedItem.id)
+  }, [focusedItem, items, activeListId])
+
+  // Normal carry exit (Enter / Esc / m re-press). Captures one
+  // aggregate 'reorder' undo entry covering the whole session, then
+  // clears the snapshot. carrySendToList exits via a different path
+  // (move-list captures its own entry).
   const exitCarry = useCallback(() => {
+    const startingOrder = carryStartingOrderRef.current
+    const startingListId = carryStartingListIdRef.current
+    if (startingOrder && startingListId === activeListId) {
+      const currentOrder = items
+        .filter((i) => i.listId === activeListId)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((i) => i.id)
+      void window.api.undo.pushReorderEntry(
+        activeListId,
+        startingOrder,
+        currentOrder
+      )
+    }
+    carryStartingOrderRef.current = null
+    carryStartingListIdRef.current = null
     setCarryItemId(null)
-  }, [])
+  }, [items, activeListId])
 
   // Reorder the carry item by ±1 within the visible list. Uses the
   // FULL ordered list of items in the active list as the basis for
@@ -323,9 +367,14 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         fullOrder[fullTargetIdx],
         fullOrder[fullCarryIdx]
       ]
+      // silent=true: each j/k step is part of one logical carry
+      // session. The aggregate undo entry is pushed on exit (see
+      // exitCarry) so the user sees the whole reorder as one undo
+      // step instead of N per-keystroke steps.
       reorder(
         activeListId,
-        fullOrder.map((i) => i.id)
+        fullOrder.map((i) => i.id),
+        true
       )
       // Focus follows the carry so the highlight stays glued to the
       // moving row instead of stranding on the fixed visible index.
@@ -348,10 +397,48 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       (i) => i.id === carryItemId && i.listId === activeListId && !i.archivedAt
     )
     if (!stillHere) {
+      // Item left the list via send / archive / external delete.
+      // Don't push the aggregate-reorder undo entry here — the
+      // move-list IPC already captured its own entry, and any
+      // mid-carry j/k drift in the source list is intentionally
+      // abandoned in favor of the commit action.
+      carryStartingOrderRef.current = null
+      carryStartingListIdRef.current = null
       setCarryItemId(null)
       setSendDirection(null)
     }
   }, [carryItemId, items, activeListId])
+
+  // Cmd+Z while carry mode is active. useGlobalUndo dispatches
+  // `undo-check-carry` on the window; if we're carrying, restore
+  // the pre-carry order silently (no undo entry), exit carry, and
+  // `preventDefault()` so the hook doesn't fall through to the
+  // default log-pop path. Per spec: "no log consumption" — the
+  // restore itself uses silent=true and we don't push an entry on
+  // exit either.
+  useEffect(() => {
+    const onCheckCarry = (e: Event): void => {
+      if (!carryItemId) return
+      const startingOrder = carryStartingOrderRef.current
+      const startingListId = carryStartingListIdRef.current
+      if (startingOrder && startingListId === activeListId) {
+        // Silent reorder back to the snapshot.
+        reorder(activeListId, startingOrder, true)
+      }
+      // Reset focus to wherever the item lands — wherever it was at
+      // start. Looking up its starting index in the snapshot is the
+      // tightest behavior; visible-list index may differ if a filter
+      // is on, but for v1 we just pick the snapshot position.
+      const startIdx = startingOrder?.indexOf(carryItemId) ?? -1
+      if (startIdx !== -1) setFocusIndex(startIdx)
+      carryStartingOrderRef.current = null
+      carryStartingListIdRef.current = null
+      setCarryItemId(null)
+      e.preventDefault()
+    }
+    window.addEventListener('undo-check-carry', onCheckCarry)
+    return () => window.removeEventListener('undo-check-carry', onCheckCarry)
+  }, [carryItemId, activeListId, reorder])
 
   const carrySendToList = useCallback(
     (listNumber: number) => {
@@ -540,9 +627,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
           }
           break
         case 'delete':
+          // Route context-menu Delete through the same confirmation
+          // modal as Backspace. The IPC handler captures the item id
+          // before the modal opens — the right-click already moved
+          // focus to this row in handleContextMenu.
           if (data.itemId) {
-            removeItem(data.itemId)
-            handlePostDestructive()
+            setPendingDeleteItemId(data.itemId)
           }
           break
       }
@@ -714,15 +804,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       }
     },
     onBackspace: () => {
-      if (focusedItem) {
-        if (confirmDelete === focusedItem.id) {
-          removeItem(focusedItem.id)
-          setConfirmDelete(null)
-          handlePostDestructive()
-        } else {
-          setConfirmDelete(focusedItem.id)
-          setTimeout(() => setConfirmDelete(null), 2000)
-        }
+      // Open the permanent-delete confirmation modal. The double-tap
+      // timer pattern that lived here is gone — the modal is a clear
+      // commit point and pairs with the Undo work (delete is the one
+      // mutation that's NOT undoable, so it earns an explicit confirm).
+      if (focusedItem && !pendingDeleteItemId) {
+        setPendingDeleteItemId(focusedItem.id)
       }
     },
     onCopy: () => {
@@ -1103,12 +1190,30 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         </div>
       )}
 
-      {/* Delete confirmation toast */}
-      {confirmDelete && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-[var(--radius-md)] bg-[var(--color-red)] text-white text-[length:var(--font-size-xs)] font-medium" style={{ boxShadow: 'var(--shadow-tooltip)' }}>
-          Press again to delete
-        </div>
-      )}
+      {/* Permanent delete confirmation modal. Paired with the v0.1.8
+          Undo work — undo doesn't cover delete, so this is the one
+          point in the keyboard / context-menu flow where the user
+          explicitly commits to losing the row. */}
+      {pendingDeleteItemId && (() => {
+        const target = items.find((i) => i.id === pendingDeleteItemId)
+        if (!target) {
+          // Race: item disappeared (cross-window delete, etc.). Close
+          // the modal silently rather than confirm against a phantom.
+          setPendingDeleteItemId(null)
+          return null
+        }
+        return (
+          <ConfirmDeleteDialog
+            itemText={target.text}
+            onCancel={() => setPendingDeleteItemId(null)}
+            onConfirm={() => {
+              removeItem(target.id)
+              setPendingDeleteItemId(null)
+              handlePostDestructive()
+            }}
+          />
+        )
+      })()}
 
     </motion.div>
   )

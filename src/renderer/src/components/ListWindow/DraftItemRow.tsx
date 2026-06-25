@@ -52,6 +52,18 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
     textareaRef.current?.focus()
   }, [])
 
+  // Cmd+Z while focused in the draft cancels the draft without
+  // creating an item (and without consuming a log entry). The global
+  // useGlobalUndo hook dispatches `undo-cancel` on the textarea when
+  // it sees data-undo-cancel; we translate to onDiscard.
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    const onUndoCancel = (): void => onDiscard()
+    el.addEventListener('undo-cancel', onUndoCancel)
+    return () => el.removeEventListener('undo-cancel', onUndoCancel)
+  }, [onDiscard])
+
   // Resize before paint so the textarea's height matches its content in the
   // same frame as a text change. Same pattern as ItemRow's edit mode.
   useLayoutEffect(() => {
@@ -96,6 +108,11 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
         <textarea
           ref={textareaRef}
           rows={1}
+          // Flag for the global Cmd+Z handler (useGlobalUndo): when
+          // this draft textarea has focus, Cmd+Z discards the draft
+          // instead of consuming an undo-log entry (per spec — the
+          // draft hasn't committed yet, so there's nothing to undo).
+          data-undo-cancel="draft-new-item"
           className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
           style={{ lineHeight: '1.5rem' }}
           value={text}

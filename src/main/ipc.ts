@@ -17,6 +17,14 @@ import {
 } from './feedback-store'
 import { submitFeedback } from './feedback-send'
 import {
+  captureUndoEntry,
+  clearRedoStack,
+  getUndoSnapshot,
+  performRedo,
+  performUndo,
+  pruneEntriesForItem
+} from './undo-store'
+import {
   getThemesState,
   setThemesState,
   resetThemesState,
@@ -259,6 +267,11 @@ export function registerIpcHandlers(): void {
       'comments',
       store.get('comments').filter((c) => !itemIds.includes(c.itemId))
     )
+    // Cascade: prune any undo / redo entries that referenced the
+    // now-dead items so a later undo doesn't try to revive them
+    // into a list that no longer exists.
+    for (const itemId of itemIds) pruneEntriesForItem(itemId)
+    clearRedoStack()
     // Auto-unbind any custom global shortcut that targeted this list.
     // Without this the shortcut's accelerator stays registered with a
     // dangling targetId — pressing it would either no-op (openList) or
@@ -303,6 +316,7 @@ export function registerIpcHandlers(): void {
       archivedAt: null
     }
     store.set('items', [...items, item])
+    captureUndoEntry({ kind: 'add-item', item })
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     broadcastThemeEvent('item-added', { itemId: item.id })
@@ -320,6 +334,27 @@ export function registerIpcHandlers(): void {
     const prev = items[idx]
     items[idx] = { ...prev, ...updates, updatedAt: now() }
     store.set('items', items)
+    // Capture undo entries for text + archive/unarchive edits. Other
+    // partial updates (e.g. listId / sortOrder when the renderer's
+    // optimistic update calls editItem under the hood) flow through
+    // moveItem / reorderItems IPCs which capture their own entries
+    // there — undoing them here would double-record.
+    if (typeof updates.text === 'string' && updates.text !== prev.text) {
+      captureUndoEntry({
+        kind: 'edit-text',
+        itemId: id,
+        oldText: prev.text,
+        newText: updates.text
+      })
+    }
+    if ('archivedAt' in updates && updates.archivedAt !== prev.archivedAt) {
+      captureUndoEntry({
+        kind: 'set-archived-at',
+        itemId: id,
+        oldVal: prev.archivedAt ?? null,
+        newVal: updates.archivedAt ?? null
+      })
+    }
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     // Distinguish edits-of-text from other updates so the trigger config
@@ -340,6 +375,13 @@ export function registerIpcHandlers(): void {
       'comments',
       store.get('comments').filter((c) => c.itemId !== id)
     )
+    // Permanent delete is intentionally NOT undoable (renderer paired
+    // a confirmation dialog with this path). The action still
+    // invalidates forward history per spec — and we prune any
+    // dangling undo / redo entries that reference this id so a later
+    // undo doesn't try to revive a tombstoned row.
+    pruneEntriesForItem(id)
+    clearRedoStack()
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
   })
@@ -348,8 +390,17 @@ export function registerIpcHandlers(): void {
     const items = store.get('items')
     const idx = items.findIndex((i) => i.id === id)
     if (idx === -1) throw new Error(`Item not found: ${id}`)
+    const oldStatus = items[idx].status
     items[idx] = { ...items[idx], status, updatedAt: now() }
     store.set('items', items)
+    if (oldStatus !== status) {
+      captureUndoEntry({
+        kind: 'set-status',
+        itemId: id,
+        oldStatus,
+        newStatus: status
+      })
+    }
     updateTrayMenu()
     broadcastDataChanged(e.sender.id)
     broadcastThemeEvent('item-status-changed', { itemId: id })
@@ -361,6 +412,7 @@ export function registerIpcHandlers(): void {
     const idx = items.findIndex((i) => i.id === id)
     if (idx === -1) throw new Error(`Item not found: ${id}`)
     const fromListId = items[idx].listId
+    const oldSortOrder = items[idx].sortOrder
     // Same gap-aware sortOrder logic as createItem — count of visible items
     // in the target list isn't a reliable "next bottom" when archived items
     // have left holes.
@@ -376,6 +428,16 @@ export function registerIpcHandlers(): void {
       updatedAt: now()
     }
     store.set('items', items)
+    if (fromListId !== targetListId) {
+      captureUndoEntry({
+        kind: 'move-list',
+        itemId: id,
+        oldListId: fromListId,
+        oldSortOrder,
+        newListId: targetListId,
+        newSortOrder: nextSortOrder
+      })
+    }
     broadcastDataChanged(e.sender.id)
     // Tell any list window whose active listId === targetListId that
     // the item landed there. Skipped when fromListId === targetListId
@@ -393,17 +455,61 @@ export function registerIpcHandlers(): void {
     return items[idx]
   })
 
-  ipcMain.handle('reorderItems', (e, listId: string, orderedIds: string[]): void => {
-    const items = store.get('items')
-    orderedIds.forEach((id, index) => {
-      const idx = items.findIndex((i) => i.id === id)
-      if (idx !== -1) {
-        items[idx] = { ...items[idx], sortOrder: index }
+  ipcMain.handle(
+    'reorderItems',
+    (e, listId: string, orderedIds: string[], silent?: boolean): void => {
+      const items = store.get('items')
+      // Capture the old order of the SAME ids (in the same scope) so
+      // undo restores their previous relative positions. Other items
+      // in the list (not in orderedIds) are untouched by reorder so
+      // we don't need to record them.
+      const oldOrder = [...orderedIds]
+        .map((id) => ({ id, sortOrder: items.find((i) => i.id === id)?.sortOrder ?? 0 }))
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((x) => x.id)
+      orderedIds.forEach((id, index) => {
+        const idx = items.findIndex((i) => i.id === id)
+        if (idx !== -1) {
+          items[idx] = { ...items[idx], sortOrder: index }
+        }
+      })
+      store.set('items', items)
+      // Only push an entry if the order actually changed AND the
+      // caller didn't opt out via `silent`. The carry-mode flow uses
+      // silent=true on every j/k step (the whole session captures one
+      // aggregate entry on commit instead of N per-keystroke entries),
+      // and the Cmd+Z-during-carry restore also uses silent=true so
+      // it doesn't push a "restore" entry into the log.
+      const changed = oldOrder.some((id, i) => id !== orderedIds[i])
+      if (changed && !silent) {
+        captureUndoEntry({
+          kind: 'reorder',
+          listId,
+          oldOrder,
+          newOrder: [...orderedIds]
+        })
       }
-    })
-    store.set('items', items)
-    broadcastDataChanged(e.sender.id)
-  })
+      broadcastDataChanged(e.sender.id)
+    }
+  )
+
+  // Manually push a 'reorder' undo entry without applying the move —
+  // the data is already at `newOrder`. Used by carry-mode commit
+  // (Enter / Esc land) to record the aggregate move that the silent
+  // j/k chain performed, as a single user-perceived action.
+  ipcMain.handle(
+    'undo:push-reorder-entry',
+    (_e, listId: string, oldOrder: string[], newOrder: string[]): void => {
+      const changed = oldOrder.some((id, i) => id !== newOrder[i])
+      if (!changed) return
+      captureUndoEntry({
+        kind: 'reorder',
+        listId,
+        oldOrder: [...oldOrder],
+        newOrder: [...newOrder]
+      })
+    }
+  )
 
   // ── Comments ────────────────────────────────────────────────────
   ipcMain.handle(
@@ -758,6 +864,28 @@ export function registerIpcHandlers(): void {
   // are enforced inside submitFeedback so the renderer can't bypass
   // the daily limit by skipping the can-send IPC.
   ipcMain.handle('feedback:send', (_e, message: string) => submitFeedback(message))
+
+  // ── Undo / redo ─────────────────────────────────────────────────
+  // In-memory cross-window log. Pull-style fetch for windows mounted
+  // after the broadcast they would've heard; the onChanged event in
+  // preload pushes future updates. perform-undo / -redo apply the
+  // inverse against the data store directly + broadcast both
+  // data-changed and undo:changed.
+  ipcMain.handle('undo:get', () => getUndoSnapshot())
+  ipcMain.handle('undo:perform-undo', () => {
+    const result = performUndo()
+    // Broadcast to EVERY window including the sender — the inverse
+    // ran in main, not in the caller's renderer, so the caller also
+    // needs to refresh. broadcastDataChanged() with no sender id
+    // hits every window.
+    if (result) broadcastDataChanged()
+    return result
+  })
+  ipcMain.handle('undo:perform-redo', () => {
+    const result = performRedo()
+    if (result) broadcastDataChanged()
+    return result
+  })
 
   // ── System: external links ──────────────────────────────────────
   // Used by attribution links in the Themes tab. Validates the URL
