@@ -8,8 +8,8 @@ import { useEffect, useRef } from 'react'
 //
 // Copy is locked from the dispatch brief (A1–A4):
 //   A1 Title:          "Delete this item permanently?"
-//   A2 Body:           "Heads up: this is action permanent. Undo
-//                       (Cmd+Z) won't bring it back."
+//   A2 Body:           "Heads up: this is permanent. Undo (Cmd+Z)
+//                       won't bring it back."
 //   A3 Confirm button: "Delete forever"
 //   A4 Cancel button:  "Cancel"
 //
@@ -73,7 +73,7 @@ export function ConfirmDeleteDialog({
             Delete this item permanently?
           </div>
           <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
-            Heads up: this is action permanent. Undo (⌘Z) won&apos;t
+            Heads up: this is permanent. Undo (⌘Z) won&apos;t
             bring it back.
           </div>
         </div>
