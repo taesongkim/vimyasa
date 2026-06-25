@@ -52,7 +52,13 @@ export function ConfirmDeleteDialog({
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--backdrop-dim)]"
+      // --color-overlay-strong (0.7 black) instead of --backdrop-dim.
+      // backdrop-dim is calibrated for the onboarding tour where the
+      // dot grid showing through is intentional; a permanent-delete
+      // confirm has to fully obscure the list underneath so the user
+      // isn't reading the row they're about to destroy through the
+      // modal card.
+      className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay-strong)]"
       onMouseDown={(e) => {
         // Click on the backdrop dismisses; clicks inside the card
         // bubble through children handlers without dismissing.
@@ -63,7 +69,11 @@ export function ConfirmDeleteDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-delete-title"
-        className="no-drag flex flex-col gap-3 p-4 mx-4 rounded-[var(--radius-md)] bg-[var(--color-surface)] border border-[var(--color-border)] max-w-[280px] shadow-[var(--shadow-panel)]"
+        // bg-color-bg-menu (Phase 1's solid menu surface) instead of
+        // bg-color-surface — color-surface is a thin translucent
+        // layer over vibrancy and was bleeding the list items
+        // through the card itself, not just the backdrop.
+        className="no-drag flex flex-col gap-3 p-4 mx-4 rounded-[var(--radius-md)] bg-[var(--color-bg-menu)] border border-[var(--color-border)] max-w-[280px] shadow-[var(--shadow-panel)]"
       >
         <div className="flex flex-col gap-1">
           <div

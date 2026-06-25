@@ -139,6 +139,12 @@
   --hover-highlight: var(--palette-overlay-hover);
   --active-bg: var(--palette-overlay-active);
   --backdrop-dim: var(--palette-overlay-backdrop);
+  /* Stronger overlay than --backdrop-dim. The onboarding-tour dim is
+     calibrated to leave the underlying chrome partly visible (the
+     dot grid showing through is the whole point), but destructive-
+     action modals (permanent-delete confirm, future "Wipe data"
+     prompts) need full obscure of the surface they sit on. */
+  --color-overlay-strong: rgba(0, 0, 0, 0.7);
 
   /* Row state backgrounds — focused / hover / carrying. Phase 1 left
      these inline in the rules below; Phase 2 tokenizes them so light

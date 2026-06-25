@@ -431,6 +431,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       // is on, but for v1 we just pick the snapshot position.
       const startIdx = startingOrder?.indexOf(carryItemId) ?? -1
       if (startIdx !== -1) setFocusIndex(startIdx)
+      // Hand keyboard focus back to the list container. Cmd+Z fired
+      // on whatever had focus (often body, sometimes a stale
+      // textarea from an earlier edit); without an explicit focus
+      // call here, the next j/k targets a now-detached element and
+      // useKeyboard's textarea guard keeps bailing.
+      scrollContainerRef.current?.focus()
       carryStartingOrderRef.current = null
       carryStartingListIdRef.current = null
       setCarryItemId(null)
@@ -1066,7 +1072,17 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
-      <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
+      <div
+        ref={scrollContainerRef}
+        // tabIndex=-1 makes the container programmatically focusable
+        // (focus() works) but skipped from sequential Tab navigation.
+        // Used by the Cmd+Z-during-edit and Cmd+Z-during-carry paths to
+        // hand keyboard focus back to a safe non-input element so
+        // useKeyboard's "is the active element a textarea?" guard
+        // doesn't bail on every j/k after the cancel.
+        tabIndex={-1}
+        className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade focus:outline-none"
+      >
         <div
           ref={itemsContainerRef}
           className={`flex flex-col${isCarrying ? ' list-carrying' : ''}`}
@@ -1105,6 +1121,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   dataIndex={idx}
                   onCopyRequest={(fn) => { focusedItemCopyFnRef.current = fn }}
                   onEditRequest={(fn) => { focusedItemEditFnRef.current = fn }}
+                  onEditUndoCancel={(rowIdx) => {
+                    // Cmd+Z while editing this row — restore focus +
+                    // re-park it on a non-input element so j/k keeps
+                    // working. Matches the carry-cancel handler above.
+                    setFocusIndex(rowIdx)
+                    scrollContainerRef.current?.focus()
+                  }}
                 />
               ))}
             </AnimatePresence>

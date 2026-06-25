@@ -314,6 +314,31 @@ not silently grab next-priority items.
 
 ## Bugs
 
+### v0.1.8 bug batch — Undo + Phase 2 visual sweep
+- **Lane:** features
+- **Priority:** P2
+- **Version:** v0.1.8
+- **Status:** **in-flight on `v0.1.8-bug-batch` branch.**
+- **Notes:** Three small bugs surfaced during v0.1.8 Undo + Phase 2
+  visual sweep. Single PR covers all three.
+  1. **j/k navigation lost after Cmd+Z during edit / carry.** After
+     `undo-cancel` / `undo-check-carry`, focus drifts to a detached
+     element so useKeyboard's textarea guard bails. Fix: ItemRow's
+     undo-cancel handler now calls a new `onEditUndoCancel(index)`
+     prop which the parent uses to setFocusIndex + focus the scroll
+     container. The carry-cancel path in ListWindow gains the same
+     `scrollContainerRef.current?.focus()` call. Container is now
+     `tabIndex={-1}` + `focus:outline-none`.
+  2. **Confirm-delete modal bleed-through.** Backdrop and card were
+     both translucent; list items showed through. New token
+     `--color-overlay-strong: rgba(0, 0, 0, 0.7)` in globals.css for
+     destructive-action modal reuse. Card switches from
+     `--color-surface` to Phase 1's solid `--color-bg-menu`.
+  3. **Radio dot off-center in Appearance.** Margin-based centering
+     was numerically right but brittle against `border-2`. Swapped
+     to flex `items-center justify-center` on the ring + dropped
+     `m-0.5` from the dot.
+
 ### Mystery flicker on first entry-form launch — even without parallel instances
 - **Lane:** features
 - **Priority:** P3
