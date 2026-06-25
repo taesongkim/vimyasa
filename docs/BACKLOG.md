@@ -171,19 +171,20 @@ not silently grab next-priority items.
 - **Lane:** features (primary), aesthetics (visual treatment)
 - **Priority:** P2
 - **Version:** v0.1.8 (confirmed; bundled with light mode release)
-- **Status:** idea — quick scope only, not yet a proposal
-- **Notes:** When the auto-update flow shows the "update available"
-  message, include the GitHub release notes (markdown body of the
-  release) as a tab or expanded section. `electron-updater` already
-  exposes `releaseNotes` on the `update-downloaded` event. Likely
-  ~half a day if the current update UI is a custom in-app window,
-  +1–2 hours if it's a native dialog (would need migration). Open
-  questions before building:
-  1. Current update UI shape (custom vs. native).
-  2. electron-updater concatenates skipped versions' notes —
-     decide: show all, or just latest?
-  3. Markdown renderer choice (`marked` is ~5kb, plenty).
-  Coordination writes a proper proposal when v0.1.7 is closer.
+- **Status:** **in-flight on `release-notes-in-update` branch**
+  (features lane). Investigation confirmed native dialog migration
+  needed — `src/main/updater.ts` was using `dialog.showMessageBox`
+  for both `update-available` and `update-downloaded` events. Coord
+  had pre-approved the migration in dispatch ("if native: confirmed,
+  migrate"). New custom window (frameless glass-surface vibrancy,
+  mirrors feedback / quickadd window patterns), `marked` for the
+  markdown body. Aesthetics consult pending on the visual treatment
+  once the layout is sketched (INBOX on draft).
+- **Notes:** Released notes shown on the `update-downloaded` prompt
+  (the moment they'd actually be useful — pre-install user can
+  decide whether the changes are worth a restart). Concatenation:
+  show all skipped versions chronologically, latest first — gives
+  context to users who've been away. Markdown via `marked` (~5kb).
 
 ### Feedback window — themed input surface
 - **Lane:** themes

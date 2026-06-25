@@ -351,6 +351,88 @@ export function createFeedbackWindow(): BrowserWindow {
   return win
 }
 
+// ── Update Prompt Window ────────────────────────────────────────
+
+const UPDATE_PROMPT_WIDTH = 480
+const UPDATE_PROMPT_HEIGHT = 520
+let updatePromptWindow: BrowserWindow | null = null
+
+/** Payload type for the update-prompt renderer. Two phases:
+ *   - 'available':  electron-updater found a new version. The user
+ *                   decides whether to download.
+ *   - 'downloaded': download finished; the user decides whether to
+ *                   restart now. Release notes (markdown) live here. */
+export interface UpdatePromptPayload {
+  phase: 'available' | 'downloaded'
+  version: string
+  releaseNotes: string
+}
+
+// The most recent payload main sent. The renderer pulls this on
+// mount via the `update:get-pending` IPC — covers the race where
+// main calls `webContents.send('update:show')` before the renderer's
+// useEffect has subscribed. Cleared on dismiss so a stale payload
+// doesn't reopen the next time the window is summoned.
+let pendingUpdatePayload: UpdatePromptPayload | null = null
+
+export function getPendingUpdatePayload(): UpdatePromptPayload | null {
+  return pendingUpdatePayload
+}
+
+/** Create (or focus) the update prompt window and send the payload.
+ *  The same window handles both 'available' and 'downloaded' phases;
+ *  the renderer swaps content based on payload.phase. Idempotent —
+ *  a second call while the window is open just updates the payload. */
+export function showUpdatePrompt(payload: UpdatePromptPayload): BrowserWindow {
+  pendingUpdatePayload = payload
+
+  const existing = updatePromptWindow
+  if (existing && !existing.isDestroyed()) {
+    // Window is already up — just push the new payload + focus it.
+    existing.webContents.send('update:show', payload)
+    if (!existing.isVisible()) existing.show()
+    existing.focus()
+    return existing
+  }
+
+  const { x, y } = getCenteredPosition(UPDATE_PROMPT_WIDTH, UPDATE_PROMPT_HEIGHT)
+  const win = makeWindow('update-prompt', {
+    width: UPDATE_PROMPT_WIDTH,
+    height: UPDATE_PROMPT_HEIGHT,
+    x,
+    y,
+    resizable: false,
+    alwaysOnTop: true
+  })
+  updatePromptWindow = win
+  loadRoute(win, '/update')
+
+  // Send the payload as soon as the renderer is loaded enough to
+  // receive it. did-finish-load fires after the JS has executed; the
+  // renderer's useEffect-based subscription is up by then. If the
+  // renderer somehow missed the push, it can still pull via
+  // update:get-pending IPC.
+  win.webContents.once('did-finish-load', () => {
+    win.webContents.send('update:show', payload)
+  })
+
+  win.once('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    updatePromptWindow = null
+  })
+  return win
+}
+
+/** Close the prompt window (Later / backdrop / Esc). Also clears the
+ *  pending payload so a stale "downloaded" state doesn't reappear
+ *  when the next update check triggers a fresh 'available' event. */
+export function hideUpdatePromptWindow(): void {
+  pendingUpdatePayload = null
+  if (updatePromptWindow && !updatePromptWindow.isDestroyed()) {
+    updatePromptWindow.close()
+  }
+}
+
 // ── Comments Window ─────────────────────────────────────────────
 
 export function createCommentsWindow(itemId: string): BrowserWindow {
