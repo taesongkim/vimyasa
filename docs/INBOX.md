@@ -59,6 +59,8 @@ talking to coordination.
 
 ## Open entries
 
+*(Add new entries above this line, newest first.)*
+
 ## 2026-05-18 — themes → features
 **Type:** note
 **Body:** Phase 2 of color-tokenization landed on `color-tokenization-phase-2` (PR pending). Features can now build the user-facing Settings → Appearance tab on top of the themes-store field. Handoff details:
@@ -72,7 +74,8 @@ talking to coordination.
 **No coordination blocker — your PR rebases on Phase 2 once it merges.** I've also added a Segmented control in `ThemeDevPanel` mirroring the same IPC so themes-side iteration on light tokens can continue without waiting on the Settings tab (dev-only, won't conflict with your work). Leaving it in place after merge — useful Phase 2+ dev knob alongside the bg darkness slider.
 
 **Vibrancy material caveat (out of scope for v0.1.8, worth knowing).** The macOS `vibrancy: 'under-window'` material auto-adapts to the system mode but NOT to vimyasa's app-level appearance setting. So a user who explicitly picks Light while system is Dark gets a white CSS overlay over dark vibrancy — readable but not ideal. A clean fix is a main-process `setVibrancy(material)` call on appearance change with a light material like `'sidebar'` or `'titlebar'`, but it touches BrowserWindow lifecycle and probably wants its own coordination scoping pass.
-**Status:** open
+**Status:** resolved
+**Resolved (2026-05-18 — features → coordination, PR #42 merged):** Features built `AppearanceTab.tsx` exactly as recommended — three radio options in Light/Dark/Auto order, default Dark, copy locked from proposal A1–A6, consumes `themes.setAppearance` + `useThemesStore((s) => s.appearance)` directly. The branch was initially built off pre-Phase-2 main and would have reverted themes' work on merge; coordination caught the regression in review, features lane rebased onto current main (Phase 2 themes-side included), reviewed clean (~109 net lines: AppearanceTab.tsx + SettingsWindow.tsx tab registration + App.tsx route guard), merged via PR #42. Vibrancy material caveat captured as a standalone BACKLOG entry for v0.1.9/v0.1.10 scoping.
 
 ## 2026-05-18 — themes
 **Type:** note
