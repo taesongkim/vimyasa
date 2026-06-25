@@ -72,11 +72,18 @@ not silently grab next-priority items.
 - **Lane:** features
 - **Priority:** P2
 - **Version:** v0.1.8 (confirmed; bundled with light mode release)
-- **Status:** scoped → 3–5 step in-memory ring buffer, in-session only,
-  single-list scope. `Cmd+Z` / `Cmd+Shift+Z`. Covers add / edit /
-  archive / delete (and reorder if cheap).
-- **Notes:** No persistence across summons. No cross-list undo (deferred
-  to v0.1.10+ if ever). Estimate: 2–3 active hours.
+- **Status:** dispatched 2026-06-25 with revised scope (cross-list, 5-step ring buffer, shared Zustand renderer store with broadcast).
+- **Scope (revised):** Covered actions — add item, edit text, change status, archive, unarchive, reorder within list, **move to another list** (carry mode / right-click Send / future drag). Status changes encode old value as generic string for future-proofing (Hold → In Progress rename, new statuses). Delete permanently is **NOT undoable** (paired with this work: add a confirmation dialog before destructive delete; copy candidates A1–A4 in dispatch brief). One undo entry per committed action (edits commit on Enter; carry mode commits on Enter/Esc land).
+- **Cmd+Z behavior:** Order-sensitive handler. If item is in edit mode (typed but not committed) → exit edit mode + restore original text + no log consumption. If carry mode active (item picked up, not landed) → restore item to starting position + exit carry mode + no log consumption. Otherwise → pop undo log + apply inverse + push to redo stack. Cmd+Shift+Z is symmetric. Redo stack resets on any non-undo/redo action.
+- **Architecture:** Shared Zustand renderer store, broadcast across windows (mirrors `themesStore` pattern). Single source of truth for undo log across hot list + all regular lists. Depth: 5 entries.
+- **Out of scope (tracked):** List CRUD (create/rename/delete/reorder); comment CRUD; settings/preferences; delete permanently. Toast-on-undo deferred to v2 polish — see separate BACKLOG entry below.
+
+### Undo — toast feedback on undo/redo (v2 polish)
+- **Lane:** aesthetics (primary) + features (toast plumbing)
+- **Priority:** P3
+- **Version:** unassigned — polish for after v0.1.8 Undo ships
+- **Status:** idea (2026-06-25, deferred from v0.1.8 Undo scope)
+- **Notes:** v0.1.8 ships Undo with silent inverse (focus moves to affected item; no toast). Future polish: a small toast explaining what was undone — e.g. *"Undid: moved 'Pick up groceries' from Hot list to Inbox"* or *"Undid: archive of 'Pick up groceries'"*. Should auto-dismiss; non-blocking; visible from any list window. Aesthetics designs the toast surface (could reuse the feedback success "Message sent. Thanks!" treatment or be its own component); features wires it to the Undo store's last-action event. Candidate for v0.1.10 polish or v0.2.0.
 
 ### Carry-mode motion blur (Settings → Advanced)
 - **Lane:** features (toggle); aesthetics (effect itself)
