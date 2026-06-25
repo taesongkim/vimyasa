@@ -409,6 +409,22 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [carryItemId, items, activeListId])
 
+  // After carry mode exits (any path — Cmd+Z restore, Enter / Esc
+  // commit, `m` re-press), make sure keyboard focus is back on the
+  // list container so j/k keeps working. The inline focus call
+  // inside the undo-check-carry handler was racing with React's
+  // state-flush + re-render — by the time the new keydown listener
+  // (with isCarrying=false) was installed, the DOM focus had already
+  // drifted. A reactive effect fires AFTER the re-render, so the
+  // focus call lands on a stable DOM.
+  const wasCarryingRef = useRef(false)
+  useEffect(() => {
+    if (wasCarryingRef.current && !carryItemId) {
+      scrollContainerRef.current?.focus()
+    }
+    wasCarryingRef.current = carryItemId !== null
+  }, [carryItemId])
+
   // Cmd+Z while carry mode is active. useGlobalUndo dispatches
   // `undo-check-carry` on the window; if we're carrying, restore
   // the pre-carry order silently (no undo entry), exit carry, and

@@ -64,21 +64,24 @@ export function AppearanceTab() {
                     : 'hover:bg-[var(--hover-highlight)]'
                 }`}
               >
-                {/* Radio pip — flex-centered. The earlier margin-
-                    based centering (m-0.5) was numerically correct
-                    against a 16px ring + 8px dot but brittle: the
-                    border-2 width pushed the inner content box off-
-                    center on the y-axis. Flexbox centering is
-                    bulletproof regardless of border / box-model. */}
+                {/* Radio pip — padding-based dot for pixel-perfect
+                    centering on every renderer. Flexbox + a small
+                    fixed child was technically centered but landed
+                    on half-pixels in some configurations (the dot
+                    read as slightly upper-left). Letting the dot
+                    fill the content area (border-box minus padding)
+                    instead means the browser never has to round
+                    sub-pixel positions — the dot is exactly the
+                    space that's left. */}
                 <div
-                  className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-default ${
+                  className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 p-[2px] transition-default ${
                     selected
                       ? 'border-[var(--color-accent)]'
                       : 'border-[var(--color-border)]'
                   }`}
                 >
                   {selected && (
-                    <div className="w-2 h-2 rounded-full bg-[var(--color-accent)]" />
+                    <div className="w-full h-full rounded-full bg-[var(--color-accent)]" />
                   )}
                 </div>
                 <div className="flex flex-col gap-0.5 min-w-0">
