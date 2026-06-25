@@ -5,6 +5,7 @@ import { useGlobalUndo } from './hooks/useGlobalUndo'
 import { ListWindow } from './components/ListWindow/ListWindow'
 import { QuickAddFixed } from './components/QuickAdd/QuickAddFixed'
 import { FeedbackWindow } from './components/Feedback/FeedbackWindow'
+import { UpdatePromptWindow } from './components/Update/UpdatePromptWindow'
 import { CommentsWindow } from './components/Comments/CommentsWindow'
 import { SettingsWindow, type SettingsTab } from './components/Settings/SettingsWindow'
 import { ArchiveWindow } from './components/Archive/ArchiveWindow'
@@ -34,6 +35,9 @@ function parseHash(): RouteInfo {
   }
   if (parts[1] === 'feedback') {
     return { route: 'feedback', params: {} }
+  }
+  if (parts[1] === 'update') {
+    return { route: 'update', params: {} }
   }
   if (parts[1] === 'comments' && parts[2]) {
     return { route: 'comments', params: { itemId: parts[2] } }
@@ -172,6 +176,8 @@ export default function App() {
     }
     case 'feedback':
       return <FeedbackWindow />
+    case 'update':
+      return <UpdatePromptWindow />
     case 'comments':
       return <CommentsWindow itemId={route.params.itemId} />
     case 'settings': {
