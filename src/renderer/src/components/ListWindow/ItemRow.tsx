@@ -125,6 +125,23 @@ export function ItemRow({
     }
   }, [editing])
 
+  // Cmd+Z while focused in the edit textarea cancels the edit + restores
+  // the original text, without consuming an undo-log entry (per spec).
+  // The global `useGlobalUndo` hook dispatches `undo-cancel` on the
+  // active element when it sees `data-undo-cancel` set; we listen for
+  // it here and translate to a local cancel.
+  useEffect(() => {
+    if (!editing) return
+    const el = inputRef.current
+    if (!el) return
+    const onUndoCancel = (): void => {
+      setText(item.text)
+      setEditing(false)
+    }
+    el.addEventListener('undo-cancel', onUndoCancel)
+    return () => el.removeEventListener('undo-cancel', onUndoCancel)
+  }, [editing, item.text])
+
   // Resize the textarea to match its content. Must be useLayoutEffect, not
   // useEffect: the resize has to happen between React's commit and the
   // browser's paint, so the height update lands in the same frame as the
@@ -418,6 +435,13 @@ export function ItemRow({
           <textarea
             ref={inputRef}
             rows={1}
+            // Flag for the global Cmd+Z handler (useGlobalUndo): when
+            // this textarea has focus, Cmd+Z cancels the edit instead
+            // of consuming a log entry. The hook dispatches an
+            // `undo-cancel` CustomEvent which the onUndoCancel below
+            // catches via the native event listener installed in
+            // ItemRow's useEffect.
+            data-undo-cancel="item-edit"
             className="flex-1 bg-transparent text-[length:var(--font-size-md)] text-[color:var(--color-text-primary)] outline-none resize-none overflow-hidden p-0 [overflow-wrap:anywhere]"
             style={{ lineHeight: '1.5rem' }}
             value={text}
@@ -436,6 +460,7 @@ export function ItemRow({
                 // let the window-level Escape handler also run and step focus
                 // back another rung.
                 e.stopPropagation()
+                setText(item.text)
                 setEditing(false)
               }
             }}

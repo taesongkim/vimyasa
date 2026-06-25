@@ -44,7 +44,8 @@ const api: VimyasaAPI = {
   deleteItem: (id) => ipcRenderer.invoke('deleteItem', id),
   setItemStatus: (id, status) => ipcRenderer.invoke('setItemStatus', id, status),
   moveItem: (id, targetListId) => ipcRenderer.invoke('moveItem', id, targetListId),
-  reorderItems: (listId, orderedIds) => ipcRenderer.invoke('reorderItems', listId, orderedIds),
+  reorderItems: (listId, orderedIds, silent) =>
+    ipcRenderer.invoke('reorderItems', listId, orderedIds, silent),
 
   // Comments
   createComment: (itemId, text, parentId) =>
@@ -249,6 +250,30 @@ const api: VimyasaAPI = {
       const listener = (): void => callback()
       ipcRenderer.on('feedback:hidden', listener)
       return () => ipcRenderer.removeListener('feedback:hidden', listener)
+    }
+  },
+
+  // Undo / redo — main holds the in-memory log; every window mirrors
+  // via onChanged. Same shape as the themes onChanged subscription.
+  undo: {
+    get: () => ipcRenderer.invoke('undo:get'),
+    performUndo: () => ipcRenderer.invoke('undo:perform-undo'),
+    performRedo: () => ipcRenderer.invoke('undo:perform-redo'),
+    pushReorderEntry: (listId, oldOrder, newOrder) =>
+      ipcRenderer.invoke('undo:push-reorder-entry', listId, oldOrder, newOrder),
+    onChanged: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as { undoDepth?: number; redoDepth?: number } | null
+        if (
+          p &&
+          typeof p.undoDepth === 'number' &&
+          typeof p.redoDepth === 'number'
+        ) {
+          callback({ undoDepth: p.undoDepth, redoDepth: p.redoDepth })
+        }
+      }
+      ipcRenderer.on('undo:changed', listener)
+      return () => ipcRenderer.removeListener('undo:changed', listener)
     }
   },
 

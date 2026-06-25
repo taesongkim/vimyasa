@@ -26,7 +26,7 @@ interface StoreState extends DataStore {
   removeItem: (id: string) => Promise<void>
   changeItemStatus: (id: string, status: ItemStatus) => Promise<void>
   sendItemToList: (id: string, targetListId: string) => Promise<void>
-  reorder: (listId: string, orderedIds: string[]) => Promise<void>
+  reorder: (listId: string, orderedIds: string[], silent?: boolean) => Promise<void>
   archiveItem: (id: string) => Promise<void>
   restoreItem: (id: string) => Promise<void>
 
@@ -238,7 +238,7 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  reorder: async (listId, orderedIds) => {
+  reorder: async (listId, orderedIds, silent) => {
     // Optimistic update
     set((s) => ({
       items: s.items.map((item) => {
@@ -249,7 +249,7 @@ export const useStore = create<StoreState>((set, get) => ({
         return item
       })
     }))
-    await window.api.reorderItems(listId, orderedIds)
+    await window.api.reorderItems(listId, orderedIds, silent)
   },
 
   archiveItem: async (id) => {
