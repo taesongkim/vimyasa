@@ -1229,6 +1229,23 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         </div>
       )}
 
+      {/* DEV-ONLY state readout for the carry-cancel j/k bug.
+          Revertible — search "DEV-ONLY state readout" to find/remove.
+          Lets the user see carryItemId / focusIndex / isCarrying
+          without DevTools so we can pin down which state is wrong
+          after Cmd+Z. */}
+      {import.meta.env.DEV && (
+        <div className="absolute top-2 right-2 z-50 px-2 py-1 rounded bg-black/80 text-white text-[10px] font-mono pointer-events-none">
+          carry: {carryItemId ? `${carryItemId.slice(0, 6)}…` : 'null'}
+          {' | '}
+          focusIdx: {focusIndex}
+          {' | '}
+          isCarrying: {isCarrying ? 'T' : 'F'}
+          {' | '}
+          items: {listItems.length}
+        </div>
+      )}
+
       {/* Permanent delete confirmation modal. Paired with the v0.1.8
           Undo work — undo doesn't cover delete, so this is the one
           point in the keyboard / context-menu flow where the user
