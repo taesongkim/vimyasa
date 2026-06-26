@@ -17,6 +17,7 @@
     "border-beam": "^1.0.1",
     "electron-store": "^8.2.0",
     "electron-updater": "^6.8.3",
+    "marked": "^18.0.5",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

@@ -277,6 +277,37 @@ const api: VimyasaAPI = {
     }
   },
 
+  // Auto-update prompt (v0.1.8). Custom in-app window replaced the
+  // native dialog so we can render the GitHub release notes inline.
+  update: {
+    onShow: (callback) => {
+      const listener = (_e: unknown, payload: unknown): void => {
+        const p = payload as
+          | {
+              phase?: 'available' | 'downloaded'
+              version?: string
+              releaseNotes?: string
+            }
+          | null
+        if (
+          p &&
+          (p.phase === 'available' || p.phase === 'downloaded') &&
+          typeof p.version === 'string' &&
+          typeof p.releaseNotes === 'string'
+        ) {
+          callback({ phase: p.phase, version: p.version, releaseNotes: p.releaseNotes })
+        }
+      }
+      ipcRenderer.on('update:show', listener)
+      return () => ipcRenderer.removeListener('update:show', listener)
+    },
+    getPending: () => ipcRenderer.invoke('update:get-pending'),
+    install: () => ipcRenderer.invoke('update:install'),
+    restart: () => ipcRenderer.invoke('update:restart'),
+    dismiss: () => ipcRenderer.invoke('update:dismiss'),
+    testShow: (payload) => ipcRenderer.invoke('update:test-show', payload)
+  },
+
   // Theme dev panel (gated by is.dev — never call from production builds)
   themeDev: {
     openPanel: () => ipcRenderer.invoke('themeDev:openPanel'),

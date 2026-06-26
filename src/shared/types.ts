@@ -308,6 +308,45 @@ export interface VimyasaAPI {
   // Undo / redo (v0.1.8). In-memory cross-window log; main is the
   // source of truth, renderer mirrors via onChanged.
   undo: UndoAPI
+
+  // Auto-update prompt (v0.1.8 — release-notes-in-update). Custom
+  // in-app window replaced the native dialog so we can render the
+  // GitHub release notes markdown inline.
+  update: UpdateAPI
+}
+
+// ── Auto-update prompt ──────────────────────────────────────────
+
+export interface UpdatePromptPayload {
+  /** 'available' = electron-updater found a new version; show
+   *  Install Now / Later. 'downloaded' = download finished;
+   *  show Restart Now / Later + release notes. */
+  phase: 'available' | 'downloaded'
+  version: string
+  /** Concatenated markdown body of every release the user hasn't
+   *  installed yet, latest at top. Empty string if the GitHub
+   *  release had no body. */
+  releaseNotes: string
+}
+
+export interface UpdateAPI {
+  /** Subscribe to push from main. Fires every time the prompt window
+   *  should show a (new) payload — both phases route through here. */
+  onShow: (callback: (payload: UpdatePromptPayload) => void) => () => void
+  /** Pull-style read for the renderer on mount. Covers the race
+   *  where main pushed `update:show` before the renderer's useEffect
+   *  subscribed. */
+  getPending: () => Promise<UpdatePromptPayload | null>
+  /** User chose Install Now from the 'available' prompt. */
+  install: () => Promise<void>
+  /** User chose Restart Now from the 'downloaded' prompt. */
+  restart: () => Promise<void>
+  /** User chose Later, clicked the backdrop, or hit Esc. */
+  dismiss: () => Promise<void>
+  /** Dev-only escape hatch — packaged builds no-op. Lets a renderer
+   *  summon a mock prompt with hand-crafted data so the window can
+   *  be verified without a real update being available. */
+  testShow: (payload: UpdatePromptPayload) => Promise<void>
 }
 
 // ── Undo / redo ─────────────────────────────────────────────────

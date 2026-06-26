@@ -59,6 +59,48 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-06-25 — features → aesthetics
+**Type:** note
+**Body:** Auto-update prompt is now a custom in-app window (replaced
+the native dialog so the GitHub release notes can render inline).
+Branch: `release-notes-in-update`. Layout sketched + functional;
+flagging for aesthetics' visual treatment consult before merge.
+
+**What's there now (mechanical baseline):**
+- Window: 480×520, frameless glass-surface, vibrancy, alwaysOnTop,
+  drag-region header. Mirrors the feedback / quickadd window shape.
+- Two phases driven by `payload.phase`:
+  - `'available'` → version line + Install Now / Later.
+  - `'downloaded'` → version line + scrollable release-notes pane +
+    Restart Now / Later.
+- Release notes rendered via `marked` (`gfm: true`). Concatenated
+  across all skipped versions, latest at top.
+- Markdown styling in `.release-notes` block at the bottom of
+  `globals.css` — minimal h1/h2/h3, body, lists, links, inline +
+  fenced code, blockquote, hr. Scoped to the class so other
+  markdown surfaces don't inherit if we add them later.
+- Esc dismisses; Later button + dismiss IPC route through the same
+  path. Primary action is auto-focused on payload arrival so Enter
+  commits the obvious choice.
+- Dev-only tray entries summon mock payloads for both phases
+  (search `Show Update Prompt` in `tray.ts`).
+
+**What aesthetics should look at:**
+- The card layout / spacing rhythm (matches feedback window's
+  conventions but the release-notes pane is new territory).
+- Markdown typography fine-tuning. Current styling is functional
+  but probably under-baked vs. what aesthetics would land.
+- Whether the action row needs more weight / hierarchy (currently
+  Later is muted, primary is accent-filled).
+- Any motion treatment on phase change (today: no animation
+  between phases — same window updates content; could fade /
+  cross-fade if there's time).
+
+No deadline pressure — Bundle ships in v0.1.8 alongside light mode
++ Undo. Features will merge whenever aesthetics' visual pass is in
+or signs off "ship as-is."
+**Status:** open
+
 *(Add new entries above this line, newest first.)*
 
 ## 2026-05-18 — themes → features

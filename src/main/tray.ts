@@ -8,7 +8,8 @@ import {
   createListWindow,
   createQuickAddWindow,
   createSettingsWindow,
-  createArchiveWindow
+  createArchiveWindow,
+  showUpdatePrompt
 } from './windows'
 import { orchestrator } from './onboarding'
 import {
@@ -193,6 +194,43 @@ export function updateTrayMenu(): void {
               }
               // Rebuild the menu so the label flips on next open.
               updateTrayMenu()
+            }
+          },
+          // Dev-only: summon the auto-update prompt with mock data so
+          // the window can be verified end-to-end without a real
+          // electron-updater event firing (those only land in
+          // packaged builds). Two entries for the two phases.
+          {
+            label: 'Show Update Prompt (available)',
+            click: () => {
+              showUpdatePrompt({
+                phase: 'available',
+                version: '0.1.99-dev',
+                releaseNotes: ''
+              })
+            }
+          },
+          {
+            label: 'Show Update Prompt (downloaded)',
+            click: () => {
+              showUpdatePrompt({
+                phase: 'downloaded',
+                version: '0.1.99-dev',
+                releaseNotes: [
+                  '## v0.1.99-dev',
+                  '',
+                  '**Dev mock** — no real release. Use this entry to verify the prompt UI.',
+                  '',
+                  '- Bullet one with `inline code`',
+                  '- Bullet two with a [link](https://example.com)',
+                  '',
+                  '> Blockquote line for typography check.',
+                  '',
+                  '```ts',
+                  'const x = 1',
+                  '```'
+                ].join('\n')
+              })
             }
           }
         ] as Electron.MenuItemConstructorOptions[])
