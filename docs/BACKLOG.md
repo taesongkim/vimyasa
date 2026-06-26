@@ -321,14 +321,29 @@ not silently grab next-priority items.
 - **Status:** **in-flight on `v0.1.8-bug-batch` branch.**
 - **Notes:** Three small bugs surfaced during v0.1.8 Undo + Phase 2
   visual sweep. Single PR covers all three.
-  1. **j/k navigation lost after Cmd+Z during edit / carry.** After
-     `undo-cancel` / `undo-check-carry`, focus drifts to a detached
-     element so useKeyboard's textarea guard bails. Fix: ItemRow's
-     undo-cancel handler now calls a new `onEditUndoCancel(index)`
-     prop which the parent uses to setFocusIndex + focus the scroll
-     container. The carry-cancel path in ListWindow gains the same
-     `scrollContainerRef.current?.focus()` call. Container is now
-     `tabIndex={-1}` + `focus:outline-none`.
+  1. **j/k navigation lost after Cmd+Z during edit / carry.** Two
+     separate causes that both presented the same way.
+     - *Edit case:* after `undo-cancel`, focus drifted to the
+       detached textarea so useKeyboard's textarea guard bailed.
+       Fix: ItemRow's undo-cancel handler calls a new
+       `onEditUndoCancel(index)` prop; parent does
+       `setFocusIndex(idx) + scrollContainerRef.current?.focus()`.
+       Container gained `tabIndex={-1}` + `focus:outline-none`.
+     - *Carry case:* on lists with archived items,
+       `startingOrder.indexOf(carryItemId)` returned the index in
+       the FULL snapshot (which needs archived rows to preserve
+       relative positions during the silent restore). On a list
+       with ~400 archived items, `setFocusIndex(427)` stranded
+       focus past `listItems.length`, so j/k still incremented
+       focusIndex but `listItems[focusIndex]` was undefined → no
+       row highlighted. Fix: snapshot the visible-list index
+       (`focusIndex` itself) at enterCarry time via
+       `carryStartingVisibleIdxRef`; onCheckCarry restores from
+       that ref instead of computing an out-of-range index.
+     - Bonus: useKeyboard now reads its config through a ref so
+       the window listener stays referentially stable across
+       renders. Eliminates a class of stale-closure races for
+       every key (Space, n, a, etc.) — not just the original bug.
   2. **Confirm-delete modal bleed-through.** Backdrop and card were
      both translucent; list items showed through. New token
      `--color-overlay-strong: rgba(0, 0, 0, 0.7)` in globals.css for

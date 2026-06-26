@@ -425,22 +425,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [carryItemId, items, activeListId])
 
-  // After carry mode exits (any path — Cmd+Z restore, Enter / Esc
-  // commit, `m` re-press), make sure keyboard focus is back on the
-  // list container so j/k keeps working. The inline focus call
-  // inside the undo-check-carry handler was racing with React's
-  // state-flush + re-render — by the time the new keydown listener
-  // (with isCarrying=false) was installed, the DOM focus had already
-  // drifted. A reactive effect fires AFTER the re-render, so the
-  // focus call lands on a stable DOM.
-  const wasCarryingRef = useRef(false)
-  useEffect(() => {
-    if (wasCarryingRef.current && !carryItemId) {
-      scrollContainerRef.current?.focus()
-    }
-    wasCarryingRef.current = carryItemId !== null
-  }, [carryItemId])
-
   // Cmd+Z while carry mode is active. useGlobalUndo dispatches
   // `undo-check-carry` on the window; if we're carrying, restore
   // the pre-carry order silently (no undo entry), exit carry, and
@@ -466,12 +450,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       const startVisibleIdx = carryStartingVisibleIdxRef.current
       if (startVisibleIdx >= 0) setFocusIndex(startVisibleIdx)
       carryStartingVisibleIdxRef.current = -1
-      // Hand keyboard focus back to the list container. Cmd+Z fired
-      // on whatever had focus (often body, sometimes a stale
-      // textarea from an earlier edit); without an explicit focus
-      // call here, the next j/k targets a now-detached element and
-      // useKeyboard's textarea guard keeps bailing.
-      scrollContainerRef.current?.focus()
       carryStartingOrderRef.current = null
       carryStartingListIdRef.current = null
       setCarryItemId(null)
@@ -1245,23 +1223,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
               setIsDraggingScrollbar(true)
             }}
           />
-        </div>
-      )}
-
-      {/* DEV-ONLY state readout for the carry-cancel j/k bug.
-          Revertible — search "DEV-ONLY state readout" to find/remove.
-          Lets the user see carryItemId / focusIndex / isCarrying
-          without DevTools so we can pin down which state is wrong
-          after Cmd+Z. */}
-      {import.meta.env.DEV && (
-        <div className="absolute top-2 right-2 z-50 px-2 py-1 rounded bg-black/80 text-white text-[10px] font-mono pointer-events-none">
-          carry: {carryItemId ? `${carryItemId.slice(0, 6)}…` : 'null'}
-          {' | '}
-          focusIdx: {focusIndex}
-          {' | '}
-          isCarrying: {isCarrying ? 'T' : 'F'}
-          {' | '}
-          items: {listItems.length}
         </div>
       )}
 
