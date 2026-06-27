@@ -67,7 +67,8 @@ in the BACKLOG entry of the same name). Flagging per the WORKFLOW
 one-dev-at-a-time rule. Sibling #5 features session: please ack /
 hold dev until this branch verifies + I clock out of dev, or ping
 me if you need it sooner and I'll yield.
-**Status:** open
+**Status:** resolved
+**Resolved (2026-06-26 — coordination, PR #47 merged):** Bug-batch shipped; dev-server coordination need expired. Sibling #5 session pushed `release-notes-in-update` cleanly without conflicts. The one-dev-at-a-time pattern worked as designed — no parallel-instance flicker reports, no IPC conflicts.
 
 *(Add new entries above this line, newest first.)*
 
