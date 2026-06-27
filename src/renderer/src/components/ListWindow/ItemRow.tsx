@@ -40,7 +40,8 @@ export function ItemRow({
   index = 0,
   dataIndex,
   onCopyRequest,
-  onEditRequest
+  onEditRequest,
+  onEditUndoCancel
 }: {
   item: Item
   isFocused: boolean
@@ -64,6 +65,12 @@ export function ItemRow({
   dataIndex?: number
   onCopyRequest?: (copyFn: () => void) => void
   onEditRequest?: (editFn: () => void) => void
+  /** Cmd+Z while focused in the edit textarea cancels the edit. The
+   *  parent (ListWindow) needs to refocus the keyboard root and
+   *  restore focusIndex to this row's position so j/k keeps working
+   *  — without this hook the textarea unmounts and focus drifts to
+   *  the detached element, blocking subsequent navigation. */
+  onEditUndoCancel?: (index: number) => void
 }) {
   const { editItem, removeItem, changeItemStatus, sendItemToList, archiveItem } = useStore()
   const [editing, setEditing] = useState(false)
@@ -137,10 +144,15 @@ export function ItemRow({
     const onUndoCancel = (): void => {
       setText(item.text)
       setEditing(false)
+      // Hand keyboard focus back to the list. Without this, the
+      // textarea unmounts with document.activeElement still pointing
+      // at the detached node, so useKeyboard's "is the active
+      // element a textarea?" guard keeps bailing on every j/k.
+      onEditUndoCancel?.(index)
     }
     el.addEventListener('undo-cancel', onUndoCancel)
     return () => el.removeEventListener('undo-cancel', onUndoCancel)
-  }, [editing, item.text])
+  }, [editing, item.text, onEditUndoCancel, index])
 
   // Resize the textarea to match its content. Must be useLayoutEffect, not
   // useEffect: the resize has to happen between React's commit and the

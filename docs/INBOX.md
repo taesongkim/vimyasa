@@ -59,6 +59,16 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-06-26 — features
+**Type:** note
+**Body:** Taking the dev server for the `v0.1.8-bug-batch` branch
+(three small bugs from the Undo + Phase 2 visual sweep — full list
+in the BACKLOG entry of the same name). Flagging per the WORKFLOW
+one-dev-at-a-time rule. Sibling #5 features session: please ack /
+hold dev until this branch verifies + I clock out of dev, or ping
+me if you need it sooner and I'll yield.
+**Status:** open
+
 *(Add new entries above this line, newest first.)*
 
 ## 2026-05-18 — themes → features

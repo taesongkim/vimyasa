@@ -64,16 +64,24 @@ export function AppearanceTab() {
                     : 'hover:bg-[var(--hover-highlight)]'
                 }`}
               >
-                {/* Radio pip */}
+                {/* Radio pip — padding-based dot for pixel-perfect
+                    centering on every renderer. Flexbox + a small
+                    fixed child was technically centered but landed
+                    on half-pixels in some configurations (the dot
+                    read as slightly upper-left). Letting the dot
+                    fill the content area (border-box minus padding)
+                    instead means the browser never has to round
+                    sub-pixel positions — the dot is exactly the
+                    space that's left. */}
                 <div
-                  className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 transition-default ${
+                  className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 p-[2px] transition-default ${
                     selected
                       ? 'border-[var(--color-accent)]'
                       : 'border-[var(--color-border)]'
                   }`}
                 >
                   {selected && (
-                    <div className="w-2 h-2 m-0.5 rounded-full bg-[var(--color-accent)]" />
+                    <div className="w-full h-full rounded-full bg-[var(--color-accent)]" />
                   )}
                 </div>
                 <div className="flex flex-col gap-0.5 min-w-0">

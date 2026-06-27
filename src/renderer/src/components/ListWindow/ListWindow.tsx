@@ -307,6 +307,15 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   //      with intermediate steps.
   const carryStartingOrderRef = useRef<string[] | null>(null)
   const carryStartingListIdRef = useRef<string | null>(null)
+  // Visible-list index at carry-start time. Cmd+Z restore uses THIS,
+  // not `startingOrder.indexOf(carryItemId)`, because startingOrder
+  // includes archived items (the silent reorder needs the full list
+  // to preserve relative positions of hidden rows). On a list with N
+  // archived items, snapshot.indexOf could return a number >>
+  // listItems.length-1, and setFocusIndex(thatNumber) would strand
+  // focus past the visible roster — j/k still update focusIndex but
+  // listItems[focusIndex] stays undefined → no row highlights.
+  const carryStartingVisibleIdxRef = useRef<number>(-1)
 
   const enterCarry = useCallback(() => {
     if (!focusedItem) return
@@ -316,8 +325,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       .map((i) => i.id)
     carryStartingOrderRef.current = snapshot
     carryStartingListIdRef.current = activeListId
+    // Save the visible-list index too — see ref declaration for why
+    // snapshot.indexOf isn't the right lookup on lists with archived
+    // items. focusedItem comes from listItems[focusIndex], so saving
+    // focusIndex itself is correct and cheap.
+    carryStartingVisibleIdxRef.current = focusIndex
     setCarryItemId(focusedItem.id)
-  }, [focusedItem, items, activeListId])
+  }, [focusedItem, items, activeListId, focusIndex])
 
   // Normal carry exit (Enter / Esc / m re-press). Captures one
   // aggregate 'reorder' undo entry covering the whole session, then
@@ -339,6 +353,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
     carryStartingOrderRef.current = null
     carryStartingListIdRef.current = null
+    carryStartingVisibleIdxRef.current = -1
     setCarryItemId(null)
   }, [items, activeListId])
 
@@ -404,6 +419,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       // abandoned in favor of the commit action.
       carryStartingOrderRef.current = null
       carryStartingListIdRef.current = null
+      carryStartingVisibleIdxRef.current = -1
       setCarryItemId(null)
       setSendDirection(null)
     }
@@ -425,12 +441,15 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
         // Silent reorder back to the snapshot.
         reorder(activeListId, startingOrder, true)
       }
-      // Reset focus to wherever the item lands — wherever it was at
-      // start. Looking up its starting index in the snapshot is the
-      // tightest behavior; visible-list index may differ if a filter
-      // is on, but for v1 we just pick the snapshot position.
-      const startIdx = startingOrder?.indexOf(carryItemId) ?? -1
-      if (startIdx !== -1) setFocusIndex(startIdx)
+      // Restore focusIndex to the carry item's VISIBLE position at
+      // carry-start time. `startingOrder.indexOf` would point into
+      // the full snapshot (including archived rows), which can be
+      // way past listItems.length on archive-heavy lists and would
+      // strand focus out of range — j/k would still increment
+      // focusIndex but listItems[focusIndex] would be undefined.
+      const startVisibleIdx = carryStartingVisibleIdxRef.current
+      if (startVisibleIdx >= 0) setFocusIndex(startVisibleIdx)
+      carryStartingVisibleIdxRef.current = -1
       carryStartingOrderRef.current = null
       carryStartingListIdRef.current = null
       setCarryItemId(null)
@@ -1066,7 +1085,17 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} filter={filter} onFilterChange={setFilter} counts={counts} />
 
       {/* Item list */}
-      <div ref={scrollContainerRef} className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade">
+      <div
+        ref={scrollContainerRef}
+        // tabIndex=-1 makes the container programmatically focusable
+        // (focus() works) but skipped from sequential Tab navigation.
+        // Used by the Cmd+Z-during-edit and Cmd+Z-during-carry paths to
+        // hand keyboard focus back to a safe non-input element so
+        // useKeyboard's "is the active element a textarea?" guard
+        // doesn't bail on every j/k after the cancel.
+        tabIndex={-1}
+        className="flex-1 py-2 overflow-y-scroll scrollbar-hidden relative scroll-fade focus:outline-none"
+      >
         <div
           ref={itemsContainerRef}
           className={`flex flex-col${isCarrying ? ' list-carrying' : ''}`}
@@ -1105,6 +1134,13 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
                   dataIndex={idx}
                   onCopyRequest={(fn) => { focusedItemCopyFnRef.current = fn }}
                   onEditRequest={(fn) => { focusedItemEditFnRef.current = fn }}
+                  onEditUndoCancel={(rowIdx) => {
+                    // Cmd+Z while editing this row — restore focus +
+                    // re-park it on a non-input element so j/k keeps
+                    // working. Matches the carry-cancel handler above.
+                    setFocusIndex(rowIdx)
+                    scrollContainerRef.current?.focus()
+                  }}
                 />
               ))}
             </AnimatePresence>

@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { useStore } from '../store/useStore'
 
 interface KeyboardConfig {
@@ -35,8 +35,24 @@ export function useKeyboard(config: KeyboardConfig) {
   // 'inverse' (j up, k down). Arrow keys are unaffected.
   const jkMode = useStore((s) => s.jkMode)
 
+  // Read `config` through a ref so the keydown listener stays
+  // referentially stable across renders. The parent's config object
+  // is rebuilt every render (inline literal with fresh closures over
+  // current state), so without the ref this hook would re-install
+  // its window listener on EVERY ListWindow render. Two problems with
+  // that: (1) wasted work, and (2) a race window between commit and
+  // useEffect-run where the OLD listener catches the next keypress
+  // with stale closures. The carry-cancel + Cmd+Z path was hitting
+  // case (2): after Cmd+Z fired setCarryItemId(null), the user's
+  // next j press caught the old listener whose `isCarrying=true`
+  // closure called the old `carryReorder`, which had its own stale
+  // `carryItemId` closure — j appeared dead.
+  const configRef = useRef(config)
+  configRef.current = config
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      const config = configRef.current
       if (config.enabled === false) return
 
       // Don't intercept when typing in an input/textarea
@@ -185,7 +201,9 @@ export function useKeyboard(config: KeyboardConfig) {
           break
       }
     },
-    [config, jkMode]
+    // configRef.current is read at call time; only jkMode is captured
+    // here (changes rarely; safe to re-install on flip).
+    [jkMode]
   )
 
   useEffect(() => {
