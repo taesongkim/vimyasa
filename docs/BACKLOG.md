@@ -171,19 +171,18 @@ not silently grab next-priority items.
 - **Lane:** features (primary), aesthetics (visual treatment)
 - **Priority:** P2
 - **Version:** v0.1.8 (confirmed; bundled with light mode release)
-- **Status:** idea — quick scope only, not yet a proposal
-- **Notes:** When the auto-update flow shows the "update available"
-  message, include the GitHub release notes (markdown body of the
-  release) as a tab or expanded section. `electron-updater` already
-  exposes `releaseNotes` on the `update-downloaded` event. Likely
-  ~half a day if the current update UI is a custom in-app window,
-  +1–2 hours if it's a native dialog (would need migration). Open
-  questions before building:
-  1. Current update UI shape (custom vs. native).
-  2. electron-updater concatenates skipped versions' notes —
-     decide: show all, or just latest?
-  3. Markdown renderer choice (`marked` is ~5kb, plenty).
-  Coordination writes a proper proposal when v0.1.7 is closer.
+- **Status:** features-side in-flight on `release-notes-in-update` (PR #48). Aesthetics visual consult pending before merge (INBOX 2026-06-25 — features → aesthetics).
+- **Notes:** Mechanical baseline shipped: custom 480×520 frameless glass-surface window at `/update` replaces Electron's native dialog so markdown release notes can render inline. Two phases (`'available'` + `'downloaded'`), `marked` for markdown (GFM enabled, memo'd), idempotent factory, push + pull pattern on mount (handles race between main fire and renderer listener install). Multi-version skips concatenate with `---` separators, latest at top. Dev-only tray entries summon mock payloads for both phases. Scoped `.release-notes` class block in globals.css for typography. Aesthetics consult covers card layout, markdown typography, action-row hierarchy, optional phase-change motion.
+
+### User-facing update tray entries — "Check for updates" + "View update details"
+- **Lane:** features
+- **Priority:** P3
+- **Version:** v0.1.9 (candidate)
+- **Status:** idea (2026-06-26)
+- **Notes:** v0.1.8 ships the auto-update prompt window so users SEE update details when electron-updater fires a real event. Missing: manual access. Two tray entries to ship together:
+  1. **"Check for updates"** — triggers `electron-updater`'s `checkForUpdates()`. If an update is found, summon the update prompt window with the resulting payload. If not, surface a transient "You're on the latest version" affordance (toast or modal — to decide at scope time). Standard Mac convention; every shipping desktop app has this.
+  2. **"View update details"** — if a pending update payload exists (i.e. user dismissed an earlier prompt with "Later"), re-open the window with that payload. Useful for the "what was that prompt about?" flow without waiting for next auto-check. If no pending payload, the entry could be gated (only shown when one exists) OR always shown but acts as a no-op with a hint.
+  Both leverage existing `getPendingUpdatePayload()` + `showUpdatePrompt()` factory from PR #48. Small effort (~1–2 hr) once #48 lands. Worth bundling into v0.1.9 alongside other polish; don't ship v0.1.8 with these missing — auto-update path is sufficient for the imminent release.
 
 ### Feedback window — themed input surface
 - **Lane:** themes
