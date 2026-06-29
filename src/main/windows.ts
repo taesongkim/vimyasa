@@ -433,6 +433,41 @@ export function hideUpdatePromptWindow(): void {
   }
 }
 
+// Min / max bounds for the renderer-driven resize. Min is a defensive
+// floor (a measurement bug would make the window unusably small) but
+// kept generous-low so 'available' phase (~128px) can clamp tight
+// without trailing empty space. Max gives 'downloaded' room to breathe
+// with short notes while capping so very-long release-notes bodies
+// scroll inside the pane instead of growing the whole window
+// indefinitely.
+const UPDATE_PROMPT_MIN_HEIGHT = 100
+const UPDATE_PROMPT_MAX_HEIGHT = 560
+
+/** Renderer-driven adaptive height. Mirrors the onboarding callout's
+ *  `setCalloutHeight` pattern — the renderer measures its own content
+ *  via ResizeObserver and calls this through `update:request-resize`.
+ *  Width stays locked; height clamps to [MIN, MAX]. Top-left position
+ *  is preserved so the title doesn't visually jump when content
+ *  reflows (cross-fade between phases reads as content settling, not
+ *  the window jumping).
+ *
+ *  No-op if the window doesn't exist (renderer raced ahead of teardown). */
+export function setUpdatePromptHeight(height: number): void {
+  if (!updatePromptWindow || updatePromptWindow.isDestroyed()) return
+  const clamped = Math.max(
+    UPDATE_PROMPT_MIN_HEIGHT,
+    Math.min(UPDATE_PROMPT_MAX_HEIGHT, Math.round(height))
+  )
+  const current = updatePromptWindow.getBounds()
+  if (current.height === clamped) return
+  updatePromptWindow.setBounds({
+    x: current.x,
+    y: current.y,
+    width: current.width,
+    height: clamped
+  })
+}
+
 // ── Comments Window ─────────────────────────────────────────────
 
 export function createCommentsWindow(itemId: string): BrowserWindow {
