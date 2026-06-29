@@ -166,12 +166,31 @@ function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions)
 export function createListWindow(listId: string, position?: { x: number; y: number }): BrowserWindow {
   const existing = listWindows.get(listId)
   if (existing && !existing.isDestroyed()) {
-    // Toggle-on-focused: pressing the same shortcut while a list is
-    // focused acts as Esc. Applies to hot list too — Cmd+Shift+H from
-    // inside hot dismisses it. Cross-side swaps (0 from regular, 1-9
-    // from hot) don't hit this branch because the swap source is the
-    // focused window, not the target — the target is necessarily not
-    // focused at summon time, so it falls through to focus().
+    // The hot list is prewarmed — never destroyed across summons.
+    // Three cases to handle vs. the regular-list flow:
+    //   visible + focused  → toggle: hide (was: close)
+    //   visible + not focused → focus (unchanged)
+    //   hidden              → show with `list:show` IPC before paint
+    // The IPC ordering matters: send `list:show` before `win.show()` so
+    // the renderer can refocus the scroll container BEFORE the OS reveal,
+    // matching the QuickAdd flicker-prevention contract. See
+    // `docs/architecture/quickadd-prewarm.md`.
+    if (listId === HOT_LIST_ID) {
+      if (existing.isVisible() && existing.isFocused()) {
+        existing.webContents.send('list:hidden')
+        existing.hide()
+        return existing
+      }
+      if (existing.isVisible()) {
+        existing.focus()
+        return existing
+      }
+      existing.webContents.send('list:show')
+      existing.show()
+      orchestrator.refreshPosition()
+      return existing
+    }
+    // Regular list (not prewarmed): toggle-on-focused = close (kept).
     if (existing.isFocused()) {
       existing.close()
       return existing
@@ -213,6 +232,49 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
   win.on('closed', () => listWindows.delete(listId))
   trackForOnboarding(win)
   return win
+}
+
+/** Idempotent. Create the hot list window once at app startup with
+ *  show:false, parking it hidden so the first Cmd+Shift+H summon is a
+ *  `win.show()` (~10ms) instead of a cold renderer spawn (150-300ms).
+ *  Hot list is single-instance + hotkey-summoned → naturally the easiest
+ *  list to prewarm. See `docs/architecture/quickadd-prewarm.md` for the
+ *  pattern.
+ *
+ *  Unlike QuickAdd's prewarm, the hot list renderer does NOT use a
+ *  hidden-state DOM gate — state (scroll position, focusIndex, edit
+ *  mode, filter) is preserved across summons. The window simply hides
+ *  at the OS level; the React tree stays mounted with all its useState
+ *  values + DOM scroll position intact, so the next show reveals the
+ *  user's prior context instantly. See the `closeWindow` IPC handler
+ *  below for the hide-instead-of-close routing. */
+export function ensureHotListPrewarmed(): void {
+  if (listWindows.get(HOT_LIST_ID) && !listWindows.get(HOT_LIST_ID)!.isDestroyed()) {
+    return
+  }
+
+  const workArea = screen.getPrimaryDisplay().workArea
+  const listWindowHeight = Math.round(workArea.height * 0.97)
+  const { x, y } = calculateHotListPosition(listWindowHeight)
+  const win = makeWindow(`list:${HOT_LIST_ID}`, {
+    width: LIST_WINDOW_WIDTH,
+    height: listWindowHeight,
+    minWidth: 320,
+    minHeight: 150,
+    x,
+    y,
+    resizable: true,
+    alwaysOnTop: true
+  })
+
+  listWindows.set(HOT_LIST_ID, win)
+  loadRoute(win, `/list/${HOT_LIST_ID}`)
+  win.once('ready-to-show', () => {
+    // Intentionally no win.show() — we're warming the renderer only.
+    orchestrator.refreshPosition()
+  })
+  win.on('closed', () => listWindows.delete(HOT_LIST_ID))
+  trackForOnboarding(win)
 }
 
 // ── Quick-Add Window ────────────────────────────────────────────
@@ -612,7 +674,20 @@ export function wireOnboardingHosts(): void {
 export function registerWindowIpcHandlers(): void {
   ipcMain.handle('closeWindow', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    if (win) win.close()
+    if (!win) return
+    // Hot list is prewarmed — its "close" is a hide so the next summon
+    // reveals the preserved state instantly instead of cold-spawning a
+    // fresh renderer. Send `list:hidden` BEFORE `win.hide()` per the
+    // flicker-prevention contract documented in quickadd-prewarm.md
+    // (renderer can blur any focused input + run any pre-hide cleanup
+    // before the OS hide steals the focus).
+    const hotListWin = listWindows.get(HOT_LIST_ID)
+    if (hotListWin && win === hotListWin) {
+      win.webContents.send('list:hidden')
+      win.hide()
+      return
+    }
+    win.close()
   })
 
   // QuickAdd is pre-warmed and stays alive — its "close" is really a hide

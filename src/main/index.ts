@@ -5,6 +5,7 @@ import {
   registerWindowIpcHandlers,
   wireOnboardingHosts,
   ensureFeedbackPrewarmed,
+  ensureHotListPrewarmed,
   ensureQuickAddPrewarmed
 } from './windows'
 import { createTray } from './tray'
@@ -82,6 +83,13 @@ app.whenReady().then(() => {
   // sent 'feedback:show' before React's useEffect subscribed, leaving
   // the first summon blank. Eager prewarm sidesteps that entirely.
   ensureFeedbackPrewarmed()
+
+  // Pre-warm the hot list. Single-instance + hotkey-summoned makes it
+  // the easiest list to prewarm. Unlike QuickAdd / feedback, the
+  // renderer doesn't unmount on hide — scroll position + focusIndex +
+  // edit-mode + filter all persist across summons via React useState
+  // and DOM survival. See windows.ts:ensureHotListPrewarmed.
+  ensureHotListPrewarmed()
 
   // Run the onboarding tour for first-time users (or anyone whose tour
   // version is behind). Small delay so the app's launch settles before

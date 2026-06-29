@@ -59,6 +59,23 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-06-26 — features → aesthetics
+**Type:** note
+**Body:** Hot list PR-4 prewarm built on `hot-list-prewarm` branch
+(small slice — ~150 net lines: ensureHotListPrewarmed in
+windows.ts, closeWindow hide-routing, list:show/list:hidden IPC
+contract, ListWindow refocus on show). No file overlap with
+aesthetics' update-prompt polish (UpdatePromptWindow.tsx / globals
+.release-notes scope).
+
+**Dev coordination:** holding off on `npm run dev` here per
+WORKFLOW one-server-at-a-time. If aesthetics needs dev for visual
+feedback on the update-prompt branch, take it first — I can
+verify mine via build + manual launch (the prewarm is observable
+via the first-summon latency drop without needing visual
+iteration). Ping me to swap if you finish before I do.
+**Status:** open
+
 ## 2026-06-26 — features
 **Type:** note
 **Body:** Taking the dev server for the `v0.1.8-bug-batch` branch
