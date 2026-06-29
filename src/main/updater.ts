@@ -3,6 +3,7 @@ import pkg from 'electron-updater'
 import {
   getPendingUpdatePayload,
   hideUpdatePromptWindow,
+  setUpdatePromptHeight,
   showUpdatePrompt
 } from './windows'
 
@@ -149,4 +150,15 @@ function registerUpdaterIpcHandlers(): void {
   // replies with whatever was sent last. Covers the race where main
   // sends `update:show` before the renderer subscribes.
   ipcMain.handle('update:get-pending', () => getPendingUpdatePayload())
+
+  // Renderer-driven adaptive resize. Mirrors the onboarding callout's
+  // `onboarding:request-resize` pattern: renderer measures its own
+  // content via ResizeObserver and asks main to match the window
+  // height. Width / top-left position stay locked; main clamps height
+  // to [UPDATE_PROMPT_MIN_HEIGHT, UPDATE_PROMPT_MAX_HEIGHT] so very-
+  // long release-notes scroll inside the pane instead of growing the
+  // window past screen.
+  ipcMain.handle('update:request-resize', (_e, height: number) => {
+    setUpdatePromptHeight(height)
+  })
 }
