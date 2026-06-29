@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { marked } from 'marked'
 import type { UpdatePromptPayload } from '../../../../shared/types'
 
@@ -82,15 +83,30 @@ export function UpdatePromptWindow() {
   const isDownloaded = payload.phase === 'downloaded'
 
   return (
-    <div className="flex flex-col h-full glass-surface px-5 py-4 gap-3 drag-region">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <div className="text-[length:var(--font-size-md)] font-medium text-[color:var(--color-text-primary)]">
-          {isDownloaded
-            ? `Vimyasa ${payload.version} is ready to install`
-            : `Vimyasa ${payload.version} is available`}
-        </div>
-        <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-muted)]">
+    <div className="flex flex-col h-full glass-surface px-5 py-4 gap-4 drag-region">
+      {/* Header — title is the moment the user is reading for ("X is
+          ready"). Inter Tight + semibold gives it the same weight as
+          a list-window title; tight tracking lets the version number
+          read as one unit with the verb.
+          AnimatePresence on the title text cross-fades between
+          phases (available → downloaded) when the same window's
+          payload updates in place. */}
+      <div className="flex flex-col gap-1.5">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={payload.phase}
+            initial={{ opacity: 0, y: -2 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 2 }}
+            transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+            className="font-tight text-[length:var(--font-size-lg)] font-semibold tracking-tight text-[color:var(--color-text-primary)] leading-tight"
+          >
+            {isDownloaded
+              ? `Vimyasa ${payload.version} is ready to install`
+              : `Vimyasa ${payload.version} is available`}
+          </motion.div>
+        </AnimatePresence>
+        <div className="text-[length:var(--font-size-sm)] leading-[1.5] text-[color:var(--color-text-muted)]">
           {isDownloaded
             ? 'Restart to apply the update. You can keep using the app and restart later if you prefer.'
             : 'Download in the background. You can keep using the app while it downloads.'}
@@ -99,50 +115,80 @@ export function UpdatePromptWindow() {
 
       {/* Release notes (only on 'downloaded'). The notes scroll
           inside the window so very long bodies don't push the action
-          row off-screen. */}
-      {isDownloaded && (
-        <div className="no-drag flex-1 min-h-0 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2">
-          {payload.releaseNotes ? (
-            <div
-              className="release-notes text-[length:var(--font-size-sm)] text-[color:var(--color-text-secondary)]"
-              dangerouslySetInnerHTML={{ __html: renderedNotes }}
-            />
-          ) : (
-            <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] italic">
-              No release notes provided for this version.
-            </div>
-          )}
-        </div>
-      )}
+          row off-screen. The pane uses a subtle surface tint instead
+          of a hard border — the contrast against glass-surface
+          vibrancy is enough to read as a container, and dropping the
+          border lets the typography do the talking. */}
+      <AnimatePresence mode="wait" initial={false}>
+        {isDownloaded && (
+          <motion.div
+            key="notes"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+            className="no-drag flex-1 min-h-0 overflow-y-auto rounded-[var(--radius-md)] bg-[var(--color-surface)] px-4 py-3"
+          >
+            {payload.releaseNotes ? (
+              <div
+                className="release-notes text-[length:var(--font-size-sm)] text-[color:var(--color-text-secondary)]"
+                dangerouslySetInnerHTML={{ __html: renderedNotes }}
+              />
+            ) : (
+              <div className="text-[length:var(--font-size-sm)] text-[color:var(--color-text-ghost)] italic">
+                No release notes provided for this version.
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Action row */}
-      <div className="no-drag flex items-center justify-end gap-2">
+      {/* Action row — secondary is text-button (no chrome, just
+          hover state) so the primary's filled accent reads as the
+          clearly-recommended path. Gap-3 between actions gives
+          enough separation that the eye doesn't bind them as a
+          single control. AnimatePresence on the primary action
+          cross-fades Install Now ↔ Restart Now along with the
+          header. */}
+      <div className="no-drag flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={() => void window.api.update.dismiss()}
-          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default focus:outline-none focus:border-[var(--color-accent)]"
+          className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default focus:outline-none focus:bg-[var(--hover-highlight)] focus:text-[color:var(--color-text-primary)]"
         >
           Later
         </button>
-        {isDownloaded ? (
-          <button
-            ref={restartBtnRef}
-            type="button"
-            onClick={() => void window.api.update.restart()}
-            className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-accent)] border border-[var(--color-accent)] text-white hover:opacity-90 transition-default focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 focus:ring-offset-[var(--color-bg)]"
-          >
-            Restart Now
-          </button>
-        ) : (
-          <button
-            ref={installBtnRef}
-            type="button"
-            onClick={() => void window.api.update.install()}
-            className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-accent)] border border-[var(--color-accent)] text-white hover:opacity-90 transition-default focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 focus:ring-offset-[var(--color-bg)]"
-          >
-            Install Now
-          </button>
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          {isDownloaded ? (
+            <motion.button
+              key="restart"
+              ref={restartBtnRef}
+              type="button"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              onClick={() => void window.api.update.restart()}
+              className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-default focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 focus:ring-offset-[var(--color-bg-base)]"
+            >
+              Restart Now
+            </motion.button>
+          ) : (
+            <motion.button
+              key="install"
+              ref={installBtnRef}
+              type="button"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              onClick={() => void window.api.update.install()}
+              className="px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--font-size-sm)] font-medium bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-default focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-1 focus:ring-offset-[var(--color-bg-base)]"
+            >
+              Install Now
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
