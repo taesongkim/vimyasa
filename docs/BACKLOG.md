@@ -178,8 +178,10 @@ not silently grab next-priority items.
   had pre-approved the migration in dispatch ("if native: confirmed,
   migrate"). New custom window (frameless glass-surface vibrancy,
   mirrors feedback / quickadd window patterns), `marked` for the
-  markdown body. Aesthetics consult pending on the visual treatment
-  once the layout is sketched (INBOX on draft).
+  markdown body. **Aesthetics-pass in-flight on
+  `update-prompt-visual-pass` branch** (stacked on top of #48) —
+  card spacing / markdown typography / action-row hierarchy / phase
+  motion per the 2026-06-25 features → aesthetics INBOX note.
 - **Notes:** Released notes shown on the `update-downloaded` prompt
   (the moment they'd actually be useful — pre-install user can
   decide whether the changes are worth a restart). Concatenation:

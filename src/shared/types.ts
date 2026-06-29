@@ -347,6 +347,10 @@ export interface UpdateAPI {
    *  summon a mock prompt with hand-crafted data so the window can
    *  be verified without a real update being available. */
   testShow: (payload: UpdatePromptPayload) => Promise<void>
+  /** Renderer-driven adaptive height. Renderer measures its content
+   *  via ResizeObserver and asks main to match (clamped to a sane
+   *  range). Mirrors the onboarding callout's request-resize pattern. */
+  requestResize: (height: number) => Promise<void>
 }
 
 // ── Undo / redo ─────────────────────────────────────────────────
