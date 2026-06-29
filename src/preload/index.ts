@@ -277,6 +277,20 @@ const api: VimyasaAPI = {
     }
   },
 
+  // Prewarmed list window events (today: hot list only).
+  list: {
+    onShow: (callback) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('list:show', listener)
+      return () => ipcRenderer.removeListener('list:show', listener)
+    },
+    onHidden: (callback) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('list:hidden', listener)
+      return () => ipcRenderer.removeListener('list:hidden', listener)
+    }
+  },
+
   // Theme dev panel (gated by is.dev — never call from production builds)
   themeDev: {
     openPanel: () => ipcRenderer.invoke('themeDev:openPanel'),
