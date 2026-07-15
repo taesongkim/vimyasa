@@ -42,6 +42,7 @@ import type {
   Appearance
 } from '../shared/themes'
 import { APPEARANCE_VALUES } from '../shared/themes'
+import { applyNativeThemeSource } from './appearance'
 
 function now(): string {
   return new Date().toISOString()
@@ -745,6 +746,11 @@ export function registerIpcHandlers(): void {
       const cur = getThemesState()
       const next: ThemesState = { ...cur, appearance }
       const saved = setThemesState(next)
+      // Sync Electron's native theme source so vibrancy + the
+      // renderer's `prefers-color-scheme` media query flip in lockstep.
+      // Auto mode routes to 'system' so mid-session OS Light↔Dark
+      // toggles propagate live. See BACKLOG hotfix (2026-07-15).
+      applyNativeThemeSource(saved.appearance)
       broadcastThemesChanged(saved)
       return saved
     }
@@ -752,6 +758,9 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('themes:reset', (): ThemesState => {
     const saved = resetThemesState()
+    // Reset can change appearance back to the default; keep nativeTheme
+    // in sync with the same call path the setter uses.
+    applyNativeThemeSource(saved.appearance)
     broadcastThemesChanged(saved)
     return saved
   })

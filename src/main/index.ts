@@ -17,16 +17,17 @@ import {
 } from './shortcuts'
 import { setupAutoUpdater } from './updater'
 import { orchestrator } from './onboarding'
+import { getThemesState } from './themes-store'
+import { applyNativeThemeSource } from './appearance'
 
-// Lock the app to dark mode regardless of the system's appearance
-// setting. macOS vibrancy ('under-window') tracks the system theme by
-// default, which renders the entire window with a *light* frosted blur
-// when the user is in light mode — and our CSS palette is dark-on-dark,
-// so the result is washed-out and barely legible. Forcing themeSource =
-// 'dark' makes vibrancy, native dialogs, and the OS chrome all render
-// dark, matching what the CSS expects. TODO: revisit once we ship a
-// designed light-mode palette behind a Settings → Appearance toggle.
-nativeTheme.themeSource = 'dark'
+// Wire Electron's nativeTheme.themeSource to the user's persisted
+// Settings → Appearance value. Read at startup + updated on every
+// `themes:setAppearance` IPC (see ipc.ts). Without this, macOS
+// vibrancy tracks the OS setting regardless of app choice, and the
+// renderer's `prefers-color-scheme: light` media query never fires
+// when the user is in Auto mode and the OS toggles Light↔Dark.
+// See BACKLOG hotfix entry (2026-07-15).
+applyNativeThemeSource(getThemesState().appearance)
 
 // Hide dock icon (menubar-only app)
 if (process.platform === 'darwin') {
