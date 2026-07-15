@@ -133,6 +133,13 @@ not silently grab next-priority items.
 - **Status:** ✅ shipped. Themes foundation in PR #40 (2026-05-18); features Settings tab in PR #42 (2026-05-18, rebased onto Phase 2 main before merge — clean 109-line diff). Phase 2 is now complete end-to-end.
 - **Notes:** Themes shipped: Layer 2 light-mode mappings via `[data-appearance="light"]` selector + auto-mode mirror via `@media (prefers-color-scheme: light)`. Schema v7 → v8 with new `appearance: 'light' | 'dark' | 'auto'` field (default `'dark'` for existing users). `effects.devBgBaseA` split into per-mode `devBgBaseDarkA` (0.8) / `devBgBaseLightA` (0.95). `themes:setAppearance` IPC wired through preload + zustand + cross-window broadcast. Dev panel got new Appearance segmented control + per-mode bg-darkness sliders (range bumped 0.05 → 1.0). Magic Colors legibility approved live in dev — Theme 1 surfaces stay as-is for v0.1.8 (option (c) in INBOX; future paths recorded if a tester later flags). Features shipped: `AppearanceTab.tsx` (radio group, three options Light/Dark/Match-system, default Dark) consuming the Phase 2 store API; `SettingsWindow.tsx` registers the tab between Themes and Feedback; `App.tsx` route guard. Copy locked from proposal A1–A6. **Vibrancy material caveat** noted in separate BACKLOG entry below — out-of-scope for v0.1.8, candidate for v0.1.9/v0.1.10.
 
+### Magic Colors — light-mode legibility tuning
+- **Lane:** themes (primary), aesthetics (visual feedback loop)
+- **Priority:** P2
+- **Version:** v0.1.9 (candidate) — needs a Justin-in-the-loop iteration session
+- **Status:** open (2026-07-15, surfaced by Justin during v0.1.8 dev-verify)
+- **Notes:** Phase 2 Magic Colors read fine in the initial dev check (INBOX 2026-05-18: option (c) "leave as-is"). Second look on real v0.1.8 build: **magic colors on light mode are definitely harder to see** — Justin's words. Needs a proper feedback-loop iteration with his eyes to dial in the palette adjustment. Available paths from the original INBOX note both still valid: (a) per-mode `paletteOverride` in `THEME_1_SURFACE_OVERRIDES` — different palette values by mode; (b) auto-disable Theme 1 in light via a `baseActive` gate in `GlowSurface` — no magic in light mode at all. Justin's preference likely (a) — keep the character, tune the values. Themes lane spins up a controls panel (per the general "controls panel for visual iteration" pattern), Justin dials, values bake. All four Theme 1 surfaces affected (`quickadd-input`, `list-item-edit`, `list-add-new`, `feedback-input`). Not a v0.1.8 blocker — v0.1.8 ships with the observation logged.
+
 ### Vibrancy material — adapt to vimyasa's app-level appearance
 - **Lane:** features (BrowserWindow lifecycle), coordination (proposal scoping)
 - **Priority:** P2
@@ -311,6 +318,15 @@ not silently grab next-priority items.
 ---
 
 ## Bugs
+
+### v0.1.8 hotfix — Auto mode not live-updating + Cmd+Z-in-edit keeps text
+- **Lane:** features
+- **Priority:** P1 (v0.1.8 ship-blocker)
+- **Version:** v0.1.8 (hotfix — must land before dist:mac)
+- **Status:** open — awaiting features dispatch (2026-07-15). Both bugs surfaced during Justin's dev-verify of the v0.1.8 bundle.
+- **Bug 1 — Auto mode doesn't live-update on system appearance change.** Settings → Appearance = Auto: renderer's `@media (prefers-color-scheme: light)` never fires when the user toggles macOS between Light and Dark. Root cause found in [`src/main/index.ts:29`](../src/main/index.ts:29): `nativeTheme.themeSource = 'dark'` forces Electron to report dark to WebViews regardless of OS state. The line has an existing TODO ("revisit once we ship a designed light-mode palette behind a Settings → Appearance toggle") that got missed when Phase 2 landed. Fix: wire `nativeTheme.themeSource` to the appearance value — `'light'` → `'light'`, `'dark'` → `'dark'`, `'auto'` → `'system'`. Apply at startup from persisted store AND inside `themes:setAppearance` IPC handler on change.
+- **Bug 2 — Cmd+Z during edit keeps the typed text.** Per the shipped Undo spec (BACKLOG entry above + PR #45 dispatch brief): "If item is in edit mode (typed but not committed) → exit edit mode + restore original text + no log consumption." Current behavior: exits edit + KEEPS the typed progress. Diagnosis needed in the useGlobalUndo → data-undo-cancel → ItemRow edit component handshake. This was previously verified working in the v0.1.8 bug-batch fix; either something regressed, or the "revert to original" branch is silently no-op'ing (e.g. writing back the current draft instead of the pre-edit snapshot).
+- **Scope:** Both fixes in one PR. Small (~30 lines each). Re-verify with Justin's dev checklist before merge.
 
 ### v0.1.8 bug batch — Undo + Phase 2 visual sweep
 - **Lane:** features

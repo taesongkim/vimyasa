@@ -59,6 +59,36 @@ talking to coordination.
 
 ## Open entries
 
+## 2026-07-15 — coordination → features
+**Type:** blocker
+**Body:** Two v0.1.8 hotfix bugs surfaced during Justin's dev-verify of the shipped bundle. Both are ship-blockers — do not dist:mac until these land. Full BACKLOG entry: `v0.1.8 hotfix — Auto mode not live-updating + Cmd+Z-in-edit keeps text`.
+
+**Bug 1 — Auto mode doesn't live-update on system appearance change.**
+- **Repro:** Settings → Appearance → Auto. Toggle macOS System Settings → Appearance between Light and Dark. Expected: vimyasa follows. Actual: stays in whatever mode it was rendered as at Auto-selection time.
+- **Root cause (found):** `src/main/index.ts:29` — `nativeTheme.themeSource = 'dark'` is a hard override that predates Phase 2. Comment above the line has the exact TODO: *"revisit once we ship a designed light-mode palette behind a Settings → Appearance toggle."* Phase 2 shipped without revisiting. The renderer's `@media (prefers-color-scheme: light)` in `globals.css` (line 297) never fires because Electron reports `dark` to the WebView regardless of OS state.
+- **Fix:** wire `nativeTheme.themeSource` to the persisted appearance value.
+  - `'light'` → `nativeTheme.themeSource = 'light'`
+  - `'dark'` → `nativeTheme.themeSource = 'dark'`
+  - `'auto'` → `nativeTheme.themeSource = 'system'`
+  Apply at startup (read from `themesStore.get('appearance')`) AND inside the `themes:setAppearance` IPC handler in `src/main/ipc.ts` on every change. Should be <30 lines total.
+- **Verify:** all three modes + Auto with mid-session macOS-side toggles.
+
+**Bug 2 — Cmd+Z during edit keeps the typed text.**
+- **Repro:** Focus an item, hit Enter to enter edit mode, type some new characters, hit Cmd+Z (without committing). Expected per spec: exits edit mode + restores original text + no undo-log consumption. Actual: exits edit mode + KEEPS the typed progress (as if you'd committed with Enter).
+- **Where to look:** the useGlobalUndo → data-undo-cancel → ItemRow edit component handshake. Order-sensitive: your handler checks `data-undo-cancel` first, then undo-check-carry, then pops the log. The data-undo-cancel branch is either (a) not firing at all (falling through to a log pop that pushes the current draft), or (b) firing but writing the current draft back instead of the pre-edit snapshot. Suspect the pre-edit text isn't being snapshotted anywhere the cancel handler can read.
+- **Cross-check:** you fixed a related bug in the v0.1.8 bug batch (edit-cancel focus drift) — verify the fix touched the right code path and that a subsequent change didn't regress the revert-to-original behavior specifically.
+- **Verify:** every Undo case in section 3 of Justin's dev-verify checklist, plus the specific mid-edit case.
+
+**Ship gate:** both fixes in one PR. After merge, Justin re-runs the dev-verify checklist (sections 2 for Auto and 3 for Undo). Only after his greenlight → dist:mac.
+
+**Coordination-side setup done:**
+- v0.1.8 release-prep already merged (PR #53) — version bump + CHANGELOG + BACKLOG all reference v0.1.8 as if shipped. That's fine; the hotfix commit lands on top of a v0.1.8-labeled main. No re-bump needed.
+- Themes lane got a separate BACKLOG entry for light-mode Magic Colors legibility ("harder to see" — needs iteration session, not a blocker).
+
+**Status:** open
+**Dev-server note:** coordination has `npm run dev` running for Justin's verify. When features picks this up, coordination will yield (either fully hand off, or Justin restarts on features' side per HMR-staleness pattern).
+**Priority:** P1 v0.1.8 ship-blocker.
+
 ## 2026-06-26 — features → aesthetics
 **Type:** note
 **Body:** Hot list PR-4 prewarm built on `hot-list-prewarm` branch
