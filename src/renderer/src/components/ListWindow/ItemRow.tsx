@@ -99,6 +99,20 @@ export function ItemRow({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const copyFunctionRef = useRef<() => void>()
+  // Set to true in the undo-cancel handler right before we move focus
+  // out of the textarea. The synchronous focus-move (via
+  // `onEditUndoCancel` → parent's `scrollContainerRef.current?.focus()`)
+  // fires blur on the still-mounted textarea, which triggers
+  // `onBlur={commitEdit}`. commitEdit's closure captures the current
+  // draft `text`, so without this guard it writes the draft as the new
+  // `item.text` — matching the "keeps typed progress" bug reported
+  // against v0.1.8. The ref is consumed + reset by commitEdit.
+  //
+  // Why not just check `text !== item.text` inside commitEdit? At the
+  // moment blur fires, the queued `setText(item.text)` hasn't been
+  // flushed yet — the closure still sees the draft. A ref sidesteps
+  // React's batching entirely.
+  const cancelPendingCommitRef = useRef(false)
 
   const {
     attributes,
@@ -142,12 +156,20 @@ export function ItemRow({
     const el = inputRef.current
     if (!el) return
     const onUndoCancel = (): void => {
+      // Flag BEFORE setEditing / focus-move so commitEdit's blur path
+      // can bail out. See cancelPendingCommitRef declaration for full
+      // rationale.
+      cancelPendingCommitRef.current = true
       setText(item.text)
       setEditing(false)
       // Hand keyboard focus back to the list. Without this, the
       // textarea unmounts with document.activeElement still pointing
       // at the detached node, so useKeyboard's "is the active
       // element a textarea?" guard keeps bailing on every j/k.
+      // Side effect: focusing the scroll container fires blur on the
+      // textarea (still mounted at this instant because React hasn't
+      // flushed the state updates queued above), which triggers
+      // `onBlur={commitEdit}` — hence the ref guard.
       onEditUndoCancel?.(index)
     }
     el.addEventListener('undo-cancel', onUndoCancel)
@@ -214,6 +236,15 @@ export function ItemRow({
   }, [isFocused, onEditRequest, startEditing])
 
   const commitEdit = useCallback(async () => {
+    // Bug 2 fix (v0.1.8 hotfix, 2026-07-15): Cmd+Z during edit routes
+    // through onUndoCancel → parent's scrollContainerRef.focus() →
+    // blur → this handler. Skip the commit so the draft doesn't
+    // overwrite the original text.
+    if (cancelPendingCommitRef.current) {
+      cancelPendingCommitRef.current = false
+      setEditing(false)
+      return
+    }
     const trimmed = text.trim()
     if (trimmed && trimmed !== item.text) {
       await editItem(item.id, { text: trimmed })
