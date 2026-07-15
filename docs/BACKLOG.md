@@ -180,6 +180,16 @@ not silently grab next-priority items.
 - **Version:** v0.1.8 (confirmed; bundled with light mode release)
 - **Status:** ✅ shipped in v0.1.8 (features baseline via PR #48; aesthetics visual pass via PR #51). Custom 480×520 frameless glass-surface window at `/update` replaces Electron's native dialog so markdown release notes render inline. Two phases (`'available'` + `'downloaded'`), `marked` for markdown (GFM enabled, memo'd), idempotent factory, push + pull pattern on mount. Multi-version skips concatenate chronologically with `---` separators, latest at top. Adaptive height via ResizeObserver + main-side clamp. Onboarding button styles for primary actions; scoped `.release-notes` typography in globals.css. Dev-only tray entries summon mock payloads for both phases.
 
+### About surface — promote to production + show current version's release notes
+- **Lane:** features (primary), aesthetics (visual treatment for the release-notes render)
+- **Priority:** P2
+- **Version:** v0.1.9 (candidate) — good bundle with the tray-entries item below (both build on the v0.1.8 update-window infra)
+- **Status:** idea (2026-07-15)
+- **Notes:** Today there's a dev-only About readout in Settings → General (shipped alongside Phase 1 tokenization, gated by `is.dev`). Two moves for v0.1.9:
+  1. **Promote to production** — production users should see version info too (current version, build channel, maybe update-channel status). Un-gate the existing block, or move it to its own **Settings → About** tab if we want it prominent.
+  2. **Show the current version's release notes** in the About surface. Reuse the `.release-notes` markdown treatment + `marked` renderer already in `globals.css` + `UpdatePromptWindow.tsx` — same visual language as what users see in the auto-update prompt. Source: fetch the current version's GitHub Release body via the same path the updater uses; cache locally. Solves the "wait, what was in the version I'm on?" question without needing a pending update payload.
+  Depends on the v0.1.8 release-notes infra (shipped). No new IPC needed for the render — reuses `marked` + `.release-notes` scope. Fetch path may need a new `about:getCurrentReleaseNotes` IPC. Small effort (~2 hr).
+
 ### User-facing update tray entries — "Check for updates" + "View update details"
 - **Lane:** features
 - **Priority:** P3
@@ -323,16 +333,13 @@ not silently grab next-priority items.
 - **Lane:** features
 - **Priority:** P1 (v0.1.8 ship-blocker)
 - **Version:** v0.1.8 (hotfix — must land before dist:mac)
-- **Status:** open — awaiting features dispatch (2026-07-15). Both bugs surfaced during Justin's dev-verify of the v0.1.8 bundle.
-- **Bug 1 — Auto mode doesn't live-update on system appearance change.** Settings → Appearance = Auto: renderer's `@media (prefers-color-scheme: light)` never fires when the user toggles macOS between Light and Dark. Root cause found in [`src/main/index.ts:29`](../src/main/index.ts:29): `nativeTheme.themeSource = 'dark'` forces Electron to report dark to WebViews regardless of OS state. The line has an existing TODO ("revisit once we ship a designed light-mode palette behind a Settings → Appearance toggle") that got missed when Phase 2 landed. Fix: wire `nativeTheme.themeSource` to the appearance value — `'light'` → `'light'`, `'dark'` → `'dark'`, `'auto'` → `'system'`. Apply at startup from persisted store AND inside `themes:setAppearance` IPC handler on change.
-- **Bug 2 — Cmd+Z during edit keeps the typed text.** Per the shipped Undo spec (BACKLOG entry above + PR #45 dispatch brief): "If item is in edit mode (typed but not committed) → exit edit mode + restore original text + no log consumption." Current behavior: exits edit + KEEPS the typed progress. Diagnosis needed in the useGlobalUndo → data-undo-cancel → ItemRow edit component handshake. This was previously verified working in the v0.1.8 bug-batch fix; either something regressed, or the "revert to original" branch is silently no-op'ing (e.g. writing back the current draft instead of the pre-edit snapshot).
-- **Scope:** Both fixes in one PR. Small (~30 lines each). Re-verify with Justin's dev checklist before merge.
+- **Status:** ✅ shipped in v0.1.8 (PR #55, 2026-07-15). Both bugs surfaced during Justin's dev-verify. Bug 1 fix extracted to new `src/main/appearance.ts` helper (25 lines) wiring `nativeTheme.themeSource` to the appearance value at startup + on `themes:setAppearance` / `themes:reset` — `'auto'` → `'system'` so mid-session macOS Light↔Dark toggles propagate live. Bug 2 fix uses `cancelPendingCommitRef` set before focus-move; commitEdit early-returns when true, sidestepping React's state batching (the synchronous focus-move fired blur → commitEdit before `setEditing(false)` flushed, so the captured draft was writing back to `item.text`). Bundled with two features-lane scope-adjacent PRs: [#56](https://github.com/taesongkim/vimyasa/pull/56) (universal Cmd+W / Escape fallback close at App root) and [#57](https://github.com/taesongkim/vimyasa/pull/57) (update-prompt copy fixes: Install Now → Download Now on the available window, Restart Now → Install & Restart on the downloaded window — features caught that the button contradicted the actual action since autoDownload=false).
 
 ### v0.1.8 bug batch — Undo + Phase 2 visual sweep
 - **Lane:** features
 - **Priority:** P2
 - **Version:** v0.1.8
-- **Status:** **in-flight on `v0.1.8-bug-batch` branch.**
+- **Status:** ✅ shipped in v0.1.8 (PR #47, 2026-06-26).
 - **Notes:** Three small bugs surfaced during v0.1.8 Undo + Phase 2
   visual sweep. Single PR covers all three.
   1. **j/k navigation lost after Cmd+Z during edit / carry.** Two
