@@ -10,6 +10,77 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.8 — *Light mode + Undo* (2026-07-15)
+
+The biggest bundle since v0.1.6. Four things ship together because
+they were the right shape for a single release:
+
+**Light mode.** Settings → Appearance now has a real toggle: Light /
+Dark / Auto. Default stays Dark (no surprise mode-switch on update
+for existing users); Auto follows the macOS system setting. Under
+the hood this is Phase 1 + Phase 2 of the color-tokenization effort —
+Phase 1 was an invisible restructuring that split the dark-mode
+colors into three layers (raw OKLCH palette → semantic tokens →
+component shims); Phase 2 added the light-mode mappings and the
+appearance-mode plumbing. The proposal at
+[`docs/proposals/color-tokenization.md`](docs/proposals/color-tokenization.md)
+has the full architecture and the Decision 6 amendment from v0.1.7.
+
+The Magic Colors on the four themed surfaces (entry form, list-item
+edit, in-list add, feedback input) render on both modes; a live
+dev check confirmed the rainbow palette holds up on a light
+background, so Theme 1 stays as-is across both. If a specific
+surface starts reading oppressive in light later, the
+per-mode-override path is already sketched.
+
+**Undo (⌘Z) / Redo (⇧⌘Z).** Five-step ring buffer that spans every
+list including the hot list. Covered actions: add, edit text, change
+status, archive, unarchive, reorder within a list, and move to
+another list (carry mode, right-click Send, future drag). One entry
+per committed action — edits commit on Enter, carry mode commits on
+Enter or Esc land. **Delete permanently is NOT undoable** — a
+confirmation modal now guards it (*"Heads up: this is permanent.
+Undo won't bring it back."*), auto-focusing Cancel so a stray Enter
+can't destroy anything.
+
+Cmd+Z is order-sensitive: if you're mid-edit, it cancels the edit
+and restores the original text without touching the undo log. If
+you're in carry mode, it puts the item back where you picked it up
+and exits carry mode, also without consuming a log entry. Only
+outside those states does it pop a real undo. Cmd+Shift+Z is
+symmetric; the redo stack resets on any non-undo/redo action.
+
+The architecture landed differently from the brief — main process
+owns the log instead of a shared Zustand store — because capturing
+at the IPC mutation point avoided a whole class of renderer-side
+races. Same end result: single source of truth across all list
+windows, broadcast on change.
+
+**Release notes in the auto-update prompt.** When electron-updater
+finds a new version, you now get a real in-app window — not the
+native OS dialog — with the GitHub release notes rendered inline as
+markdown. Two phases: **Update available** (with Install Now /
+Later) and **Update downloaded** (with Restart Now / Later and the
+notes body). Multi-version skips concatenate chronologically with
+the latest at top, so if you've been away, you see everything in
+one pass instead of clicking through prompts one at a time. The
+window sizes adaptively to its content — compact for the "available"
+phase, larger when notes need room.
+
+**Hot list feels instant on first summon.** The hot-list window is
+now prewarmed at app startup (same pattern as QuickAdd and the
+feedback window). The first Cmd+Shift+H after launch skips the
+window-create latency; subsequent summons preserve scroll position,
+focus, and mid-edit state across hides. If you had an item picked
+up in carry mode and hit Esc, hitting Cmd+Shift+H again finds it
+where you left it.
+
+**Small alongside:** confirmation modal opacity fix (was reading
+through to the list underneath), Appearance radio dot centering
+polish, Undo focus-state cleanup after edit/carry cancel.
+
+---
+
 ## v0.1.7 — *Darker dark mode* (2026-05-08)
 
 A small, focused release. The interface backgrounds — entry form,
