@@ -81,6 +81,41 @@ export default function App() {
   // level `undo-check-carry` listeners.
   useGlobalUndo()
 
+  // Universal fallback close: Cmd+W closes any window; Escape closes
+  // any window when no per-window handler already claimed the keypress
+  // via preventDefault. Every existing keyboard-handling surface
+  // (useKeyboard, UpdatePromptWindow, FeedbackWindow, CommentsWindow,
+  // Settings, etc.) already calls preventDefault on Escape, so this
+  // listener is inert on windows whose renderer mounted successfully.
+  //
+  // The failure mode this catches: a window renders blank because its
+  // route component's IPC listener attaches after main sends the show
+  // payload (payload-null race) or the component throws before mount.
+  // In either case the per-window keyboard hooks never install, so
+  // without this fallback there is *no way* to close the window —
+  // menubar-only apps have no OS-level Cmd+W handler and no titlebar
+  // close button.
+  //
+  // React runs child effects before parent effects, so per-window
+  // handlers are registered on window BEFORE this one. Listener
+  // firing order matches registration order, so the child's
+  // preventDefault lands before App-level Escape runs its close.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      const isCmdW = (e.metaKey || e.ctrlKey) && (e.key === 'w' || e.key === 'W')
+      if (isCmdW) {
+        e.preventDefault()
+        void window.api.closeWindow()
+        return
+      }
+      if (e.key === 'Escape' && !e.defaultPrevented) {
+        void window.api.closeWindow()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   // Body-class gate for the carry-mode motion blur. The CSS rules in
   // globals.css for `.item-row-sending-{left,right}` reference the
   // SVG trail filter only inside `.motion-blur-enabled` — flipping
