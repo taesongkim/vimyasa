@@ -17,14 +17,14 @@ iteration · `P3` someday/maybe.
 
 ## Versioning roadmap
 
-Live release: **v0.1.7**. Planned next sequence:
+Live release: **v0.1.8**. Planned next sequence:
 
 | Version | Theme | Primary contents |
 |---|---|---|
 | ~~**v0.1.5**~~ | ~~Feedback messenger~~ | ✅ Shipped — Cmd+Shift+\\ feedback window, Cloudflare Worker → Resend → email pipeline. |
 | ~~**v0.1.6**~~ | ~~Hot list + carry mode + capture-flow polish~~ | ✅ Shipped — hot list (`Cmd+Shift+H`, holds 0, slides from right), carry mode (`m` to pick up, 0-9 to send, j/k to reorder, Enter/Esc to land), Enter→A archive change, `r` for rename, edit caret fix, motion blur on send (default OFF, toggle in Settings → Advanced), auto-scroll to entry-form adds, deselect-on-new-draft, `item-arrived` receipt pulse. Carry mode + the two usability wins were pulled forward from v0.1.8. |
 | ~~**v0.1.7**~~ | ~~Darker dark mode + Phase 0 of color tokenization~~ | ✅ Shipped — interface backgrounds darkened (alpha 0.7 over pure-black, preserving translucency); dev-only `ThemeDevPanel` slider for live tuning; Decision 6 of color-tokenization proposal amended post-implementation. Foundation for Phase 1+ (full tokenization, light mode, cross-project extraction). |
-| **v0.1.8** | Light mode + Undo + release-notes-in-update + hot-list prewarm | **Phase 1** of color tokenization (invisible Layer 1/2/3 restructuring of dark-mode interface colors). **Phase 2** of color tokenization (light mode mappings + Settings → Appearance toggle, default Dark, options Light/Dark/Auto). Plus Undo (3–5 step ring buffer, single-list, in-session). Plus release-notes-in-update (GitHub release notes shown in auto-update prompt). Plus hot-list PR-4 prewarm. Custom commands (#24) pushed to v0.1.9. Substantial bundle — ~2.5 days of build across lanes. |
+| ~~**v0.1.8**~~ | ~~Light mode + Undo + release-notes-in-update + hot-list prewarm~~ | ✅ Shipped — Phase 1 (invisible tokenization restructure) + Phase 2 (light mode + Settings → Appearance: Light/Dark/Auto, default Dark). Undo/Redo (5-step ring buffer, cross-list, cross-window; main-process log with broadcast; edit-cancel and carry-cancel handled without log consumption; permanent delete now guarded by confirmation modal). Custom auto-update window with GitHub release notes rendered as markdown (aesthetics visual pass shipped separately as PR #51: typography hierarchy, adaptive height, Onboarding button treatment). Hot list PR-4 prewarm (first-summon latency drop; scroll/focus/edit state preserved across hides). Bug batch (Undo focus after cancel, delete-modal opacity, radio-dot centering). |
 | **v0.1.9** | Focus-state cues + backup + themed feedback input | Themes lane: focus-changed event + flash/glow via existing magic-colors infra. `feedback-input` surface bake. Features lane: discover existing export, ship tested import. |
 | **v0.1.10** | Polish + bug bash + audit | Mystery flicker root-cause hunt. Onboarding dim z-order. Scrollbar lag. Coordination: auto-update integrity audit. |
 | **v0.2.0** (someday) | Real Theme 2 + switcher | Path B from theme-system docs, or first significant new surface area. Reserved for genuinely big change. |
@@ -54,7 +54,7 @@ not silently grab next-priority items.
 - **Lane:** features (with theme + aesthetics consultations later)
 - **Priority:** P1
 - **Version:** v0.1.6 — **shipped** (Phase 1: PR-1, PR-2, PR-3 in single delivery via PR #28)
-- **Status:** ✅ merged through PR-3. **PR-4 prewarm in-flight on `hot-list-prewarm` branch** (features lane, 2026-06-26), bundled into v0.1.8 alongside light mode + Undo + release-notes-in-update. Theme 1 inheritance is automatic via component reuse (`list-item-edit` + `list-add-new` surfaces fire on hot-list items same as regular list items).
+- **Status:** ✅ merged in full (PR-1, PR-2, PR-3 via PR #28; PR-4 prewarm via PR #52 in v0.1.8). Theme 1 inheritance is automatic via component reuse (`list-item-edit` + `list-add-new` surfaces fire on hot-list items same as regular list items).
 - **Notes:** Pinned to top of right-click "Send to List" submenu with divider. Cross-side number swap (press 0 from a regular list to switch to hot list, press 1-9 from hot list to switch). Tray entry. See [proposals/hot-list.md](./proposals/hot-list.md) for the original design.
 
 ### Backup / restore user data
@@ -171,8 +171,7 @@ not silently grab next-priority items.
 - **Lane:** features (primary), aesthetics (visual treatment)
 - **Priority:** P2
 - **Version:** v0.1.8 (confirmed; bundled with light mode release)
-- **Status:** features-side in-flight on `release-notes-in-update` (PR #48). Aesthetics visual consult pending before merge (INBOX 2026-06-25 — features → aesthetics).
-- **Notes:** Mechanical baseline shipped: custom 480×520 frameless glass-surface window at `/update` replaces Electron's native dialog so markdown release notes can render inline. Two phases (`'available'` + `'downloaded'`), `marked` for markdown (GFM enabled, memo'd), idempotent factory, push + pull pattern on mount (handles race between main fire and renderer listener install). Multi-version skips concatenate with `---` separators, latest at top. Dev-only tray entries summon mock payloads for both phases. Scoped `.release-notes` class block in globals.css for typography. Aesthetics consult covers card layout, markdown typography, action-row hierarchy, optional phase-change motion.
+- **Status:** ✅ shipped in v0.1.8 (features baseline via PR #48; aesthetics visual pass via PR #51). Custom 480×520 frameless glass-surface window at `/update` replaces Electron's native dialog so markdown release notes render inline. Two phases (`'available'` + `'downloaded'`), `marked` for markdown (GFM enabled, memo'd), idempotent factory, push + pull pattern on mount. Multi-version skips concatenate chronologically with `---` separators, latest at top. Adaptive height via ResizeObserver + main-side clamp. Onboarding button styles for primary actions; scoped `.release-notes` typography in globals.css. Dev-only tray entries summon mock payloads for both phases.
 
 ### User-facing update tray entries — "Check for updates" + "View update details"
 - **Lane:** features

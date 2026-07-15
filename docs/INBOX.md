@@ -74,7 +74,8 @@ feedback on the update-prompt branch, take it first — I can
 verify mine via build + manual launch (the prewarm is observable
 via the first-summon latency drop without needing visual
 iteration). Ping me to swap if you finish before I do.
-**Status:** open
+**Status:** resolved
+**Resolved (2026-07-15 — coordination, v0.1.8 ship):** Both branches shipped clean. Hot-list-prewarm landed via PR #52; aesthetics visual pass via PR #51 (re-opened as #51 after original #50 auto-closed on base-branch deletion). File-overlap prediction held — no cross-branch conflicts on merge. Dev-server swap wasn't needed; both lanes verified independently.
 
 ## 2026-06-26 — features
 **Type:** note
