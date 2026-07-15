@@ -11,8 +11,8 @@ import type { UpdatePromptPayload } from '../../../../shared/types'
 // "ready to install" prompt.
 //
 // Two phases (driven by `payload.phase`):
-//   - 'available'  → Install Now / Later. Just the version.
-//   - 'downloaded' → Restart Now / Later. Version + release notes.
+//   - 'available'  → Download Now / Later. Just the version.
+//   - 'downloaded' → Install & Restart / Later. Version + release notes.
 //
 // The window is created lazily by main on each update event; this
 // component subscribes to `update:show` for pushes AND pulls
@@ -63,8 +63,8 @@ export function UpdatePromptWindow() {
   }, [])
 
   // Focus the primary action when the payload arrives, so Enter
-  // commits the obvious choice. (Install Now for 'available',
-  // Restart Now for 'downloaded'.)
+  // commits the obvious choice. (Download Now for 'available',
+  // Install & Restart for 'downloaded'.)
   useEffect(() => {
     if (!payload) return
     if (payload.phase === 'available') installBtnRef.current?.focus()
@@ -164,8 +164,8 @@ export function UpdatePromptWindow() {
           </AnimatePresence>
           <div className="text-[length:var(--font-size-sm)] leading-[1.5] text-[color:var(--color-text-muted)]">
             {isDownloaded
-              ? 'Restart to apply the update. You can keep using the app and restart later if you prefer.'
-              : 'Download in the background. You can keep using the app while it downloads.'}
+              ? 'Restart to install the update. You can restart later if you prefer.'
+              : 'Begin download? You will be prompted to install and restart when the download is complete.'}
           </div>
         </div>
 
@@ -230,7 +230,7 @@ export function UpdatePromptWindow() {
                 className="onb-btn onb-btn-glow focus:outline-none"
                 onClick={() => void window.api.update.restart()}
               >
-                Restart Now
+                Install & Restart
               </button>
             </GlowSurface>
           ) : (
@@ -244,7 +244,7 @@ export function UpdatePromptWindow() {
                 className="onb-btn onb-btn-glow focus:outline-none"
                 onClick={() => void window.api.update.install()}
               >
-                Install Now
+                Download Now
               </button>
             </GlowSurface>
           )}
