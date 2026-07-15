@@ -305,7 +305,8 @@ const api: VimyasaAPI = {
     install: () => ipcRenderer.invoke('update:install'),
     restart: () => ipcRenderer.invoke('update:restart'),
     dismiss: () => ipcRenderer.invoke('update:dismiss'),
-    testShow: (payload) => ipcRenderer.invoke('update:test-show', payload)
+    testShow: (payload) => ipcRenderer.invoke('update:test-show', payload),
+    requestResize: (height) => ipcRenderer.invoke('update:request-resize', height)
   },
 
   // Theme dev panel (gated by is.dev — never call from production builds)
