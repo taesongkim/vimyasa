@@ -313,6 +313,11 @@ export interface VimyasaAPI {
   // in-app window replaced the native dialog so we can render the
   // GitHub release notes markdown inline.
   update: UpdateAPI
+
+  // Prewarmed list windows (v0.1.8 — hot list only for now). Mirrors
+  // QuickAdd's show/hidden contract; renderer can subscribe to refocus
+  // the scroll container on show or run any pre-hide cleanup.
+  list: ListPrewarmAPI
 }
 
 // ── Auto-update prompt ──────────────────────────────────────────
@@ -351,6 +356,18 @@ export interface UpdateAPI {
    *  via ResizeObserver and asks main to match (clamped to a sane
    *  range). Mirrors the onboarding callout's request-resize pattern. */
   requestResize: (height: number) => Promise<void>
+}
+
+// ── Prewarmed list window events (v0.1.8) ──────────────────────
+
+export interface ListPrewarmAPI {
+  /** Fires every time main sends a `list:show` IPC ahead of `win.show()`
+   *  for a prewarmed list window. Today only the hot list is prewarmed;
+   *  more list windows can opt in by routing through the same IPC. */
+  onShow: (callback: () => void) => () => void
+  /** Fires before `win.hide()` so the renderer can blur any focused
+   *  input + run pre-hide cleanup before the OS hide steals focus. */
+  onHidden: (callback: () => void) => () => void
 }
 
 // ── Undo / redo ─────────────────────────────────────────────────

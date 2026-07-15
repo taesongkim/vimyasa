@@ -54,7 +54,7 @@ not silently grab next-priority items.
 - **Lane:** features (with theme + aesthetics consultations later)
 - **Priority:** P1
 - **Version:** v0.1.6 — **shipped** (Phase 1: PR-1, PR-2, PR-3 in single delivery via PR #28)
-- **Status:** ✅ merged. PR-4 prewarm bundled into v0.1.8 (alongside light mode + Undo + release-notes-in-update). Theme 1 inheritance is automatic via component reuse (`list-item-edit` + `list-add-new` surfaces fire on hot-list items same as regular list items).
+- **Status:** ✅ merged through PR-3. **PR-4 prewarm in-flight on `hot-list-prewarm` branch** (features lane, 2026-06-26), bundled into v0.1.8 alongside light mode + Undo + release-notes-in-update. Theme 1 inheritance is automatic via component reuse (`list-item-edit` + `list-add-new` surfaces fire on hot-list items same as regular list items).
 - **Notes:** Pinned to top of right-click "Send to List" submenu with divider. Cross-side number swap (press 0 from a regular list to switch to hot list, press 1-9 from hot list to switch). Tray entry. See [proposals/hot-list.md](./proposals/hot-list.md) for the original design.
 
 ### Backup / restore user data

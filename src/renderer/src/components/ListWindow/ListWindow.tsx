@@ -425,6 +425,35 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [carryItemId, items, activeListId])
 
+  // Hot list prewarm hooks. The window is created at app startup with
+  // show:false and stays alive across summons — `list:show` fires
+  // ahead of every `win.show()`, `list:hidden` fires before every
+  // `win.hide()`. Both are no-ops for non-prewarmed list windows
+  // (the IPC never gets sent to them). Two reasons to subscribe:
+  //
+  //   - On show: park keyboard focus on the scroll container so j/k
+  //     works immediately. Without this, OS-level window show leaves
+  //     DOM focus wherever it was at hide time (often a stale
+  //     textarea that's since unmounted, blocking the textarea
+  //     guard in useKeyboard).
+  //   - On hide: blur any focused input. Otherwise textarea focus
+  //     can survive the hide → cause a focus-visible flicker on the
+  //     next show before our show handler refocuses the container.
+  useEffect(() => {
+    const offShow = window.api.list.onShow(() => {
+      scrollContainerRef.current?.focus()
+    })
+    const offHidden = window.api.list.onHidden(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+    })
+    return () => {
+      offShow()
+      offHidden()
+    }
+  }, [])
+
   // Cmd+Z while carry mode is active. useGlobalUndo dispatches
   // `undo-check-carry` on the window; if we're carrying, restore
   // the pre-carry order silently (no undo entry), exit carry, and
