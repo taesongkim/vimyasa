@@ -325,6 +325,29 @@ not silently grab next-priority items.
 
 ## Bugs
 
+### v0.1.7 auto-updater install failure — diagnose retrospectively
+- **Lane:** features (main-process electron-updater)
+- **Priority:** P2
+- **Version:** v0.1.10 (diagnostic only — cannot ship a fix that reaches broken v0.1.7 installs)
+- **Status:** open (2026-07-16, discovered post-v0.1.9-publish when Justin's own install failed to upgrade)
+- **Symptoms:** On v0.1.7, auto-update detects newer versions and downloads them successfully. Clicking Install & Restart on the downloaded prompt quits the app but does not relaunch into the new version. On manual reopen, the app is still on v0.1.7 and the same failure loop begins. Reproduced twice — both v0.1.7→v0.1.8 (didn't notice because we assumed auto-update worked) and v0.1.7→v0.1.9 (caught because Justin flagged that the update window was still native — v0.1.7's UI — not the custom v0.1.8+ window).
+- **Impact:** Every v0.1.7 tester is stuck on v0.1.7 unless they manually reinstall the newest DMG. Coordination-side outreach with a link to the latest GitHub release is the only fix that reaches them.
+- **Diagnosis path:**
+  1. `git log --oneline v0.1.6..v0.1.7 -- src/main/updater.ts src/main/index.ts electron-builder.yml` — see what changed in the updater path between the last known-working version (v0.1.6, assuming Justin got to v0.1.7 via auto-update from v0.1.6 successfully) and the broken version.
+  2. Compare with electron-updater upstream changelog for the version range shipped in v0.1.6 vs v0.1.7 (`npm ls electron-updater` on those tags).
+  3. Check `~/Library/Caches/vimyasa-updater/pending/` on a still-broken-v0.1.7 tester machine for install-log breadcrumbs (if any tester still on v0.1.7 is willing to peek before they manually reinstall).
+  4. Suspect areas: signing cert or entitlements changes between v0.1.6 and v0.1.7 that break the Squirrel install swap; `quitAndInstall` args or timing; helper app packaging.
+- **Cross-linked with:** "Add auto-update verification step to release cycle" (below) — the procedural fix that prevents this class of bug from shipping again.
+- **Not blocking:** any future release. Diagnosis is retrospective. Testers still on v0.1.7 need direct outreach regardless of what we learn.
+
+### Add auto-update verification step to release cycle
+- **Lane:** coordination (procedural)
+- **Priority:** P1 procedural — must be in place before next ship
+- **Version:** applies v0.1.10 onward
+- **Status:** ✅ shipped in this PR — `docs/WORKFLOW.md` release-cycle section documents the new step (canonical sequence step 4). BACKLOG entry retained for tracking.
+- **Rationale:** The pre-2026-07-16 release cycle verified NEW version behavior in dev before dist:mac but NOT the actual auto-update path from the previous shipped version to the new draft. That gap let v0.1.7's broken auto-updater ship, then let both v0.1.8 and v0.1.9 ship "successfully" while no v0.1.7 tester could actually upgrade. Added a step 4 to the canonical release sequence: on a machine with the currently-shipped version installed, run the actual auto-update flow to the draft and confirm the app comes back on the new version. Only publish if the upgrade path lands cleanly. Same doc also captures the Apple-agreement-403 procedure from the v0.1.8 ship (accept on both developer.apple.com AND appstoreconnect.apple.com).
+- **Follow-through:** the next release cycle (v0.1.10) exercises this new step for real. If Justin's machine can't easily be reverted to the currently-shipped version, coordination asks the user to do the upgrade check on their side before greenlighting publish.
+
 ### v0.1.8 hotfix — Auto mode not live-updating + Cmd+Z-in-edit keeps text
 - **Lane:** features
 - **Priority:** P1 (v0.1.8 ship-blocker)

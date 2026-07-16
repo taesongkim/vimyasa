@@ -209,6 +209,82 @@ something like "lane override" or "stop blocking, just do it." The
 session does the work and adds a `BACKLOG.md` entry so coordination can
 revisit *whether the rule itself needs adjusting*.
 
+## Release cycle
+
+Vimyasa ships to friends-and-family via auto-updating GitHub Releases.
+Notarization is slow (~5–10 min) and re-doing it is expensive, so the
+release cycle prioritizes catching issues **before** dist:mac.
+
+### Canonical sequence
+
+1. **Merge content PRs** to main.
+2. **Merge release-prep PR** (version bump, CHANGELOG entry, BACKLOG
+   sweep of items shipped in this version).
+3. **Pull main locally. Run `npm run dev`. Verify NEW behavior
+   behaviorally.** — the golden path plus edge cases for what
+   changed this release. If issues found, fix on a follow-up
+   branch, merge, GOTO 3.
+4. **Verify the auto-update path from the previous shipped version
+   to the draft.** — *added 2026-07-16 after v0.1.7's broken updater
+   went undetected through both v0.1.8 and v0.1.9 ship cycles.* See
+   next section.
+5. **Run `dist:mac`**. Builds, signs, notarizes, uploads draft to
+   GitHub Releases.
+6. **Verify the GitHub draft** looks right (correct version, both
+   `.dmg` and `.zip` artifacts attached, correct icon, latest-mac.yml
+   present).
+7. **Edit release notes on GitHub** — this is what the update prompt
+   renders as markdown to testers.
+8. **Publish.**
+
+### Step 4: auto-update path verification
+
+**Why this step exists:** the release cycle from steps 1–3 verifies
+the NEW version's behavior in a **freshly built dev environment**.
+It does NOT verify that a real installed copy of the currently-shipped
+version can actually receive + install the new version. That gap
+existed silently until v0.1.7 shipped with a broken auto-updater and
+neither v0.1.8 nor v0.1.9 caught it — both shipped "clean" while every
+v0.1.7 tester was stuck on their broken updater.
+
+**What to run:**
+
+- On a machine with the **currently-shipped version installed** (the
+  live one from the last publish — Justin's machine works if he's
+  been on it), install the new draft `.dmg` via the actual
+  auto-update flow: quit + reopen the app, wait for auto-check, click
+  through Install & Restart, confirm the app comes back on the new
+  version.
+- If the auto-update path breaks, **do not publish**. Draft can be
+  discarded and re-uploaded after fixing the pipeline; publishing a
+  broken update chain compounds the problem across every tester.
+
+**When you can't reasonably test the upgrade path:**
+
+- If the current shipped version is known broken for auto-update (like
+  v0.1.7 was), the new draft can still ship — but flag in release notes
+  that manual reinstall is required from that version, and directly
+  message affected testers with the download link.
+- If you don't have a machine on the live version, ask the user to run
+  the auto-update install path themselves before publishing.
+
+### Notarization + Apple agreements
+
+Notarization can 403 with "required agreement is missing or has expired"
+even after a recent successful notarization. Apple ships new legal
+agreement revisions periodically and requires the Account Holder to
+sign them before submissions go through.
+
+**When notarize returns 403 for an agreement:**
+1. Check https://developer.apple.com/account — accept any pending
+   agreement banner.
+2. Check https://appstoreconnect.apple.com → Business →
+   Agreements — accept any pending item there too (App Store Connect
+   has separate agreements from developer.apple.com).
+3. Only Account Holder can accept some; if signed-in user isn't the
+   Account Holder, the acceptance option won't appear.
+4. Wait ~2 min for propagation, then re-run `npm run dist:mac`.
+
 ## Session rituals: clocking in and clocking out
 
 Two phrases mark the start and end of a focused work session with the
