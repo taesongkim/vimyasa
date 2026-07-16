@@ -21,6 +21,47 @@ edit `src/`. It triages, plans, audits, and writes docs.
 
 ## The rules
 
+### One worktree per lane — non-negotiable
+
+Every lane session runs in its **own git worktree**, never in the shared
+main checkout, never in another lane's worktree. This is the load-bearing
+rule that makes parallel work safe.
+
+**Set up (once, at session start):** from the main checkout:
+
+```
+git worktree add ../vimyasa-<lane-or-topic> <branch-name>
+cd ../vimyasa-<lane-or-topic>
+```
+
+**Cleanup (after your branch merges):**
+
+```
+git worktree remove ../vimyasa-<lane-or-topic>
+```
+
+Symptoms of sharing a checkout with another session (real incident,
+2026-07-15): one session's `git add -A` sweeps the other session's
+uncommitted files into its commit, then a `git reset` on the collector's
+side wipes the collided files from the collector's tree — silently. The
+collided-into session loses its working tree unless it caught the state
+mid-collision.
+
+If you find yourself in the shared main checkout with another session
+active, **stop before staging anything**, create a new worktree at
+`../vimyasa-<lane-or-topic>`, move your work there via `git stash` +
+apply, and continue from the isolated worktree. Report to coordination.
+
+### Stage explicit paths, never `git add -A`
+
+Even inside your isolated worktree, prefer `git add <specific paths>` or
+`git add -p` over `git add -A` / `git add .`. This protects against:
+- Untracked helper files accidentally landing in a commit
+- Cross-lane files if the worktree rule is ever violated
+- Secrets/credentials in files you didn't mean to include
+
+`git add -A` is a habit worth breaking regardless of worktree hygiene.
+
 ### One dev server at a time
 
 Vimyasa registers global shortcuts and a tray icon at startup. Two
