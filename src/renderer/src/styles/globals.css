@@ -1107,6 +1107,49 @@ html, body, #root {
   cursor: not-allowed;
 }
 
+/* Light-mode legibility for the onboarding + update-prompt buttons.
+   The defaults above use white translucent fills (rgba(255,255,255,…))
+   tuned for dark surfaces — on a light surface they wash out and the
+   buttons read as nearly invisible. Swap to dark translucent fills so
+   they stand out. Dark mode keeps the defaults above untouched.
+
+   The glow (primary) values sit a notch stronger than secondary so the
+   primary action still reads as primary in light mode, alongside its
+   GlowSurface beam. Duplicated under the @media auto block per the
+   codebase's light-mode pattern — keep the two in sync when tuning. */
+[data-appearance="light"] .onb-btn-secondary {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.14);
+}
+[data-appearance="light"] .onb-btn-secondary:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.09);
+}
+[data-appearance="light"] .onb-btn-glow {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+[data-appearance="light"] .onb-btn-glow:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.24);
+}
+@media (prefers-color-scheme: light) {
+  [data-appearance="auto"] .onb-btn-secondary {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.14);
+  }
+  [data-appearance="auto"] .onb-btn-secondary:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.09);
+  }
+  [data-appearance="auto"] .onb-btn-glow {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.16);
+  }
+  [data-appearance="auto"] .onb-btn-glow:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.24);
+  }
+}
+
 /* ── Carry mode (move-item flow) ──────────────────────────────────
    Visual treatment for the "carry" interaction: m enters carry mode
    on the focused item, number key sends it to that list, j/k reorder,

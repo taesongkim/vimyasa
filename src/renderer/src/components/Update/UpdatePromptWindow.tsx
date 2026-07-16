@@ -46,6 +46,7 @@ export function UpdatePromptWindow() {
   const [payload, setPayload] = useState<UpdatePromptPayload | null>(null)
   const installBtnRef = useRef<HTMLButtonElement>(null)
   const restartBtnRef = useRef<HTMLButtonElement>(null)
+  const doneBtnRef = useRef<HTMLButtonElement>(null)
   // Outer ref the ResizeObserver watches. This is the inner content
   // wrapper (not the h-full outer), so its scrollHeight reflects the
   // intrinsic content height.
@@ -64,11 +65,12 @@ export function UpdatePromptWindow() {
 
   // Focus the primary action when the payload arrives, so Enter
   // commits the obvious choice. (Download Now for 'available',
-  // Install & Restart for 'downloaded'.)
+  // Install & Restart for 'downloaded', Done for the status phases.)
   useEffect(() => {
     if (!payload) return
     if (payload.phase === 'available') installBtnRef.current?.focus()
-    else restartBtnRef.current?.focus()
+    else if (payload.phase === 'downloaded') restartBtnRef.current?.focus()
+    else doneBtnRef.current?.focus()
   }, [payload])
 
   // Esc dismisses (matches the previous native-dialog Cancel key).
@@ -128,6 +130,27 @@ export function UpdatePromptWindow() {
   }
 
   const isDownloaded = payload.phase === 'downloaded'
+  // 'up-to-date' + 'error' are transient status displays: a single
+  // Done button, no release notes, no download/restart action.
+  const isStatus = payload.phase === 'up-to-date' || payload.phase === 'error'
+
+  // Per-phase header copy. The title cross-fades on phase change.
+  const title =
+    payload.phase === 'downloaded'
+      ? `Vimyasa ${payload.version} is ready to install`
+      : payload.phase === 'available'
+        ? `Vimyasa ${payload.version} is available`
+        : payload.phase === 'up-to-date'
+          ? "You're up to date"
+          : "Couldn't check for updates"
+  const subtitle =
+    payload.phase === 'downloaded'
+      ? 'Restart to install the update. You can restart later if you prefer.'
+      : payload.phase === 'available'
+        ? 'Begin download? You will be prompted to install and restart when the download is complete.'
+        : payload.phase === 'up-to-date'
+          ? `Vimyasa v${payload.version} is the latest version.`
+          : 'Check your connection and try again.'
 
   return (
     // Outer: full-window glass cover. Stays at window height even
@@ -157,16 +180,14 @@ export function UpdatePromptWindow() {
               transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
               className="font-tight text-[length:var(--font-size-lg)] font-semibold tracking-tight text-[color:var(--color-text-primary)] leading-tight"
             >
-              {isDownloaded
-                ? `Vimyasa ${payload.version} is ready to install`
-                : `Vimyasa ${payload.version} is available`}
+              {title}
             </motion.div>
           </AnimatePresence>
-          <div className="text-[length:var(--font-size-sm)] leading-[1.5] text-[color:var(--color-text-muted)]">
-            {isDownloaded
-              ? 'Restart to install the update. You can restart later if you prefer.'
-              : 'Begin download? You will be prompted to install and restart when the download is complete.'}
-          </div>
+          {subtitle && (
+            <div className="text-[length:var(--font-size-sm)] leading-[1.5] text-[color:var(--color-text-muted)]">
+              {subtitle}
+            </div>
+          )}
         </div>
 
         {/* Release notes (only on 'downloaded'). The notes scroll
@@ -212,41 +233,61 @@ export function UpdatePromptWindow() {
             default orange focus ring — the GlowSurface's themed
             beam is the visible attention indicator. */}
         <div className="no-drag flex items-center justify-end gap-2">
-          <button
-            type="button"
-            className="onb-btn onb-btn-secondary focus:outline-none"
-            onClick={() => void window.api.update.dismiss()}
-          >
-            Later
-          </button>
-          {isDownloaded ? (
+          {isStatus ? (
+            // Status phases (up-to-date / error) have nothing to act
+            // on — a single Done closes the window.
             <GlowSurface
               surface="welcome-callout-start-button"
               style={{ display: 'inline-block' }}
             >
               <button
-                ref={restartBtnRef}
+                ref={doneBtnRef}
                 type="button"
                 className="onb-btn onb-btn-glow focus:outline-none"
-                onClick={() => void window.api.update.restart()}
+                onClick={() => void window.api.update.dismiss()}
               >
-                Install & Restart
+                Done
               </button>
             </GlowSurface>
           ) : (
-            <GlowSurface
-              surface="welcome-callout-start-button"
-              style={{ display: 'inline-block' }}
-            >
+            <>
               <button
-                ref={installBtnRef}
                 type="button"
-                className="onb-btn onb-btn-glow focus:outline-none"
-                onClick={() => void window.api.update.install()}
+                className="onb-btn onb-btn-secondary focus:outline-none"
+                onClick={() => void window.api.update.dismiss()}
               >
-                Download Now
+                Later
               </button>
-            </GlowSurface>
+              {isDownloaded ? (
+                <GlowSurface
+                  surface="welcome-callout-start-button"
+                  style={{ display: 'inline-block' }}
+                >
+                  <button
+                    ref={restartBtnRef}
+                    type="button"
+                    className="onb-btn onb-btn-glow focus:outline-none"
+                    onClick={() => void window.api.update.restart()}
+                  >
+                    Install & Restart
+                  </button>
+                </GlowSurface>
+              ) : (
+                <GlowSurface
+                  surface="welcome-callout-start-button"
+                  style={{ display: 'inline-block' }}
+                >
+                  <button
+                    ref={installBtnRef}
+                    type="button"
+                    className="onb-btn onb-btn-glow focus:outline-none"
+                    onClick={() => void window.api.update.install()}
+                  >
+                    Download Now
+                  </button>
+                </GlowSurface>
+              )}
+            </>
           )}
         </div>
       </div>

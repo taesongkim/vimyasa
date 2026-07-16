@@ -134,6 +134,8 @@ const api: VimyasaAPI = {
   getLoginItemSettings: () => ipcRenderer.invoke('getLoginItemSettings'),
   setLoginItemSettings: (openAtLogin) => ipcRenderer.invoke('setLoginItemSettings', openAtLogin),
   getAppInfo: () => ipcRenderer.invoke('app:getInfo'),
+  getCurrentReleaseNotes: () => ipcRenderer.invoke('about:getCurrentReleaseNotes'),
+  fitSettingsWidth: (overflow) => ipcRenderer.invoke('settings:fit-width', overflow),
   importData: (data) => ipcRenderer.invoke('importData', data),
   resetData: () => ipcRenderer.invoke('resetData'),
 
@@ -284,14 +286,17 @@ const api: VimyasaAPI = {
       const listener = (_e: unknown, payload: unknown): void => {
         const p = payload as
           | {
-              phase?: 'available' | 'downloaded'
+              phase?: 'available' | 'downloaded' | 'up-to-date' | 'error'
               version?: string
               releaseNotes?: string
             }
           | null
         if (
           p &&
-          (p.phase === 'available' || p.phase === 'downloaded') &&
+          (p.phase === 'available' ||
+            p.phase === 'downloaded' ||
+            p.phase === 'up-to-date' ||
+            p.phase === 'error') &&
           typeof p.version === 'string' &&
           typeof p.releaseNotes === 'string'
         ) {

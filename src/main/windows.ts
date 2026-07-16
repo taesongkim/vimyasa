@@ -5,6 +5,7 @@ import { orchestrator } from './onboarding'
 import { getThemesPreloadArg } from './themes-store'
 import { instrumentWindow } from './window-logging'
 import { HOT_LIST_ID } from '../shared/types'
+import type { UpdatePromptPayload } from '../shared/types'
 
 // Re-run onboarding callout positioning whenever a host window moves /
 // resizes / shows / hides / closes — keeps the callout glued to the host.
@@ -29,8 +30,18 @@ const FEEDBACK_WIDTH = 400
 const FEEDBACK_HEIGHT = 240
 const COMMENTS_WIDTH = 360
 const COMMENTS_HEIGHT = 480
-const SETTINGS_WIDTH = 420
-const SETTINGS_HEIGHT = 500
+// SETTINGS_WIDTH is the base/floor; the renderer measures the tab strip
+// on mount and asks main to widen if the tabs overflow (see
+// setSettingsWidth), so the window auto-fits however many tabs exist
+// without a magic per-tab-count number. Height clears the fixed
+// controls — the About release notes scroll inside their own capped
+// pane. Centered at creation via getCenteredPosition.
+const SETTINGS_WIDTH = 480
+const SETTINGS_HEIGHT = 580
+// Cap so a pathological tab count / very long labels can't size the
+// window past something sane. Tabs beyond this scroll rather than grow
+// the window indefinitely.
+const SETTINGS_MAX_WIDTH = 760
 const SHORTCUTS_OVERVIEW_WIDTH = LIST_WINDOW_WIDTH
 const WINDOW_GAP = 8
 const INITIAL_X = 8
@@ -419,34 +430,48 @@ const UPDATE_PROMPT_WIDTH = 480
 const UPDATE_PROMPT_HEIGHT = 520
 let updatePromptWindow: BrowserWindow | null = null
 
-/** Payload type for the update-prompt renderer. Two phases:
- *   - 'available':  electron-updater found a new version. The user
- *                   decides whether to download.
- *   - 'downloaded': download finished; the user decides whether to
- *                   restart now. Release notes (markdown) live here. */
-export interface UpdatePromptPayload {
-  phase: 'available' | 'downloaded'
-  version: string
-  releaseNotes: string
+// Two distinct pieces of update state, deliberately separated:
+//
+//   currentWindowPayload — whatever the window is currently showing
+//     (any phase, including the transient 'up-to-date' / 'error'
+//     status displays). The renderer pulls this on mount via
+//     `update:get-pending` to cover the race where main calls
+//     `webContents.send('update:show')` before the renderer's
+//     useEffect has subscribed. Nulled when the window closes.
+//
+//   pendingUpdate — the last *actionable* update ('available' or
+//     'downloaded') the user hasn't resolved yet. Unlike
+//     currentWindowPayload it survives a "Later" dismissal, so the
+//     tray's "View Update Details" entry can re-summon it. Superseded
+//     when a newer update event fires; the transient status phases
+//     never touch it.
+let currentWindowPayload: UpdatePromptPayload | null = null
+let pendingUpdate: UpdatePromptPayload | null = null
+
+/** The payload the update window is (or was last) displaying — used
+ *  only by the renderer's mount-race pull. */
+export function getWindowPayload(): UpdatePromptPayload | null {
+  return currentWindowPayload
 }
 
-// The most recent payload main sent. The renderer pulls this on
-// mount via the `update:get-pending` IPC — covers the race where
-// main calls `webContents.send('update:show')` before the renderer's
-// useEffect has subscribed. Cleared on dismiss so a stale payload
-// doesn't reopen the next time the window is summoned.
-let pendingUpdatePayload: UpdatePromptPayload | null = null
-
-export function getPendingUpdatePayload(): UpdatePromptPayload | null {
-  return pendingUpdatePayload
+/** The last actionable ('available' | 'downloaded') update the user
+ *  hasn't acted on. Drives the tray's conditional "View Update
+ *  Details" entry + its re-summon click. Null when there's nothing
+ *  pending. */
+export function getPendingUpdate(): UpdatePromptPayload | null {
+  return pendingUpdate
 }
 
 /** Create (or focus) the update prompt window and send the payload.
- *  The same window handles both 'available' and 'downloaded' phases;
- *  the renderer swaps content based on payload.phase. Idempotent —
- *  a second call while the window is open just updates the payload. */
+ *  The same window handles every phase; the renderer swaps content
+ *  based on payload.phase. Idempotent — a second call while the
+ *  window is open just updates the payload. Actionable phases update
+ *  the persisted `pendingUpdate`; transient status phases don't. */
 export function showUpdatePrompt(payload: UpdatePromptPayload): BrowserWindow {
-  pendingUpdatePayload = payload
+  currentWindowPayload = payload
+  if (payload.phase === 'available' || payload.phase === 'downloaded') {
+    pendingUpdate = payload
+  }
 
   const existing = updatePromptWindow
   if (existing && !existing.isDestroyed()) {
@@ -481,15 +506,20 @@ export function showUpdatePrompt(payload: UpdatePromptPayload): BrowserWindow {
   win.once('ready-to-show', () => win.show())
   win.on('closed', () => {
     updatePromptWindow = null
+    // The window's gone, so there's nothing left to re-hydrate on
+    // mount. `pendingUpdate` is deliberately left intact — it's what
+    // lets "View Update Details" re-open an update the user dismissed
+    // with "Later".
+    currentWindowPayload = null
   })
   return win
 }
 
-/** Close the prompt window (Later / backdrop / Esc). Also clears the
- *  pending payload so a stale "downloaded" state doesn't reappear
- *  when the next update check triggers a fresh 'available' event. */
+/** Close the prompt window (Later / backdrop / Esc / Done). The
+ *  actionable `pendingUpdate` is preserved so the tray's "View Update
+ *  Details" entry can re-summon it after a "Later" dismissal; it's
+ *  superseded naturally when a newer update event fires. */
 export function hideUpdatePromptWindow(): void {
-  pendingUpdatePayload = null
   if (updatePromptWindow && !updatePromptWindow.isDestroyed()) {
     updatePromptWindow.close()
   }
@@ -508,10 +538,12 @@ const UPDATE_PROMPT_MAX_HEIGHT = 560
 /** Renderer-driven adaptive height. Mirrors the onboarding callout's
  *  `setCalloutHeight` pattern — the renderer measures its own content
  *  via ResizeObserver and calls this through `update:request-resize`.
- *  Width stays locked; height clamps to [MIN, MAX]. Top-left position
- *  is preserved so the title doesn't visually jump when content
- *  reflows (cross-fade between phases reads as content settling, not
- *  the window jumping).
+ *  Width stays locked; height clamps to [MIN, MAX]. The window is
+ *  re-centered VERTICALLY on its current display as the height changes
+ *  — the window is created at a tall placeholder height and then
+ *  shrinks to fit content, so pinning the top edge would leave short
+ *  content (up-to-date / error / notes-less available) sitting above
+ *  screen center. Re-centering keeps every phase visually centered.
  *
  *  No-op if the window doesn't exist (renderer raced ahead of teardown). */
 export function setUpdatePromptHeight(height: number): void {
@@ -522,9 +554,15 @@ export function setUpdatePromptHeight(height: number): void {
   )
   const current = updatePromptWindow.getBounds()
   if (current.height === clamped) return
+  const display = screen.getDisplayNearestPoint({
+    x: current.x + Math.round(current.width / 2),
+    y: current.y + Math.round(current.height / 2)
+  })
+  const wa = display.workArea
+  const y = Math.round(wa.y + (wa.height - clamped) / 2)
   updatePromptWindow.setBounds({
     x: current.x,
-    y: current.y,
+    y,
     width: current.width,
     height: clamped
   })
@@ -584,6 +622,30 @@ export function createSettingsWindow(initialTab?: SettingsTab): BrowserWindow {
   win.once('ready-to-show', () => win.show())
   win.on('closed', () => { settingsWindow = null })
   return win
+}
+
+/** Auto-fit the settings window width to its tab strip. The renderer
+ *  measures how many pixels the tab row overflows its visible width and
+ *  calls this via `settings:fit-width`; we grow the window by that much
+ *  (clamped to SETTINGS_MAX_WIDTH) and re-center horizontally on the
+ *  window's display. Grow-only: adding tabs auto-widens; the base width
+ *  covers the common case, so nothing shrinks unexpectedly under the
+ *  user if a tab is later removed. No-op if the window's gone or the
+ *  tabs already fit (overflow <= 0). */
+export function setSettingsWidth(overflow: number): void {
+  if (!settingsWindow || settingsWindow.isDestroyed()) return
+  if (!Number.isFinite(overflow) || overflow <= 0) return
+  const current = settingsWindow.getBounds()
+  // +8px breathing room so the last tab isn't flush against the edge.
+  const target = Math.min(SETTINGS_MAX_WIDTH, current.width + Math.ceil(overflow) + 8)
+  if (target <= current.width) return
+  const display = screen.getDisplayNearestPoint({
+    x: current.x + Math.round(current.width / 2),
+    y: current.y + Math.round(current.height / 2)
+  })
+  const wa = display.workArea
+  const x = Math.round(wa.x + (wa.width - target) / 2)
+  settingsWindow.setBounds({ x, y: current.y, width: target, height: current.height })
 }
 
 // ── Shortcuts Overview Window ──────────────────────────────────
@@ -728,6 +790,12 @@ export function registerWindowIpcHandlers(): void {
 
   ipcMain.handle('openSettings', (_e, tab?: SettingsTab) => {
     createSettingsWindow(tab)
+  })
+
+  // Renderer-driven: the settings tab strip measures how far it
+  // overflows and asks main to widen the window to fit all tabs.
+  ipcMain.handle('settings:fit-width', (_e, overflow: number) => {
+    setSettingsWidth(overflow)
   })
 
   ipcMain.handle('openArchive', (_e, listId?: string) => {

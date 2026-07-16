@@ -6,6 +6,7 @@ import { store } from './store'
 import { createListInStore } from './lists'
 import { refreshUserShortcuts, refreshBuiltinShortcuts, pauseGlobalShortcuts, resumeGlobalShortcuts } from './shortcuts'
 import { updateTrayMenu } from './tray'
+import { getCurrentReleaseNotes } from './release-notes'
 import { orchestrator } from './onboarding'
 import type { DataStore, Effects, FeedbackConfig, Group, List, Item, Comment, Shortcut, ItemStatus, ShortcutAction, BuiltinShortcuts, JkMode } from '../shared/types'
 import { DEFAULT_EFFECTS } from '../shared/types'
@@ -158,6 +159,12 @@ export function registerIpcHandlers(): void {
       return baseInfo
     }
   })
+
+  // Fetch the current version's GitHub release notes for the
+  // Settings → About tab. Cached per version on disk (see
+  // release-notes.ts) so it's a once-ever network hit per version and
+  // works offline afterward.
+  ipcMain.handle('about:getCurrentReleaseNotes', () => getCurrentReleaseNotes())
 
   // ── Data — read ─────────────────────────────────────────────────
   ipcMain.handle('getAll', (): DataStore => {
