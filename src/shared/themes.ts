@@ -543,6 +543,22 @@ const THEME_1_SURFACE_OVERRIDES: Partial<
     enabled: true,
     borderBeam: { ...MAGIC_COLORS_BEAM, borderRadius: 8 },
     particles: { ...MAGIC_COLORS_PARTICLES }
+  },
+  // Onboarding "Start Tour" + update-prompt primary buttons (Download
+  // Now / Install & Restart / Done — all wrap this surface). Small
+  // targets, so the default glowDepth (1) reads bigger than the button;
+  // pull the glow inward to 0.25. Everything else inherits
+  // DEFAULT_BORDER_BEAM_CONFIG (default 'colorful' beam, no particles).
+  //
+  // enabled STAYS false — this only re-tunes the *default* glowDepth for
+  // when the surface is on (a fresh seed, or a dev enabling it via the
+  // ThemeDevPanel). It does NOT turn the glow on by default: shipped
+  // v0.1.8 users have it off and keep it off. No migration re-bakes
+  // existing stores, so anyone with a persisted glowDepth keeps their
+  // exact value.
+  'welcome-callout-start-button': {
+    enabled: false,
+    borderBeam: { glowDepth: 0.25 }
   }
 }
 
