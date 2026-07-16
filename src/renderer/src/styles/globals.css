@@ -1377,6 +1377,14 @@ html, body, #root {
   padding-left: 1.25rem;
   line-height: 1.55;
 }
+/* Restore markers — a global list reset zeroes list-style-type, so
+   bullets/numbers vanish without these scoped overrides. */
+.release-notes ul {
+  list-style-type: disc;
+}
+.release-notes ol {
+  list-style-type: decimal;
+}
 .release-notes li + li {
   margin-top: 0.2rem; /* tighter than block-gap but readable */
 }
