@@ -153,6 +153,24 @@ export function getThemesState(): ThemesState {
     schemaVersion = 8
     mutated = true
   }
+  if (schemaVersion < 9) {
+    // v9: Theme 1 gained a per-mode `lightBeam` override (glowDepth 0.8 /
+    // strength 1.3 for light-mode legibility). Re-bake all four Magic
+    // Colors surfaces so the new field reaches existing stores — same
+    // mechanism as v5. Only these surfaces are touched; dev tuning on any
+    // other surface is preserved. (Re-baking clobbers prior dev tuning on
+    // the four themed surfaces, which is intended: they carry the shipped
+    // Magic Colors look, not user-tuned state.)
+    surfaces = {
+      ...surfaces,
+      'quickadd-input': defaultSurfaceConfig('quickadd-input'),
+      'list-item-edit': defaultSurfaceConfig('list-item-edit'),
+      'list-add-new': defaultSurfaceConfig('list-add-new'),
+      'feedback-input': defaultSurfaceConfig('feedback-input')
+    }
+    schemaVersion = 9
+    mutated = true
+  }
 
   for (const id of SURFACE_IDS) {
     if (!surfaces[id]) {

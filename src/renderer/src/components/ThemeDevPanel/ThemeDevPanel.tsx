@@ -349,6 +349,8 @@ export function ThemeDevPanel() {
     if (obj.paletteOverride && obj.paletteOverride.some((v) => v != null)) {
       cleaned.paletteOverride = obj.paletteOverride
     }
+    if (obj.glowDepth !== undefined) cleaned.glowDepth = obj.glowDepth
+    if (obj.strength !== undefined) cleaned.strength = obj.strength
     if (obj.whiteSheen !== undefined) cleaned.whiteSheen = obj.whiteSheen
     if (obj.strokeOpacity !== undefined) cleaned.strokeOpacity = obj.strokeOpacity
     if (obj.brightness !== undefined) cleaned.brightness = obj.brightness
@@ -849,6 +851,8 @@ export function ThemeDevPanel() {
           {(() => {
             const light = c.lightBeam ?? {}
             const extrasOn =
+              light.glowDepth !== undefined ||
+              light.strength !== undefined ||
               light.whiteSheen !== undefined ||
               light.strokeOpacity !== undefined ||
               light.brightness !== undefined ||
@@ -862,6 +866,8 @@ export function ThemeDevPanel() {
                   onToggle={() => {
                     if (extrasOn) {
                       updateLight({
+                        glowDepth: undefined,
+                        strength: undefined,
                         whiteSheen: undefined,
                         strokeOpacity: undefined,
                         brightness: undefined,
@@ -870,6 +876,8 @@ export function ThemeDevPanel() {
                       })
                     } else {
                       updateLight({
+                        glowDepth: c.glowDepth,
+                        strength: c.strength,
                         whiteSheen: c.whiteSheen,
                         strokeOpacity: c.strokeOpacity,
                         brightness: c.brightness,
@@ -881,6 +889,22 @@ export function ThemeDevPanel() {
                 />
                 {extrasOn && (
                   <>
+                    <Slider
+                      label="Light glow depth (inward)"
+                      value={light.glowDepth ?? c.glowDepth}
+                      min={0.1}
+                      max={3}
+                      step={0.02}
+                      onChange={(v) => updateLight({ glowDepth: v })}
+                    />
+                    <Slider
+                      label="Light strength"
+                      value={light.strength ?? c.strength}
+                      min={0}
+                      max={3}
+                      step={0.02}
+                      onChange={(v) => updateLight({ strength: v })}
+                    />
                     <Slider
                       label="Light brightness"
                       value={light.brightness ?? c.brightness}

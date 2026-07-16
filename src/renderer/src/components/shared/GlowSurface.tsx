@@ -78,6 +78,8 @@ function resolveBeam(base: BorderBeamConfig, isLight: boolean): BorderBeamConfig
   return {
     ...base,
     ...(light.paletteOverride !== undefined ? { paletteOverride: light.paletteOverride } : {}),
+    ...(light.glowDepth !== undefined ? { glowDepth: light.glowDepth } : {}),
+    ...(light.strength !== undefined ? { strength: light.strength } : {}),
     ...(light.whiteSheen !== undefined ? { whiteSheen: light.whiteSheen } : {}),
     ...(light.innerShadow !== undefined ? { innerShadow: light.innerShadow } : {}),
     ...(light.strokeOpacity !== undefined ? { strokeOpacity: light.strokeOpacity } : {}),

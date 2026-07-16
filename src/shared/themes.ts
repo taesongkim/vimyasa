@@ -126,6 +126,14 @@ export interface LightBeamOverride {
   /** Light-mode palette (per-blob color; null preserves the variant default
    *  for that slot). Independent of the base `paletteOverride`. */
   paletteOverride?: (string | null)[]
+  /** Inner-glow size multiplier. The load-bearing light-mode knob: pulling
+   *  the glow further inward (higher glowDepth) makes the beam read as a
+   *  filled region rather than a thin rim, which is what actually gives it
+   *  presence against white. */
+  glowDepth?: number
+  /** Overall beam strength (opacity multiplier). Bumped in light mode so the
+   *  glow holds up against a bright background. */
+  strength?: number
   /** White highlight streak intensity. Near-invisible on white at the base
    *  0.18 — usually pushed down further or repurposed in light mode. */
   whiteSheen?: number
@@ -300,9 +308,16 @@ export type ThemeId = 'border-beam'
  *    [data-appearance="auto"] + @media (prefers-color-scheme: light)
  *    selectors in globals.css.
  *
+ *  - 8 → 9: Theme 1 gained a per-mode `lightBeam` override (light-mode
+ *    legibility calibration). MAGIC_COLORS_BEAM now bakes
+ *    `lightBeam: { glowDepth: 0.8, strength: 1.3 }`, so the v8→v9 step
+ *    re-bakes all four Theme 1 surfaces to pull the new field into
+ *    existing stores (same re-bake mechanism as v4→v5). Dark mode is
+ *    unchanged; the override only applies when appearance resolves light.
+ *
  *  Each step is applied incrementally in `getThemesState` so a user
- *  on v1 picks up everything; a user already on v7 only picks up v8. */
-export const CURRENT_SCHEMA_VERSION = 8 as const
+ *  on v1 picks up everything; a user already on v8 only picks up v9. */
+export const CURRENT_SCHEMA_VERSION = 9 as const
 
 /** Top-level "effects" namespace — non-surface theme knobs that don't
  *  fit the per-surface SurfaceConfig shape. Originally a single alpha
@@ -462,7 +477,17 @@ const MAGIC_COLORS_BEAM: Partial<BorderBeamConfig> = {
     '#ffc629',
     null,
     null
-  ]
+  ],
+  // Light-mode legibility (v0.1.9). The wash-out on a near-white background
+  // turned out to be geometry + intensity, not hue: the base glowDepth 0.5 /
+  // strength 0.95 reads as a faint thin rim on white. Pulling the glow
+  // further inward (0.8) and up in strength (1.3) gives it presence without
+  // touching the palette. Same values for all four Theme 1 surfaces since
+  // they share this config; dark mode is unaffected.
+  lightBeam: {
+    glowDepth: 0.8,
+    strength: 1.3
+  }
   // extraBeams omitted: the original dump had one extra at enabled:false,
   // which by the "don't bake disabled bits" rule means we ship without it.
 }
