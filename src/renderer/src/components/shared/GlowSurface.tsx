@@ -6,6 +6,8 @@ import { useThemesStore } from '../../store/themesStore'
 import { themeEvents } from '../../lib/theme-events'
 import {
   DEFAULT_BORDER_BEAM_CONFIG,
+  type Appearance,
+  type BorderBeamConfig,
   type SurfaceId,
   type SurfaceConfig,
   type ExtraBeam,
@@ -39,6 +41,50 @@ interface GlowSurfaceProps {
   className?: string
 }
 
+
+/** Resolve whether the effective appearance is light. `'light'`/`'dark'`
+ *  are direct; `'auto'` follows the OS via `prefers-color-scheme`, kept
+ *  reactive so an OS-side toggle re-renders the beam live (mirrors the
+ *  fork's own useSystemTheme). Main sets `nativeTheme.themeSource` from the
+ *  app's appearance (v0.1.8 hotfix), so this media query reflects the app
+ *  setting for 'light'/'dark' too — but we short-circuit those without
+ *  touching matchMedia so the result is exact, not OS-dependent. */
+function useIsLight(appearance: Appearance): boolean {
+  const [systemLight, setSystemLight] = useState<boolean>(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-color-scheme: light)').matches
+      : false
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    const handler = (e: MediaQueryListEvent): void => setSystemLight(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  if (appearance === 'light') return true
+  if (appearance === 'dark') return false
+  return systemLight
+}
+
+/** Merge the light-mode override over a base beam config, applying only the
+ *  keys the override actually defines so omitted fields inherit the base.
+ *  Returns the base untouched when not in light mode or no override exists —
+ *  so dark mode is a zero-cost passthrough. Spread is per-key (rather than a
+ *  loop + cast) so each field stays type-checked against BorderBeamConfig. */
+function resolveBeam(base: BorderBeamConfig, isLight: boolean): BorderBeamConfig {
+  const light = base.lightBeam
+  if (!isLight || !light) return base
+  return {
+    ...base,
+    ...(light.paletteOverride !== undefined ? { paletteOverride: light.paletteOverride } : {}),
+    ...(light.whiteSheen !== undefined ? { whiteSheen: light.whiteSheen } : {}),
+    ...(light.innerShadow !== undefined ? { innerShadow: light.innerShadow } : {}),
+    ...(light.strokeOpacity !== undefined ? { strokeOpacity: light.strokeOpacity } : {}),
+    ...(light.brightness !== undefined ? { brightness: light.brightness } : {}),
+    ...(light.saturation !== undefined ? { saturation: light.saturation } : {})
+  }
+}
 
 function renderBeam(
   c: SurfaceConfig['borderBeam'],
@@ -105,6 +151,8 @@ export function GlowSurface({
   const masterEnabled = useThemesStore((s) => s.masterEnabled)
   const surfaceConfig = useThemesStore((s) => s.surfaces[surface])
   const hydrated = useThemesStore((s) => s.hydrated)
+  const appearance = useThemesStore((s) => s.appearance)
+  const isLight = useIsLight(appearance)
 
   const baseActive = hydrated && masterEnabled && (surfaceConfig?.enabled ?? false)
   const burst = surfaceConfig?.burst
@@ -191,16 +239,22 @@ export function GlowSurface({
   const active =
     baseActive &&
     (triggersEnabled ? triggered : !burstEnabled || burstPulse)
+  // Effective beam: the base (dark-tuned) config with the light-mode
+  // override merged in when the appearance resolves light. Every consumer
+  // below (primary beam, extra beams, particle palette) reads this so the
+  // whole surface stays coherent across modes.
+  const effectiveBeam = surfaceConfig
+    ? resolveBeam(surfaceConfig.borderBeam, isLight)
+    : undefined
+
   const particles = surfaceConfig?.particles
   const showParticles = active && (particles?.enabled ?? false)
   // Pass the live palette blobs (with per-blob color overrides applied) to
   // the particle layer so its 'palette' spawn mode and 'auto' coloring stay
-  // in sync with whatever the beam is rendering.
-  const paletteBlobs = surfaceConfig
-    ? paletteBlobsWithOverride(
-        surfaceConfig.borderBeam.colorVariant,
-        surfaceConfig.borderBeam.paletteOverride
-      )
+  // in sync with whatever the beam is rendering — including the light-mode
+  // palette when active.
+  const paletteBlobs = effectiveBeam
+    ? paletteBlobsWithOverride(effectiveBeam.colorVariant, effectiveBeam.paletteOverride)
     : []
 
   // Extra beams: stacked sibling BorderBeams with independent
@@ -212,7 +266,7 @@ export function GlowSurface({
   const renderedExtraBeams = extraBeams
     .filter((eb) => eb.enabled)
     .map((eb, i) => {
-      const cfg = surfaceConfig!.borderBeam
+      const cfg = effectiveBeam!
       return (
         <BorderBeam
           key={`extra-${i}`}
@@ -290,7 +344,7 @@ export function GlowSurface({
 
   if (mode === 'overlay') {
     if (!baseActive) return null
-    const c = surfaceConfig!.borderBeam
+    const c = effectiveBeam!
     return (
       <div
         className="absolute inset-0 pointer-events-none"
@@ -317,6 +371,6 @@ export function GlowSurface({
   if (!baseActive) {
     return <>{children}</>
   }
-  const c = surfaceConfig!.borderBeam
+  const c = effectiveBeam!
   return renderBeam(c, active, children, innerOverlay, style, className)
 }

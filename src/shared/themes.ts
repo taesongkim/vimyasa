@@ -106,6 +106,38 @@ export interface BorderBeamConfig {
    *  use them to make multiple streaks meet and diverge at different rates.
    *  Empty array = single-beam (default). */
   extraBeams: ExtraBeam[]
+  /** Per-mode override applied when the resolved appearance is LIGHT (an
+   *  explicit `light` appearance, or `auto` while the system is light).
+   *  Only the legibility-critical knobs live here — the Magic Colors palette
+   *  and the few layers that wash out on a near-white background. Every
+   *  field is optional and merged shallowly (defined keys only) over the
+   *  base config in GlowSurface; anything omitted inherits the base
+   *  (dark-tuned) value. Undefined/absent = light uses the base config
+   *  unchanged (current behavior). Dark mode never consults this field. */
+  lightBeam?: LightBeamOverride
+}
+
+/** Light-mode override for a border beam. Shape is a curated subset of
+ *  BorderBeamConfig — not `Partial<BorderBeamConfig>` — so it stays flat
+ *  (no recursive `lightBeam`) and the dev panel exposes exactly the knobs
+ *  that matter for reading Magic Colors on white. See BorderBeamConfig
+ *  for each field's meaning. */
+export interface LightBeamOverride {
+  /** Light-mode palette (per-blob color; null preserves the variant default
+   *  for that slot). Independent of the base `paletteOverride`. */
+  paletteOverride?: (string | null)[]
+  /** White highlight streak intensity. Near-invisible on white at the base
+   *  0.18 — usually pushed down further or repurposed in light mode. */
+  whiteSheen?: number
+  /** Inner-shadow color. Base is white (invisible on white); a darker value
+   *  here gives the glow an edge on a light background. */
+  innerShadow?: string
+  /** Beam stroke opacity — bump for more contrast against white. */
+  strokeOpacity?: number
+  /** Beam brightness multiplier. */
+  brightness?: number
+  /** Beam saturation multiplier — more saturation reads better on white. */
+  saturation?: number
 }
 
 export interface ExtraBeam {
