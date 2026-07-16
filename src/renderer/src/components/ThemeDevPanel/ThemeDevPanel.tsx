@@ -12,12 +12,14 @@ import {
   THEME_EVENT_NAMES,
   defaultSurfaceConfig,
   type Appearance,
+  type LightBeamOverride,
   type SurfaceId,
   type SurfaceConfig,
   type ThemeDevPreset,
   type ThemeEventName
 } from '@shared/themes'
 import { defaultPaletteHex } from '../../lib/border-beam-fork/palettes'
+import { hexToOklch, oklchToHex, type Oklch } from '../../lib/oklch'
 
 const COLOR_OPTIONS: SurfaceConfig['borderBeam']['colorVariant'][] = [
   'colorful',
@@ -119,6 +121,97 @@ function Slider({
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-[var(--color-accent)]"
       />
+    </div>
+  )
+}
+
+/** Compact inline range for one OKLCH channel — denser than <Slider> so a
+ *  blob's L/C/H fit on one row. Used only by the light-mode palette editor. */
+function LchMini({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <label className="flex items-center gap-1 grow" title={`${label} ${value.toFixed(3)}`}>
+      <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] w-2.5 shrink-0">
+        {label}
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="grow accent-[var(--color-accent)]"
+      />
+    </label>
+  )
+}
+
+/** One blob's light-mode row: dark base swatch → resulting light swatch,
+ *  then L/C/H sliders seeded from the current light color (falling back to
+ *  the dark base so the user starts from today's palette and tunes down).
+ *  Moving any channel writes a concrete hex, so the blob becomes an
+ *  override; the × clears it back to inheriting the dark color. */
+function OklchBlobRow({
+  index,
+  darkHex,
+  lightHex,
+  onChange,
+  onClear
+}: {
+  index: number
+  darkHex: string
+  lightHex: string | null
+  onChange: (hex: string) => void
+  onClear: () => void
+}) {
+  const isOverride = typeof lightHex === 'string' && lightHex.length > 0
+  const seed: Oklch = hexToOklch(isOverride ? lightHex! : darkHex)
+  const resultHex = oklchToHex(seed)
+  const emit = (patch: Partial<Oklch>): void => onChange(oklchToHex({ ...seed, ...patch }))
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] w-5 shrink-0 font-mono">
+        {index + 1}
+      </span>
+      <span
+        className="w-4 h-4 rounded-[var(--radius-sm)] border border-[var(--color-border)] shrink-0"
+        style={{ backgroundColor: darkHex }}
+        title={`dark ${darkHex}`}
+      />
+      <span className="text-[color:var(--color-text-ghost)] shrink-0">→</span>
+      <span
+        className="w-4 h-4 rounded-[var(--radius-sm)] shrink-0"
+        style={{
+          backgroundColor: resultHex,
+          outline: isOverride ? '1px solid var(--color-accent)' : '1px solid var(--color-border)'
+        }}
+        title={`light ${resultHex}${isOverride ? ' (override)' : ' (inherited)'}`}
+      />
+      <LchMini label="L" value={seed.l} min={0} max={1} step={0.005} onChange={(v) => emit({ l: v })} />
+      <LchMini label="C" value={seed.c} min={0} max={0.37} step={0.002} onChange={(v) => emit({ c: v })} />
+      <LchMini label="H" value={seed.h} min={0} max={360} step={1} onChange={(v) => emit({ h: v })} />
+      <button
+        className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] hover:text-[color:var(--color-text-primary)] w-4 shrink-0 disabled:opacity-30"
+        onClick={onClear}
+        disabled={!isOverride}
+        title="Clear this blob (inherit dark)"
+      >
+        ×
+      </button>
     </div>
   )
 }
@@ -244,6 +337,39 @@ export function ThemeDevPanel() {
     }
     await navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
     setCopyFeedback('copied')
+    setTimeout(() => setCopyFeedback(null), 1200)
+  }
+
+  // ── Light-mode override plumbing (v0.1.9 Magic Colors calibration) ──
+  // Every write funnels through pruneLight so a lightBeam with no meaningful
+  // content collapses back to `undefined` — light mode then inherits the
+  // dark config, and nothing stale gets baked when Justin copies the snippet.
+  const pruneLight = (obj: LightBeamOverride): LightBeamOverride | undefined => {
+    const cleaned: LightBeamOverride = {}
+    if (obj.paletteOverride && obj.paletteOverride.some((v) => v != null)) {
+      cleaned.paletteOverride = obj.paletteOverride
+    }
+    if (obj.glowDepth !== undefined) cleaned.glowDepth = obj.glowDepth
+    if (obj.strength !== undefined) cleaned.strength = obj.strength
+    if (obj.whiteSheen !== undefined) cleaned.whiteSheen = obj.whiteSheen
+    if (obj.strokeOpacity !== undefined) cleaned.strokeOpacity = obj.strokeOpacity
+    if (obj.brightness !== undefined) cleaned.brightness = obj.brightness
+    if (obj.saturation !== undefined) cleaned.saturation = obj.saturation
+    if (typeof obj.innerShadow === 'string' && obj.innerShadow.length > 0) {
+      cleaned.innerShadow = obj.innerShadow
+    }
+    return Object.keys(cleaned).length > 0 ? cleaned : undefined
+  }
+  const updateLight = (patch: Partial<LightBeamOverride>) => {
+    update({ lightBeam: pruneLight({ ...(c.lightBeam ?? {}), ...patch }) })
+  }
+  const handleCopyLight = async () => {
+    const light = pruneLight(c.lightBeam ?? {})
+    const text = light
+      ? `// ${SURFACE_LABELS[selectedSurface]} — light-mode override\nlightBeam: ${JSON.stringify(light, null, 2)}`
+      : `// ${SURFACE_LABELS[selectedSurface]} — no light-mode override set`
+    await navigator.clipboard.writeText(text)
+    setCopyFeedback('copied-light')
     setTimeout(() => setCopyFeedback(null), 1200)
   }
 
@@ -659,6 +785,182 @@ export function ThemeDevPanel() {
               </>
             )
           })()}
+        </Section>
+
+        {/* ── Light-mode override (v0.1.9 Magic Colors legibility) ──────────
+            Everything here applies ONLY when the resolved appearance is light
+            (explicit Light, or Auto while the system is light). Flip the
+            Appearance control at the top of the panel to preview live. Any
+            knob left untouched inherits the dark config, so this stays a
+            small delta on Magic Colors rather than a second full theme. */}
+        <Section title="Light-mode override (Magic Colors on white)">
+          <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] mb-1">
+            Applies only in Light appearance — flip Appearance → Light above to
+            preview. Sliders seed from the dark palette; drag L down / C up to
+            darken and saturate for a white background.
+          </div>
+          {(() => {
+            const light = c.lightBeam ?? {}
+            const defaults = defaultPaletteHex(c.colorVariant)
+            const darkPal = c.paletteOverride ?? []
+            const lightPal = light.paletteOverride ?? []
+            const numBlobs = Math.max(defaults.length, 9)
+            const setLightBlob = (i: number, hex: string | null) => {
+              const next = [...lightPal]
+              while (next.length < numBlobs) next.push(null)
+              next[i] = hex
+              const allEmpty = next.every((v) => v == null)
+              updateLight({ paletteOverride: allEmpty ? undefined : next })
+            }
+            const rows: React.ReactNode[] = []
+            for (let i = 0; i < numBlobs; i++) {
+              const d = darkPal[i]
+              const darkHex = typeof d === 'string' && d.length > 0 ? d : defaults[i] ?? '#000000'
+              const l = lightPal[i]
+              const lightHex = typeof l === 'string' && l.length > 0 ? l : null
+              rows.push(
+                <OklchBlobRow
+                  key={i}
+                  index={i}
+                  darkHex={darkHex}
+                  lightHex={lightHex}
+                  onChange={(hex) => setLightBlob(i, hex)}
+                  onClear={() => setLightBlob(i, null)}
+                />
+              )
+            }
+            const paletteSet = lightPal.some((v) => v != null)
+            return (
+              <div className="flex flex-col gap-1">
+                {rows}
+                <button
+                  className="mt-1 px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default disabled:opacity-40"
+                  onClick={() => updateLight({ paletteOverride: undefined })}
+                  disabled={!paletteSet}
+                >
+                  Reset light palette (inherit dark)
+                </button>
+              </div>
+            )
+          })()}
+
+          {/* Legibility extras — the near-white layers (sheen, inner-shadow,
+              stroke) that wash out on a light background. Off by default so
+              light inherits the dark values; toggling on seeds them from the
+              dark config as a starting point. */}
+          {(() => {
+            const light = c.lightBeam ?? {}
+            const extrasOn =
+              light.glowDepth !== undefined ||
+              light.strength !== undefined ||
+              light.whiteSheen !== undefined ||
+              light.strokeOpacity !== undefined ||
+              light.brightness !== undefined ||
+              light.saturation !== undefined ||
+              (typeof light.innerShadow === 'string' && light.innerShadow.length > 0)
+            return (
+              <div className="mt-2 flex flex-col gap-1.5">
+                <ToggleRow
+                  label="Tune light-mode layers (seed from dark)"
+                  on={extrasOn}
+                  onToggle={() => {
+                    if (extrasOn) {
+                      updateLight({
+                        glowDepth: undefined,
+                        strength: undefined,
+                        whiteSheen: undefined,
+                        strokeOpacity: undefined,
+                        brightness: undefined,
+                        saturation: undefined,
+                        innerShadow: undefined
+                      })
+                    } else {
+                      updateLight({
+                        glowDepth: c.glowDepth,
+                        strength: c.strength,
+                        whiteSheen: c.whiteSheen,
+                        strokeOpacity: c.strokeOpacity,
+                        brightness: c.brightness,
+                        saturation: c.saturation,
+                        innerShadow: c.innerShadow
+                      })
+                    }
+                  }}
+                />
+                {extrasOn && (
+                  <>
+                    <Slider
+                      label="Light glow depth (inward)"
+                      value={light.glowDepth ?? c.glowDepth}
+                      min={0.1}
+                      max={3}
+                      step={0.02}
+                      onChange={(v) => updateLight({ glowDepth: v })}
+                    />
+                    <Slider
+                      label="Light strength"
+                      value={light.strength ?? c.strength}
+                      min={0}
+                      max={3}
+                      step={0.02}
+                      onChange={(v) => updateLight({ strength: v })}
+                    />
+                    <Slider
+                      label="Light brightness"
+                      value={light.brightness ?? c.brightness}
+                      min={0}
+                      max={3}
+                      step={0.02}
+                      onChange={(v) => updateLight({ brightness: v })}
+                    />
+                    <Slider
+                      label="Light saturation"
+                      value={light.saturation ?? c.saturation}
+                      min={0}
+                      max={3}
+                      step={0.02}
+                      onChange={(v) => updateLight({ saturation: v })}
+                    />
+                    <Slider
+                      label="Light stroke opacity"
+                      value={light.strokeOpacity ?? c.strokeOpacity}
+                      min={0}
+                      max={2}
+                      step={0.02}
+                      onChange={(v) => updateLight({ strokeOpacity: v })}
+                    />
+                    <Slider
+                      label="Light white sheen"
+                      value={light.whiteSheen ?? c.whiteSheen}
+                      min={0}
+                      max={1}
+                      step={0.02}
+                      onChange={(v) => updateLight({ whiteSheen: v })}
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)]">
+                        Light inner shadow (any CSS color)
+                      </span>
+                      <input
+                        type="text"
+                        value={light.innerShadow ?? c.innerShadow}
+                        onChange={(e) => updateLight({ innerShadow: e.target.value })}
+                        placeholder="rgba(0, 0, 0, 0.35)"
+                        className="w-full px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--color-surface)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-primary)] border border-[var(--color-border)] outline-none font-mono"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          })()}
+
+          <button
+            className="mt-2 px-2 py-0.5 self-start rounded-[var(--radius-sm)] text-[length:var(--font-size-xs)] text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
+            onClick={() => void handleCopyLight()}
+          >
+            {copyFeedback === 'copied-light' ? 'Copied lightBeam' : 'Copy lightBeam snippet'}
+          </button>
         </Section>
 
         {/* Per-layer fine tuning. The package's three layers (beam stroke,
