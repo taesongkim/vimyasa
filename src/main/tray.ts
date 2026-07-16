@@ -9,8 +9,10 @@ import {
   createQuickAddWindow,
   createSettingsWindow,
   createArchiveWindow,
-  showUpdatePrompt
+  showUpdatePrompt,
+  getPendingUpdate
 } from './windows'
+import { checkForUpdatesManual } from './updater'
 import { orchestrator } from './onboarding'
 import {
   isThemeDevPanelOpen,
@@ -173,6 +175,27 @@ export function updateTrayMenu(): void {
       click: () => createSettingsWindow()
     },
     { type: 'separator' },
+    // Manual update access. "Check for Updates…" fires a user-initiated
+    // check (electron-updater in prod; a simulated up-to-date result in
+    // dev). "View Update Details" only appears when an actionable update
+    // is pending (e.g. the user dismissed a prompt with "Later") — it
+    // re-summons that prompt from `getPendingUpdate()`.
+    {
+      label: 'Check for Updates…',
+      click: () => checkForUpdatesManual()
+    },
+    ...(getPendingUpdate()
+      ? ([
+          {
+            label: 'View Update Details',
+            click: () => {
+              const p = getPendingUpdate()
+              if (p) showUpdatePrompt(p)
+            }
+          }
+        ] as Electron.MenuItemConstructorOptions[])
+      : []),
+    { type: 'separator' },
     {
       label: 'Replay Onboarding Tour',
       click: () => orchestrator.replay()
@@ -208,6 +231,9 @@ export function updateTrayMenu(): void {
                 version: '0.1.99-dev',
                 releaseNotes: ''
               })
+              // Refresh so the "View Update Details" entry appears —
+              // the mock sets a pending actionable update.
+              updateTrayMenu()
             }
           },
           {
@@ -230,6 +256,27 @@ export function updateTrayMenu(): void {
                   'const x = 1',
                   '```'
                 ].join('\n')
+              })
+              updateTrayMenu()
+            }
+          },
+          {
+            label: 'Show Update Prompt (up-to-date)',
+            click: () => {
+              showUpdatePrompt({
+                phase: 'up-to-date',
+                version: '0.1.99-dev',
+                releaseNotes: ''
+              })
+            }
+          },
+          {
+            label: 'Show Update Prompt (error)',
+            click: () => {
+              showUpdatePrompt({
+                phase: 'error',
+                version: '0.1.99-dev',
+                releaseNotes: ''
               })
             }
           }

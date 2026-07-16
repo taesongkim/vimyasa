@@ -1,15 +1,28 @@
 import { app, ipcMain } from 'electron'
 import pkg from 'electron-updater'
 import {
-  getPendingUpdatePayload,
+  getWindowPayload,
   hideUpdatePromptWindow,
   setUpdatePromptHeight,
   showUpdatePrompt
 } from './windows'
+// Runtime-only cyclic import: tray.ts imports checkForUpdatesManual
+// from here, and we call updateTrayMenu() from here. Both references
+// resolve at call time (never during module init), so the cycle is
+// safe. The tray needs a rebuild whenever `pendingUpdate` changes so
+// the conditional "View Update Details" entry appears / disappears.
+import { updateTrayMenu } from './tray'
 
 const { autoUpdater } = pkg
 
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
+
+// Set when the user explicitly asks to check (tray "Check for
+// Updates…"). Gates the user-visible result affordances so the silent
+// 4-hourly background check never pops a window on 'update-not-
+// available' or a transient network 'error'. Consumed (reset to
+// false) by whichever event resolves the check.
+let userInitiatedCheck = false
 
 /** Normalize electron-updater's `releaseNotes` into a single markdown
  *  string. The GitHub provider typically returns a string already, but
@@ -76,23 +89,43 @@ export function setupAutoUpdater(): void {
   })
 
   autoUpdater.on('update-available', (info) => {
+    // A real update outranks any in-flight manual check — the update
+    // prompt IS the answer, so no separate up-to-date affordance.
+    userInitiatedCheck = false
     showUpdatePrompt({
       phase: 'available',
       version: info.version,
       releaseNotes: normalizeReleaseNotes(info.releaseNotes)
     })
+    // Rebuild the tray so "View Update Details" appears.
+    updateTrayMenu()
   })
 
   autoUpdater.on('update-downloaded', (info) => {
+    userInitiatedCheck = false
     showUpdatePrompt({
       phase: 'downloaded',
       version: info.version,
       releaseNotes: normalizeReleaseNotes(info.releaseNotes)
     })
+    updateTrayMenu()
+  })
+
+  autoUpdater.on('update-not-available', () => {
+    // Silent for the 4-hourly background check — only a user-initiated
+    // "Check for Updates…" earns the up-to-date affordance.
+    if (!userInitiatedCheck) return
+    userInitiatedCheck = false
+    showUpdatePrompt({ phase: 'up-to-date', version: app.getVersion(), releaseNotes: '' })
   })
 
   autoUpdater.on('error', (err) => {
     console.error('[updater] error:', err)
+    // Only surface failures the user is actively waiting on; background
+    // check failures stay silent (they retry in 4h anyway).
+    if (!userInitiatedCheck) return
+    userInitiatedCheck = false
+    showUpdatePrompt({ phase: 'error', version: app.getVersion(), releaseNotes: '' })
   })
 
   autoUpdater.checkForUpdates().catch((err) => {
@@ -103,6 +136,30 @@ export function setupAutoUpdater(): void {
       console.error('[updater] interval check failed:', err)
     })
   }, FOUR_HOURS_MS)
+}
+
+/** User-initiated update check from the tray. Sets the flag that
+ *  unlocks the up-to-date / error affordances (the background check
+ *  leaves it false and stays silent), then kicks electron-updater.
+ *
+ *  In dev the updater singleton is inert (setupAutoUpdater bailed
+ *  before setFeedURL), so calling checkForUpdates would just reject.
+ *  Short-circuit to the up-to-date window — the most common real
+ *  result — so the tray entry stays verifiable in dev. */
+export function checkForUpdatesManual(): void {
+  if (!app.isPackaged) {
+    showUpdatePrompt({ phase: 'up-to-date', version: app.getVersion(), releaseNotes: '' })
+    return
+  }
+  userInitiatedCheck = true
+  autoUpdater.checkForUpdates().catch((err) => {
+    console.error('[updater] manual check failed:', err)
+    // Belt-and-suspenders: the 'error' event normally fires too, but
+    // if the promise rejects without emitting one, surface it here.
+    if (!userInitiatedCheck) return
+    userInitiatedCheck = false
+    showUpdatePrompt({ phase: 'error', version: app.getVersion(), releaseNotes: '' })
+  })
 }
 
 function registerUpdaterIpcHandlers(): void {
@@ -138,7 +195,11 @@ function registerUpdaterIpcHandlers(): void {
     'update:test-show',
     (
       _e,
-      payload: { phase: 'available' | 'downloaded'; version: string; releaseNotes: string }
+      payload: {
+        phase: 'available' | 'downloaded' | 'up-to-date' | 'error'
+        version: string
+        releaseNotes: string
+      }
     ) => {
       if (app.isPackaged) return
       showUpdatePrompt(payload)
@@ -149,7 +210,7 @@ function registerUpdaterIpcHandlers(): void {
   // window mounts, it asks main "what payload should I show?" Main
   // replies with whatever was sent last. Covers the race where main
   // sends `update:show` before the renderer subscribes.
-  ipcMain.handle('update:get-pending', () => getPendingUpdatePayload())
+  ipcMain.handle('update:get-pending', () => getWindowPayload())
 
   // Renderer-driven adaptive resize. Mirrors the onboarding callout's
   // `onboarding:request-resize` pattern: renderer measures its own

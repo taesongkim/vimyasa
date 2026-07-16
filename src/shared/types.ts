@@ -284,6 +284,13 @@ export interface VimyasaAPI {
     gitBranch: string | null
     gitSha: string | null
   }>
+  /** Current version's GitHub release notes for the Settings → About
+   *  section. `notes` is the markdown body, '' if the release has no
+   *  body, or null if it couldn't be loaded (offline / unreleased). */
+  getCurrentReleaseNotes: () => Promise<{ version: string; notes: string | null }>
+  /** Settings tab strip asks main to widen the window so all tabs fit.
+   *  `overflow` is how many px the tab row exceeds its visible width. */
+  fitSettingsWidth: (overflow: number) => Promise<void>
   importData: (data: DataStore) => Promise<void>
   resetData: () => Promise<void>
 
@@ -325,12 +332,16 @@ export interface VimyasaAPI {
 export interface UpdatePromptPayload {
   /** 'available' = electron-updater found a new version; show
    *  Install Now / Later. 'downloaded' = download finished;
-   *  show Restart Now / Later + release notes. */
-  phase: 'available' | 'downloaded'
+   *  show Restart Now / Later + release notes. 'up-to-date' =
+   *  a user-initiated check found nothing newer; show a single
+   *  Done. 'error' = a user-initiated check failed; show a single
+   *  Done. The two status phases (up-to-date / error) are transient
+   *  and never carry release notes. */
+  phase: 'available' | 'downloaded' | 'up-to-date' | 'error'
   version: string
   /** Concatenated markdown body of every release the user hasn't
    *  installed yet, latest at top. Empty string if the GitHub
-   *  release had no body. */
+   *  release had no body. Always empty for the status phases. */
   releaseNotes: string
 }
 
