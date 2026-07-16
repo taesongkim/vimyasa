@@ -10,6 +10,50 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.9 — *Update-pipeline UX + Magic Colors light-mode* (2026-07-16)
+
+A focused polish release, all follow-on to what shipped in v0.1.8.
+
+**About release notes.** Settings → General now shows the current
+version's release notes at the bottom of the tab, rendered as
+markdown — same treatment as the auto-update prompt window.
+Answers the "wait, what shipped in the version I'm on?" question
+without waiting for the next update. Fetched from GitHub once,
+cached per version to disk, works offline after.
+
+**Manual update controls in the tray.** Two new entries. **Check
+for Updates…** runs a user-initiated check any time you want it —
+if a newer version exists, the update prompt shows up; if you're
+on the latest, a small confirmation window. The silent 4-hourly
+background check that's always been there stays silent. **View
+Update Details** appears when you dismissed an update earlier with
+Later — one click brings the details window back without waiting.
+
+**Magic Colors read better on light mode.** After v0.1.8 shipped,
+light mode's Magic Colors on the four themed input surfaces (Quick
+Add, list-item edit, in-list add, feedback input) read as a faint
+thin outline. Themes lane iterated in dev with the palette values
+actually held constant — the discovery was that it wasn't hue at
+all, it was geometry. On a light background, the beam's default
+glow depth and strength render as a rim regardless of color. The
+fix pulls the glow inward + up in intensity; same palette, present
+character. Dark mode is byte-for-byte unchanged.
+
+**Small alongside:** update windows re-center vertically on
+adaptive resize (was pinning top edge); Settings window auto-fits
+its width to the tab strip (no more clipped tabs); light-mode
+legibility fix on the shared onboarding-style buttons; About
+release-notes bullets and numbered lists render; the callout-button
+glow got tuned to a size that matches the button.
+
+Under the hood there's a small architectural discovery worth
+noting: **for a new surface background, check geometry first, then
+palette.** That heuristic came out of the Magic Colors light-mode
+work and is likely to save time on the next background variant
+(some future dark mode variant, a card surface, whatever).
+
+---
+
 ## v0.1.8 — *Light mode + Undo* (2026-07-15)
 
 The biggest bundle since v0.1.6. Four things ship together because
