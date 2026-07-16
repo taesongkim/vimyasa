@@ -25,8 +25,8 @@ Live release: **v0.1.8**. Planned next sequence:
 | ~~**v0.1.6**~~ | ~~Hot list + carry mode + capture-flow polish~~ | ✅ Shipped — hot list (`Cmd+Shift+H`, holds 0, slides from right), carry mode (`m` to pick up, 0-9 to send, j/k to reorder, Enter/Esc to land), Enter→A archive change, `r` for rename, edit caret fix, motion blur on send (default OFF, toggle in Settings → Advanced), auto-scroll to entry-form adds, deselect-on-new-draft, `item-arrived` receipt pulse. Carry mode + the two usability wins were pulled forward from v0.1.8. |
 | ~~**v0.1.7**~~ | ~~Darker dark mode + Phase 0 of color tokenization~~ | ✅ Shipped — interface backgrounds darkened (alpha 0.7 over pure-black, preserving translucency); dev-only `ThemeDevPanel` slider for live tuning; Decision 6 of color-tokenization proposal amended post-implementation. Foundation for Phase 1+ (full tokenization, light mode, cross-project extraction). |
 | ~~**v0.1.8**~~ | ~~Light mode + Undo + release-notes-in-update + hot-list prewarm~~ | ✅ Shipped — Phase 1 (invisible tokenization restructure) + Phase 2 (light mode + Settings → Appearance: Light/Dark/Auto, default Dark). Undo/Redo (5-step ring buffer, cross-list, cross-window; main-process log with broadcast; edit-cancel and carry-cancel handled without log consumption; permanent delete now guarded by confirmation modal). Custom auto-update window with GitHub release notes rendered as markdown (aesthetics visual pass shipped separately as PR #51: typography hierarchy, adaptive height, Onboarding button treatment). Hot list PR-4 prewarm (first-summon latency drop; scroll/focus/edit state preserved across hides). Bug batch (Undo focus after cancel, delete-modal opacity, radio-dot centering). |
-| **v0.1.9** | Focus-state cues + backup + themed feedback input | Themes lane: focus-changed event + flash/glow via existing magic-colors infra. `feedback-input` surface bake. Features lane: discover existing export, ship tested import. |
-| **v0.1.10** | Polish + bug bash + audit | Mystery flicker root-cause hunt. Onboarding dim z-order. Scrollbar lag. Coordination: auto-update integrity audit. |
+| **v0.1.9** | Update-pipeline UX + Magic Colors light-mode + flicker hunt | Themes lane: Magic Colors light-mode calibration (controls-panel iteration with Justin's eyes). Features lane: promote About surface to production + render current version's release notes; user-facing update tray entries (Check for updates / View update details); mystery flicker on first entry-form launch — focused diagnostic pass. Four items, three of them small polish on shipped v0.1.8 features; the flicker hunt is the wild card. |
+| **v0.1.10** | Data safety + focus cue + bug bash | Backup / restore user data (moved from v0.1.9 — needs investigation first). Focus-state visual cue (moved from v0.1.9). Onboarding dim z-order. Scrollbar lag. Auto-updater EPIPE defensive wrap. Coordination: auto-update integrity audit. |
 | **v0.2.0** (someday) | Real Theme 2 + switcher | Path B from theme-system docs, or first significant new surface area. Reserved for genuinely big change. |
 
 ### On flexibility
@@ -60,13 +60,13 @@ not silently grab next-priority items.
 ### Backup / restore user data
 - **Lane:** features
 - **Priority:** P1
-- **Version:** v0.1.9
+- **Version:** v0.1.10 (moved from v0.1.9 in the 2026-07-15 scope reshuffle — deprioritized in the version-timing sense, not the intrinsic-priority sense; still P1)
 - **Status:** idea — needs investigation
 - **Notes:** User believes a JSON export exists but is untested.
   **First step:** discover what's actually wired (scan `ipc.ts` and any
   Settings tab); document current state; then propose a tested
   export+import flow. Must include `kind: 'hot'` in the export schema
-  by v0.1.9 (hot list lands in v0.1.6).
+  (hot list shipped in v0.1.6).
 
 ### Undo / redo
 - **Lane:** features
@@ -136,7 +136,7 @@ not silently grab next-priority items.
 ### Magic Colors — light-mode legibility tuning
 - **Lane:** themes (primary), aesthetics (visual feedback loop)
 - **Priority:** P2
-- **Version:** v0.1.9 (candidate) — needs a Justin-in-the-loop iteration session
+- **Version:** v0.1.9 (confirmed 2026-07-15 scope reshuffle) — needs a Justin-in-the-loop iteration session
 - **Status:** open (2026-07-15, surfaced by Justin during v0.1.8 dev-verify)
 - **Notes:** Phase 2 Magic Colors read fine in the initial dev check (INBOX 2026-05-18: option (c) "leave as-is"). Second look on real v0.1.8 build: **magic colors on light mode are definitely harder to see** — Justin's words. Needs a proper feedback-loop iteration with his eyes to dial in the palette adjustment. Available paths from the original INBOX note both still valid: (a) per-mode `paletteOverride` in `THEME_1_SURFACE_OVERRIDES` — different palette values by mode; (b) auto-disable Theme 1 in light via a `baseActive` gate in `GlowSurface` — no magic in light mode at all. Justin's preference likely (a) — keep the character, tune the values. Themes lane spins up a controls panel (per the general "controls panel for visual iteration" pattern), Justin dials, values bake. All four Theme 1 surfaces affected (`quickadd-input`, `list-item-edit`, `list-add-new`, `feedback-input`). Not a v0.1.8 blocker — v0.1.8 ships with the observation logged.
 
@@ -164,7 +164,7 @@ not silently grab next-priority items.
 ### Focus-state visual cue (flash + glow)
 - **Lane:** themes (primary), aesthetics (timing/feel)
 - **Priority:** P2
-- **Version:** v0.1.9
+- **Version:** v0.1.10 (moved from v0.1.9 in the 2026-07-15 scope reshuffle)
 - **Status:** idea
 - **Notes:** Wants a flash + steady glow on focus-level changes so users
   always know where shortcuts will land. **Use the existing magic-colors
@@ -183,7 +183,7 @@ not silently grab next-priority items.
 ### About surface — promote to production + show current version's release notes
 - **Lane:** features (primary), aesthetics (visual treatment for the release-notes render)
 - **Priority:** P2
-- **Version:** v0.1.9 (candidate) — good bundle with the tray-entries item below (both build on the v0.1.8 update-window infra)
+- **Version:** v0.1.9 (confirmed 2026-07-15 scope reshuffle — locked into v0.1.9; bundles with the tray-entries item below since both build on the v0.1.8 update-window infra)
 - **Status:** idea (2026-07-15)
 - **Notes:** Today there's a dev-only About readout in Settings → General (shipped alongside Phase 1 tokenization, gated by `is.dev`). Two moves for v0.1.9:
   1. **Promote to production** — production users should see version info too (current version, build channel, maybe update-channel status). Un-gate the existing block, or move it to its own **Settings → About** tab if we want it prominent.
@@ -192,8 +192,8 @@ not silently grab next-priority items.
 
 ### User-facing update tray entries — "Check for updates" + "View update details"
 - **Lane:** features
-- **Priority:** P3
-- **Version:** v0.1.9 (candidate)
+- **Priority:** P2 (bumped from P3 in the 2026-07-15 scope reshuffle — part of the coherent "update-pipeline UX" v0.1.9 theme)
+- **Version:** v0.1.9 (confirmed)
 - **Status:** idea (2026-06-26)
 - **Notes:** v0.1.8 ships the auto-update prompt window so users SEE update details when electron-updater fires a real event. Missing: manual access. Two tray entries to ship together:
   1. **"Check for updates"** — triggers `electron-updater`'s `checkForUpdates()`. If an update is found, summon the update prompt window with the resulting payload. If not, surface a transient "You're on the latest version" affordance (toast or modal — to decide at scope time). Standard Mac convention; every shipping desktop app has this.
@@ -377,8 +377,8 @@ not silently grab next-priority items.
 
 ### Mystery flicker on first entry-form launch — even without parallel instances
 - **Lane:** features
-- **Priority:** P3
-- **Version:** v0.1.10 (bug bash)
+- **Priority:** P2 (bumped from P3 in the 2026-07-15 scope reshuffle — Justin called this out as a v0.1.9 priority; long-standing, ruins-the-vibe)
+- **Version:** v0.1.9 (pulled forward from v0.1.10)
 - **Status:** open — diagnosis revisited
 - **Notes:** See [architecture/parallel-instance-flicker.md](./architecture/parallel-instance-flicker.md).
   Original diagnosis (second vimyasa process running) doesn't fully
