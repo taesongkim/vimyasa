@@ -26,7 +26,7 @@ Live release: **v0.1.9**. Planned next sequence:
 | ~~**v0.1.7**~~ | ~~Darker dark mode + Phase 0 of color tokenization~~ | ✅ Shipped — interface backgrounds darkened (alpha 0.7 over pure-black, preserving translucency); dev-only `ThemeDevPanel` slider for live tuning; Decision 6 of color-tokenization proposal amended post-implementation. Foundation for Phase 1+ (full tokenization, light mode, cross-project extraction). |
 | ~~**v0.1.8**~~ | ~~Light mode + Undo + release-notes-in-update + hot-list prewarm~~ | ✅ Shipped — Phase 1 (invisible tokenization restructure) + Phase 2 (light mode + Settings → Appearance: Light/Dark/Auto, default Dark). Undo/Redo (5-step ring buffer, cross-list, cross-window; main-process log with broadcast; edit-cancel and carry-cancel handled without log consumption; permanent delete now guarded by confirmation modal). Custom auto-update window with GitHub release notes rendered as markdown (aesthetics visual pass shipped separately as PR #51: typography hierarchy, adaptive height, Onboarding button treatment). Hot list PR-4 prewarm (first-summon latency drop; scroll/focus/edit state preserved across hides). Bug batch (Undo focus after cancel, delete-modal opacity, radio-dot centering). |
 | ~~**v0.1.9**~~ | ~~Update-pipeline UX + Magic Colors light-mode~~ | ✅ Shipped — About surface in Settings → General renders current version's release notes as markdown (fetched by tag from GitHub, cached per-version). Manual update tray entries: Check for Updates… (user-initiated check + up-to-date/error affordances) and View Update Details (re-summons dismissed pending payloads). Magic Colors light-mode calibration on the four Theme 1 surfaces — discovery: it wasn't hue, it was geometry (glowDepth 0.5→0.8, strength 0.95→1.3) via a new `lightBeam` per-mode override on `BorderBeamConfig`; dark mode byte-for-byte unchanged. Small alongside: adaptive update-window vertical re-centering, Settings width auto-fits tab strip, light-mode legibility fix on shared onboarding-style buttons, About release-notes bullet/numbered lists render, tuned `glowDepth: 0.25` default on the small callout-button surface. |
-| **v0.1.10** | Data safety + focus cue + flicker hunt + bug bash | Backup / restore user data (moved from v0.1.9 — needs investigation first). Focus-state visual cue (moved from v0.1.9). Mystery flicker on first entry-form launch (returned from v0.1.9 — dispatch missed in the ship cycle; deferred to next). Onboarding dim z-order. Scrollbar lag. Auto-updater EPIPE defensive wrap. Coordination: auto-update integrity audit. |
+| **v0.1.10** | Status redesign + data safety + focus cue + flicker hunt + bug bash | **Status redesign — 5-state lifecycle** (default / active / pending / complete / hidden) is the headline; proposal in `docs/proposals/status-redesign.md`. Backup / restore user data (P1, moved from v0.1.9 — sequencing tip: ideally ships before the status migration). Focus-state visual cue (P2, moved from v0.1.9). Mystery flicker on first entry-form launch (P2, returned from v0.1.9). Onboarding dim z-order. Scrollbar lag. Auto-updater EPIPE defensive wrap. Retrospective diagnosis of v0.1.7 auto-updater bug. Coordination: auto-update integrity audit + first live exercise of release-cycle step 4 (verify upgrade path from v0.1.9 to draft before publish). **Scope-check:** denser than typical — coordination may want to split. |
 | **v0.2.0** (someday) | Real Theme 2 + switcher | Path B from theme-system docs, or first significant new surface area. Reserved for genuinely big change. |
 
 ### On flexibility
@@ -203,29 +203,19 @@ not silently grab next-priority items.
 - **Status:** ✅ merged → PR #26.
 - **Notes:** `feedback-input` surface registered in `src/shared/themes.ts` and baked in Theme 1; textarea wrapped in `FeedbackWindow.tsx`. Schema bumped + migration applied. Mirror of `quickadd-input` on QuickAddFixed.
 
-### Status redesign — colors, labels, customization
-- **Lane:** features (data model + Settings) + aesthetics (visual + transitions) + coordination (proposal)
+### Status redesign — 5-state lifecycle (default / active / pending / complete / hidden)
+- **Lane:** features (schema + migration + IPC + space-bar cycle) + themes (dot colors + text dimness) + aesthetics (strikethrough + pulse motion + filter-bar visual) + coordination (proposal)
 - **Priority:** P2
-- **Version:** unassigned — substantial enough to warrant its own version slot once scoped
-- **Status:** idea (2026-05-05) — **needs deeper pass with coordination** before any code starts
-- **Notes:** User wants to rethink statuses. Open questions:
-  - Are the current status labels and colors right, or could they be better?
-  - Should statuses be user-customizable (rename labels, recolor)?
-  - How does this interact with Theme 1 / future themes?
-  - How does it interact with the cycling-order change (Active → Hold → Done) and the proposed 4th status (see below)?
-
-  **Coupled with:** "New Done style + 4th 'Deprioritized' status" entry below — same proposal pass should address both. The Deprioritized status takes the *current* Done style; the *new* Done gets a distinct visual + transition animation. Timing-wise these belong together.
-
-### New Done style + 4th status: Deprioritized
-- **Lane:** features (data model + state machine) + aesthetics (style + transition animation)
-- **Priority:** P2
-- **Version:** unassigned — **bundle with Status redesign above**
-- **Status:** idea (2026-05-05) — **needs deeper pass with coordination** before any code starts
-- **Notes:** Current Done state's visual treatment becomes the new "Deprioritized" status (a fourth status — items the user has set aside indefinitely without committing them as truly done). New Done gets:
-  - A distinct visual (different from Deprioritized, different from Active/Hold).
-  - A celebratory / closing transition animation when an item moves into Done — should feel like a satisfying click.
-
-  Cycling order with 4 statuses TBD; user has expressed preference for `Active → Hold → Done` (3-status cycle); if Deprioritized joins the cycle, the order question reopens.
+- **Version:** v0.1.10 (per 2026-07-16 clock-in) — headline redesign for the release
+- **Status:** proposal in-flight — see [`docs/proposals/status-redesign.md`](./proposals/status-redesign.md). Justin iterating on details with coordination.
+- **Notes:** Retires the two earlier BACKLOG entries (*"Status redesign — colors, labels, customization"* and *"New Done style + 4th status: Deprioritized"*) which were 2026-05-05 sketches marked as needing a deeper coordination pass — this is that pass. New shape:
+  - **5 states:** default (gray dot), active (green, today's active), pending (yellow pulsing, dimmed text), complete (orange dot + strikethrough, dimmed text), hidden (no dot, very dim text).
+  - **Ethos:** completion is *quiet*, not celebratory. Green stays reserved for active-work. Progressively-dimmer text encodes progressively-lower attention priority.
+  - **Cycle:** space bar (unchanged key), order `default → active → pending → complete → hidden → default`.
+  - **Migration:** two open questions (`active`→? and `done`→?) — see proposal doc.
+  - **Filter bar:** must accommodate 5 states — chip shape TBD.
+  - **Pulse:** opacity only, 1.5–2s rhythm, RAF-based (pause when window hidden).
+- **Sequencing question:** ideally the Backup/Restore v0.1.10 P1 item ships first so users can export before this migration. Coordination decides at scope time.
 
 ### In-app feedback messenger to dev
 - **Lane:** features (built); coordination (Worker)
