@@ -118,7 +118,7 @@ export function getStepBody(stepId: string, props: StepBodyProps): ReactNode {
           <JkRow />
           <li>
             <Key>Space</Key>
-            <span>Cycle status (active → wait → ignore)</span>
+            <span>Cycle status (default → active → pending → complete → hidden)</span>
           </li>
           <li>
             <Key>a</Key>

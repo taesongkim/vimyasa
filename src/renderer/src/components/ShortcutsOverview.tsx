@@ -14,7 +14,7 @@ const globalShortcuts = [
 // description that reflects the current mode.
 const listNavigationShortcuts = [
   { key: 'j/k', label: 'Navigate Items', description: '' },
-  { key: 'Space', label: 'Cycle Status', description: 'active → done → hold → active' },
+  { key: 'Space', label: 'Cycle Status', description: 'default → active → pending → complete → hidden' },
   { key: 'a', label: 'Archive Item', description: 'Archive selected item' },
   { key: 'r', label: 'Rename', description: 'Edit selected item text (caret lands at end)' },
   { key: 'c or ⌘C', label: 'Copy Text', description: 'Copy item text to clipboard' },

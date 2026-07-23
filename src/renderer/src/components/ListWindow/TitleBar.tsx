@@ -1,22 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
-import { FilterDropdown, type FilterType } from './FilterBar'
 import type { List } from '../../../../../shared/types'
 
 export function TitleBar({
   list,
   listNumber,
-  numberFlashKey,
-  filter,
-  onFilterChange,
-  counts
+  numberFlashKey
 }: {
   list: List
   listNumber: number
   numberFlashKey: number
-  filter: FilterType
-  onFilterChange: (filter: FilterType) => void
-  counts: Record<FilterType, number>
 }) {
   const { editList, removeList } = useStore()
   const [editing, setEditing] = useState(false)
@@ -97,9 +90,6 @@ export function TitleBar({
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        {/* Filter dropdown */}
-        <FilterDropdown active={filter} onChange={onFilterChange} counts={counts} />
-
         {/* Settings dropdown */}
         <div ref={menuRef} className="relative">
           <button

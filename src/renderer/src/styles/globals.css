@@ -195,6 +195,12 @@
   --motion-scroll-fade: opacity 350ms ease;
   --motion-scale-hover: transform 150ms ease;
 
+  /* Pending-status pulse: a calm attention signal, distinct from the
+     always-on Magic Colors effects. It runs only while the list window
+     is visible (StatusDot pauses it on document.visibilitychange). */
+  --status-pending-pulse-duration: 1.5s;
+  --status-pending-pulse-glow: color-mix(in srgb, var(--color-amber) 72%, transparent);
+
   /* Carry mode (move-item flow). Tunable here; consumed by classes
      below and by useCarryAnimation. Keep --carry-send-commit-ms in
      sync with CARRY_SEND_COMMIT_MS in useCarryAnimation.ts.
@@ -221,6 +227,33 @@
   --carry-trail-offset: 14px;
   --carry-dim-multiplier: 0.5; /* multiplies onto each non-carried row's existing opacity */
   --carry-receipt-duration: 360ms;
+}
+
+@keyframes status-pending-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 transparent;
+  }
+  50% {
+    opacity: 0.4;
+    box-shadow: 0 0 3px var(--status-pending-pulse-glow);
+  }
+}
+
+.status-dot-pending {
+  animation: status-pending-pulse var(--status-pending-pulse-duration) ease-in-out infinite;
+}
+
+.status-dot-pending-paused {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot-pending {
+    animation: none;
+    opacity: 1;
+    box-shadow: 0 0 3px var(--status-pending-pulse-glow);
+  }
 }
 
 /* ── Layer 2: light mode overrides (Phase 2 of color-tokenization) ──

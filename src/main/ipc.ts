@@ -317,7 +317,7 @@ export function registerIpcHandlers(): void {
       id: clientId ?? uuid(),
       listId,
       text,
-      status: 'active',
+      status: 'default',
       sortOrder: nextSortOrder,
       createdAt: now(),
       updatedAt: now(),

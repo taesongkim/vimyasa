@@ -22,13 +22,11 @@ import { useStore } from '../../store/useStore'
 import { useKeyboard } from '../../hooks/useKeyboard'
 import { useUpwardFlip } from '../../hooks/useUpwardFlip'
 import { TitleBar } from './TitleBar'
-import { type FilterType } from './FilterBar'
 import { ItemRow } from './ItemRow'
 import { DraftItemRow } from './DraftItemRow'
 import { DragGhost } from './DragGhost'
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog'
-import type { Item, ItemStatus } from '../../../../../shared/types'
-import { HOT_LIST_ID } from '@shared/types'
+import { getNextItemStatus, HOT_LIST_ID, type Item } from '@shared/types'
 import {
   getSendDirection,
   playBlurRamp,
@@ -49,7 +47,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const carryMotionBlurEnabled = useStore((s) => s.effects.carryMotionBlur)
 
   const [activeListId, setActiveListId] = useState(initialListId)
-  const [filter, setFilter] = useState<FilterType>('all')
   const [focusIndex, setFocusIndex] = useState(-1)
   // Permanent delete confirmation. Paired with v0.1.8 Undo — undo
   // doesn't cover permanent delete, so the modal makes the
@@ -210,23 +207,12 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [])
 
-  // Filter and sort items
+  // Status filtering is deliberately hidden for this release: every
+  // unarchived item remains visible, including hidden-status items.
   const listItems = useMemo(() => {
     return items
       .filter((i) => i.listId === activeListId && !i.archivedAt)
-      .filter((i) => filter === 'all' || i.status === filter)
       .sort((a, b) => a.sortOrder - b.sortOrder)
-  }, [items, activeListId, filter])
-
-  // Counts for filter bar
-  const counts = useMemo(() => {
-    const all = items.filter((i) => i.listId === activeListId && !i.archivedAt)
-    return {
-      all: all.length,
-      active: all.filter((i) => i.status === 'active').length,
-      done: all.filter((i) => i.status === 'done').length,
-      hold: all.filter((i) => i.status === 'hold').length
-    }
   }, [items, activeListId])
 
   const focusedItem = listItems[focusIndex] || null
@@ -248,7 +234,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     ;(document.activeElement as HTMLElement | null)?.blur?.()
   }, [listItems.length])
 
-  // After the visible list shrinks (archive, delete, filter change), if
+  // After the visible list shrinks (archive or delete), if
   // the scroll position now points past the bottom of the content,
   // smooth-scroll up to compact the view. Without this, the user is
   // left with empty scrollable space below the last item — annoying
@@ -425,11 +411,11 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     }
   }, [carryItemId, items, activeListId])
 
-  // Hot list prewarm hooks. The window is created at app startup with
-  // show:false and stays alive across summons — `list:show` fires
+  // Hot list lifecycle hooks. Its native window is created on its first
+  // summon, then stays alive across later summons — `list:show` fires
   // ahead of every `win.show()`, `list:hidden` fires before every
-  // `win.hide()`. Both are no-ops for non-prewarmed list windows
-  // (the IPC never gets sent to them). Two reasons to subscribe:
+  // `win.hide()`. Both are no-ops for regular list windows. Two reasons
+  // to subscribe:
   //
   //   - On show: park keyboard focus on the scroll container so j/k
   //     works immediately. Without this, OS-level window show leaves
@@ -843,12 +829,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     },
     onSpace: () => {
       if (focusedItem) {
-        const next: Record<ItemStatus, ItemStatus> = {
-          active: 'done',
-          done: 'hold',
-          hold: 'active'
-        }
-        changeItemStatus(focusedItem.id, next[focusedItem.status])
+        changeItemStatus(focusedItem.id, getNextItemStatus(focusedItem.status))
       }
     },
     onBackspace: () => {
@@ -1101,7 +1082,6 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       onAnimationComplete={() => {
         if (cyclePhase === 'out' && cycleTargetRef.current) {
           setActiveListId(cycleTargetRef.current)
-          setFilter('all')
           setFocusIndex(-1)
           cycleTargetRef.current = null
           setCyclePhase('idle')
@@ -1111,7 +1091,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       style={{ padding: `var(--space-component-padding) var(--space-container-padding)` }}
     >
       <CarryMotionBlurFilters />
-      <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} filter={filter} onFilterChange={setFilter} counts={counts} />
+      <TitleBar list={list} listNumber={listNumber} numberFlashKey={numberFlashKey} />
 
       {/* Item list */}
       <div
@@ -1209,7 +1189,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
 
         {listItems.length === 0 && !isAddingItem && (
           <div className="flex items-center justify-center h-20 text-[color:var(--color-text-muted)] text-[length:var(--font-size-base)]">
-            {filter === 'all' ? 'No items yet. Press N to add one.' : `No ${filter} items.`}
+            No items yet. Press N to add one.
           </div>
         )}
 

@@ -103,7 +103,7 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
       <GlowSurface surface="list-add-new" mode="overlay" />
       <div className="flex items-baseline gap-1 flex-1">
         <div className="-translate-y-0.5">
-          <StatusDot status="active" />
+          <StatusDot status="default" />
         </div>
         <textarea
           ref={textareaRef}

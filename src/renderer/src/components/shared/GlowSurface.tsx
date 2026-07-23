@@ -17,6 +17,9 @@ import {
 
 interface GlowSurfaceProps {
   surface: SurfaceId
+  /** Additional interaction gate. When false, the themed effect fades out
+   * while preserving the surface's DOM and theme configuration. */
+  active?: boolean
   /** 'wrap' (default): renders <BorderBeam>{children}</BorderBeam>. The
    *  BorderBeam wrapper div is layout-affecting — pass `style` to control
    *  its display/sizing.
@@ -144,6 +147,7 @@ function renderBeam(
  *  mode. Either way it inherits border-radius and clipping from its parent. */
 export function GlowSurface({
   surface,
+  active: interactionActive = true,
   children,
   mode = 'wrap',
   eventFilter,
@@ -239,6 +243,7 @@ export function GlowSurface({
   //  - else if burst enabled: pulses on/off via timer
   //  - else: continuously active
   const active =
+    interactionActive &&
     baseActive &&
     (triggersEnabled ? triggered : !burstEnabled || burstPulse)
   // Effective beam: the base (dark-tuned) config with the light-mode

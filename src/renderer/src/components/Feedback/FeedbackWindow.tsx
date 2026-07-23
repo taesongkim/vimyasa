@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
+import { useInputGlowActive } from '../../hooks/useInputGlowActive'
 import { GlowSurface } from '../shared/GlowSurface'
 import type { FeedbackConfig } from '../../../../shared/types'
 
-// Mirror of QuickAddFixed's prewarm + entrance + exit choreography,
+// Mirror of QuickAddFixed's entrance + exit choreography,
 // adapted for a multiline message + Send button + three-state result
 // flow (success / rate-limit / network-error). Borrows the same
-// hidden-state DOM unmount + showCount keying so the prewarmed window
+// hidden-state DOM unmount + showCount keying so the persistent window
 // has nothing in the DOM to flicker between win.show() and 'feedback:show'
 // arriving. See QuickAddFixed.tsx for the canonical comments on each
 // pattern; only the feedback-specific deviations are commented here.
@@ -26,11 +27,12 @@ export function FeedbackWindow() {
   const [status, setStatus] = useState<SendStatus>('idle')
   const [limitInfo, setLimitInfo] = useState<{ sendsToday: number; limit: number } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const inputGlow = useInputGlowActive()
   const submitAnim = useSubmitAnimation('white-glow')
 
   const [exiting, setExiting] = useState(false)
   const [showCount, setShowCount] = useState(0)
-  const [hiddenState, setHiddenState] = useState(true)
+  const [hiddenState, setHiddenState] = useState(false)
   const exitingRef = useRef(false)
   // Latest status the success-hide closure should compare against — using
   // a ref because the setTimeout closure captures the status value at
@@ -45,6 +47,13 @@ export function FeedbackWindow() {
     void window.api.feedback.getConfig().then((c) => setConfig(c))
   }, [])
 
+  // First summon creates this window in the user's current Space rather
+  // than at app launch. Load the config on that initial mount; later
+  // summons also refresh it through the existing show event below.
+  useEffect(() => {
+    refreshConfig()
+  }, [refreshConfig])
+
   useEffect(() => {
     const onHidden = (): void => {
       setHiddenState(true)
@@ -52,13 +61,8 @@ export function FeedbackWindow() {
       exitingRef.current = false
     }
     const offIpc = window.api.feedback.onHidden(onHidden)
-    const onVis = (): void => {
-      if (document.hidden) onHidden()
-    }
-    document.addEventListener('visibilitychange', onVis)
     return () => {
       offIpc()
-      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
@@ -251,6 +255,7 @@ export function FeedbackWindow() {
         // and the textarea would collapse.
         <GlowSurface
           surface="feedback-input"
+          active={inputGlow.isActive}
           className="flex-1 min-h-0"
           style={{ display: 'flex', width: '100%' }}
         >
@@ -260,6 +265,8 @@ export function FeedbackWindow() {
             maxLength={MESSAGE_MAX_LEN}
             placeholder="Type a quick note…"
             disabled={status !== 'idle'}
+            onFocus={inputGlow.onFocus}
+            onBlur={inputGlow.onBlur}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
               // Cmd+Enter / Ctrl+Enter sends. Plain Enter inserts a newline

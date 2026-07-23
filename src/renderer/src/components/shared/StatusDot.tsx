@@ -1,15 +1,20 @@
+import { useEffect, useState } from 'react'
 import type { ItemStatus } from '../../../../../shared/types'
 
 const statusStyles: Record<ItemStatus, string> = {
-  active: 'bg-[var(--color-green)]',
-  done: 'bg-[var(--color-text-muted)]',
-  hold: 'bg-[var(--color-amber)]'
+  default: 'bg-[var(--color-text-muted)]',
+  active: 'bg-[var(--color-amber)]',
+  pending: 'bg-[var(--color-amber)] status-dot-pending',
+  complete: 'bg-[var(--color-green)]',
+  hidden: 'opacity-0'
 }
 
 const statusLabels: Record<ItemStatus, string> = {
+  default: 'Default',
   active: 'Active',
-  done: 'Done',
-  hold: 'On Hold'
+  pending: 'Pending',
+  complete: 'Complete',
+  hidden: 'Hidden'
 }
 
 export function StatusDot({
@@ -22,6 +27,13 @@ export function StatusDot({
   onClick?: () => void
 }) {
   const dotSize = size === 'sm' ? 'w-2 h-2' : 'w-2.5 h-2.5'
+  const [visible, setVisible] = useState(() => !document.hidden)
+
+  useEffect(() => {
+    const onVisibilityChange = (): void => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
 
   return (
     <button
@@ -31,7 +43,7 @@ export function StatusDot({
       tabIndex={-1}
     >
       <span
-        className={`${dotSize} ${statusStyles[status]} rounded-full block transition-default hover:scale-125`}
+        className={`${dotSize} ${statusStyles[status]} ${status === 'pending' && !visible ? 'status-dot-pending-paused' : ''} rounded-full block transition-default hover:scale-125`}
       />
     </button>
   )

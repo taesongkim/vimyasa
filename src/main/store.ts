@@ -1,6 +1,6 @@
 import Store from 'electron-store'
 import { v4 as uuid } from 'uuid'
-import type { DataStore, Effects, List } from '../shared/types'
+import type { DataStore, Effects, Item, ItemStatus, List } from '../shared/types'
 import { DEFAULT_BUILTIN_SHORTCUTS, DEFAULT_EFFECTS, HOT_LIST_ID } from '../shared/types'
 
 const defaultGroupId = uuid()
@@ -28,7 +28,7 @@ function buildHotList(): List {
 }
 
 const defaults: DataStore = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   groups: [
     {
       id: defaultGroupId,
@@ -124,6 +124,39 @@ function ensureEffectsSeed(): void {
   }
 }
 ensureEffectsSeed()
+
+// Status lifecycle v2. Keep this runtime migration separate from
+// electron-store's app-version migrations: it must run for existing
+// installs even while the app version remains 0.1.9 during development.
+// It is idempotent — legacy values are remapped once, then schemaVersion
+// records the completed migration. The legacy-value check also makes a
+// partially-written dev store converge safely on the next launch.
+type LegacyItemStatus = ItemStatus | 'hold' | 'done'
+
+const STATUS_MIGRATION: Record<LegacyItemStatus, ItemStatus> = {
+  active: 'default',
+  hold: 'pending',
+  done: 'complete',
+  default: 'default',
+  pending: 'pending',
+  complete: 'complete',
+  hidden: 'hidden'
+}
+
+function ensureStatusLifecycleMigration(): void {
+  const items = store.get('items') ?? []
+  let migrated = false
+  const nextItems: Item[] = items.map((item) => {
+    const status = STATUS_MIGRATION[item.status as LegacyItemStatus] ?? 'default'
+    if (status === item.status) return item
+    migrated = true
+    return { ...item, status }
+  })
+
+  if (migrated) store.set('items', nextItems)
+  if ((store.get('schemaVersion') ?? 1) < 2) store.set('schemaVersion', 2)
+}
+ensureStatusLifecycleMigration()
 
 function ensureHotListSeed(): void {
   const lists = store.get('lists') ?? []
