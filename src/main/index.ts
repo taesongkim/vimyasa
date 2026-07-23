@@ -3,10 +3,7 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipc'
 import {
   registerWindowIpcHandlers,
-  wireOnboardingHosts,
-  ensureFeedbackPrewarmed,
-  ensureHotListPrewarmed,
-  ensureQuickAddPrewarmed
+  wireOnboardingHosts
 } from './windows'
 import { createTray } from './tray'
 import { registerThemeDevPanelHandlers } from './theme-dev-panel'
@@ -71,26 +68,6 @@ app.whenReady().then(() => {
   // transparent dim takes ~470ms to ready-to-show on first launch and
   // the welcome callout appears before it.
   void orchestrator.preloadDim()
-
-  // Pre-warm the QuickAdd window. Stays alive (hidden) for the app's
-  // lifetime; every user summon is a win.show() + state-reset IPC, no
-  // cold renderer spawn. ~30-80MB additional memory; ParticleLayer
-  // pauses its RAF loop on document.hidden so idle CPU stays at zero.
-  // See windows.ts:ensureQuickAddPrewarmed.
-  ensureQuickAddPrewarmed()
-
-  // Pre-warm the feedback window for the same reason. Lazy prewarm
-  // (creating it on first summon) raced the renderer mount — main
-  // sent 'feedback:show' before React's useEffect subscribed, leaving
-  // the first summon blank. Eager prewarm sidesteps that entirely.
-  ensureFeedbackPrewarmed()
-
-  // Pre-warm the hot list. Single-instance + hotkey-summoned makes it
-  // the easiest list to prewarm. Unlike QuickAdd / feedback, the
-  // renderer doesn't unmount on hide — scroll position + focusIndex +
-  // edit-mode + filter all persist across summons via React useState
-  // and DOM survival. See windows.ts:ensureHotListPrewarmed.
-  ensureHotListPrewarmed()
 
   // Run the onboarding tour for first-time users (or anyone whose tour
   // version is behind). Small delay so the app's launch settles before

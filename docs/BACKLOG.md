@@ -207,15 +207,14 @@ not silently grab next-priority items.
 - **Lane:** features (schema + migration + IPC + space-bar cycle) + themes (dot colors + text dimness) + aesthetics (strikethrough + pulse motion + filter-bar visual) + coordination (proposal)
 - **Priority:** P2
 - **Version:** v0.1.10 (per 2026-07-16 clock-in) — headline redesign for the release
-- **Status:** proposal in-flight — see [`docs/proposals/status-redesign.md`](./proposals/status-redesign.md). Justin iterating on details with coordination.
+- **Status:** in-flight — decisions locked 2026-07-23; implementation is on the `status-lifecycle` branch. See [`docs/proposals/status-redesign.md`](./proposals/status-redesign.md).
 - **Notes:** Retires the two earlier BACKLOG entries (*"Status redesign — colors, labels, customization"* and *"New Done style + 4th status: Deprioritized"*) which were 2026-05-05 sketches marked as needing a deeper coordination pass — this is that pass. New shape:
-  - **5 states:** default (gray dot), active (green, today's active), pending (yellow pulsing, dimmed text), complete (orange dot + strikethrough, dimmed text), hidden (no dot, very dim text).
-  - **Ethos:** completion is *quiet*, not celebratory. Green stays reserved for active-work. Progressively-dimmer text encodes progressively-lower attention priority.
+  - **5 states:** default (gray dot), active (yellow), pending (yellow pulse + glow, dimmed text), complete (green dot + strikethrough, dimmed text), hidden (transparent dot keeps row alignment, very dim text).
+  - **Ethos:** progressively-dimmer text encodes progressively-lower attention priority; completion is settled rather than animated.
   - **Cycle:** space bar (unchanged key), order `default → active → pending → complete → hidden → default`.
-  - **Migration:** two open questions (`active`→? and `done`→?) — see proposal doc.
-  - **Filter bar:** must accommodate 5 states — chip shape TBD.
-  - **Pulse:** opacity only, 1.5–2s rhythm, RAF-based (pause when window hidden).
-- **Sequencing question:** ideally the Backup/Restore v0.1.10 P1 item ships first so users can export before this migration. Coordination decides at scope time.
+  - **Migration:** `active`→`default`, `hold`→`pending`, `done`→`complete`.
+  - **Filter bar:** hidden for now; no activation route remains.
+  - **Pulse:** opacity + subtle glow, 1.5s, RAF/visibility lifecycle (pause only when window hidden).
 
 ### In-app feedback messenger to dev
 - **Lane:** features (built); coordination (Worker)

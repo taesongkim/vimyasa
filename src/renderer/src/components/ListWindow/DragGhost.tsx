@@ -21,9 +21,11 @@ import type { Item, ItemStatus } from '../../../../../shared/types'
 // DraftItemRow — invisible button-shaped divs that take layout space.
 
 const statusOpacity: Record<ItemStatus, number> = {
+  default: 1,
   active: 1,
-  done: 0.6,
-  hold: 0.35
+  pending: 0.6,
+  complete: 0.6,
+  hidden: 0.35
 }
 
 export function DragGhost({ item }: { item: Item }) {
@@ -38,7 +40,9 @@ export function DragGhost({ item }: { item: Item }) {
           <StatusDot status={item.status} />
         </div>
         <span
-          className="flex-1 text-[length:var(--font-size-md)] [overflow-wrap:anywhere]"
+          className={`flex-1 text-[length:var(--font-size-md)] [overflow-wrap:anywhere] ${
+            item.status === 'complete' ? 'line-through' : ''
+          }`}
           style={{ opacity: statusOpacity[item.status], lineHeight: '1.5rem' }}
         >
           {item.text}

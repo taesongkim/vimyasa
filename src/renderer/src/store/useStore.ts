@@ -123,7 +123,7 @@ export const useStore = create<StoreState>((set, get) => ({
       id: tempId,
       listId,
       text,
-      status: 'active',
+      status: 'default',
       sortOrder: nextSortOrder,
       createdAt: nowIso,
       updatedAt: nowIso,

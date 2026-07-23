@@ -2,7 +2,20 @@ import type { ThemesAPI, ThemeDevAPI, ThemeEventsAPI, ThemesState, QuickAddAPI }
 
 // ── Data Model Types ──────────────────────────────────────────────
 
-export type ItemStatus = 'active' | 'done' | 'hold'
+export type ItemStatus = 'default' | 'active' | 'pending' | 'complete' | 'hidden'
+
+export const ITEM_STATUS_CYCLE: readonly ItemStatus[] = [
+  'default',
+  'active',
+  'pending',
+  'complete',
+  'hidden'
+]
+
+export function getNextItemStatus(status: ItemStatus): ItemStatus {
+  const index = ITEM_STATUS_CYCLE.indexOf(status)
+  return ITEM_STATUS_CYCLE[(index + 1) % ITEM_STATUS_CYCLE.length]
+}
 
 export type ShortcutAction = 'openList' | 'quickAddFixed' | 'cycleAllLists'
 

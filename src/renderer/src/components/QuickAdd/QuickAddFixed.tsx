@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import { useSubmitAnimation } from '../../hooks/useSubmitAnimation'
+import { useInputGlowActive } from '../../hooks/useInputGlowActive'
 import { GlowSurface } from '../shared/GlowSurface'
 import { getRegularLists } from '@shared/types'
 
@@ -11,6 +12,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   const [selectedListId, setSelectedListId] = useState(initialListId)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const inputGlow = useInputGlowActive()
   const dropdownRef = useRef<HTMLDivElement>(null)
   // Quick-add never targets the hot list — it has its own dedicated
   // surface (number-0 from a list, Cmd+Shift+H global). Filter it out
@@ -36,15 +38,15 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   // between win.show() and the 'quickadd:show' IPC arriving. On show,
   // motion.div mounts fresh and the fade-up animation plays cleanly.
   //
-  // hiddenState starts true so the pre-warmed window has no content
-  // rendered. visibilitychange flips it to true on every hide; the show
-  // event flips it to false. showCount keys motion.div so each summon
+  // On its first creation this window opens directly from its route; after
+  // that, the authoritative `quickadd:hidden` IPC flips it to true on every
+  // hide and the show event flips it back to false. showCount keys motion.div so each summon
   // gets a fresh mount of the form's visible tree (replays the fade-
   // up entrance). It does NOT reset useSubmitAnimation — that hook
   // lives at the component level, outside the keyed subtree, and is
   // explicitly reset via submitAnim.reset() in the show handler below.
   const [showCount, setShowCount] = useState(0)
-  const [hiddenState, setHiddenState] = useState(true)
+  const [hiddenState, setHiddenState] = useState(false)
   // Mirror of `exiting` for the post-submit hide path. After the
   // await-setTimeout returns, the closure can't read live state — we read
   // this ref to detect whether a 'quickadd:show' event cancelled the
@@ -54,21 +56,14 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
   useEffect(() => {
     const onHidden = (): void => {
       // Window is hiding — drop content from DOM so the next show starts
-      // clean. Authoritative path is the IPC from main (sent BEFORE
-      // win.hide()). The visibilitychange fallback below catches any
-      // edge case where main forgets / a different code path hides.
+      // clean. Main sends this IPC before every intentional hide.
       setHiddenState(true)
       setExiting(false)
       exitingRef.current = false
     }
     const offIpc = window.api.quickAdd.onHidden(onHidden)
-    const onVis = (): void => {
-      if (document.hidden) onHidden()
-    }
-    document.addEventListener('visibilitychange', onVis)
     return () => {
       offIpc()
-      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
@@ -163,7 +158,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     // outside the visible area.
     void window.api.quickAdd.notifyItemAdded(saved.id, selectedListId)
     await animationPromise
-    // Phase 2: form slides up + fades, then we hide the (pre-warmed)
+    // Phase 2: form slides up + fades, then we hide the persistent
     // window. We mirror `exiting` into a ref so the closure can detect
     // a re-summon mid-exit (the show handler resets exitingRef.current
     // to false) and bail without hiding.
@@ -174,7 +169,7 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
     void window.api.quickAdd.hide()
   }
 
-  // While hidden, render nothing — keeps the pre-warmed window's vibrancy
+  // While hidden, render nothing — keeps the persistent window's vibrancy
   // visible without any content that could flicker on summon before the
   // show IPC arrives and remounts motion.div for the fade-up.
   if (hiddenState) return null
@@ -245,12 +240,18 @@ export function QuickAddFixed({ listId: initialListId }: { listId: string }) {
       </div>
 
       {/* Input */}
-      <GlowSurface surface="quickadd-input" style={{ display: 'block', width: '100%' }}>
+      <GlowSurface
+        surface="quickadd-input"
+        active={inputGlow.isActive}
+        style={{ display: 'block', width: '100%' }}
+      >
         <input
           ref={handleInputRef}
           className="no-drag w-full bg-[var(--color-surface)] text-[length:var(--font-size-entry)] text-[color:var(--color-text-primary)] placeholder-[color:var(--color-text-ghost)] px-3 py-2 rounded-[var(--radius-md)] outline-none transition-default"
           placeholder=""
           value={text}
+          onFocus={inputGlow.onFocus}
+          onBlur={inputGlow.onBlur}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

@@ -23,7 +23,7 @@ const builtinShortcutDefs: { key: keyof BuiltinShortcuts; label: string }[] = [
 // description that reflects the current mode.
 const listNavigationShortcuts: { key: string; label: string; description?: string }[] = [
   { key: 'j/k', label: 'Navigate Items' },
-  { key: 'Space', label: 'Cycle Status', description: 'active → done → hold → active' },
+  { key: 'Space', label: 'Cycle Status', description: 'default → active → pending → complete → hidden' },
   { key: 'a', label: 'Archive Item', description: 'Archive selected item' },
   { key: 'r', label: 'Rename', description: 'Edit selected item text (caret lands at end)' },
   { key: 'c or ⌘C', label: 'Copy Text', description: 'Copy item text to clipboard' },

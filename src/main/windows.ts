@@ -146,6 +146,10 @@ function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions)
     vibrancy: 'under-window',
     visualEffectState: 'active',
     show: false,
+    // Vimyasa windows are utility surfaces, not conventional document
+    // windows. Keep every user-opened surface above the app the user is
+    // working in; individual callers may still opt out explicitly.
+    alwaysOnTop: true,
     webPreferences: {
       preload: getPreloadPath(),
       sandbox: false,
@@ -177,15 +181,15 @@ function makeWindow(tag: string, opts: Electron.BrowserWindowConstructorOptions)
 export function createListWindow(listId: string, position?: { x: number; y: number }): BrowserWindow {
   const existing = listWindows.get(listId)
   if (existing && !existing.isDestroyed()) {
-    // The hot list is prewarmed — never destroyed across summons.
+    // The hot list is persistent after its first summon — never destroyed
+    // across later summons.
     // Three cases to handle vs. the regular-list flow:
     //   visible + focused  → toggle: hide (was: close)
     //   visible + not focused → focus (unchanged)
     //   hidden              → show with `list:show` IPC before paint
     // The IPC ordering matters: send `list:show` before `win.show()` so
     // the renderer can refocus the scroll container BEFORE the OS reveal,
-    // matching the QuickAdd flicker-prevention contract. See
-    // `docs/architecture/quickadd-prewarm.md`.
+    // matching the QuickAdd hide/show contract.
     if (listId === HOT_LIST_ID) {
       if (existing.isVisible() && existing.isFocused()) {
         existing.webContents.send('list:hidden')
@@ -201,7 +205,7 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
       orchestrator.refreshPosition()
       return existing
     }
-    // Regular list (not prewarmed): toggle-on-focused = close (kept).
+    // Regular list: toggle-on-focused = close (kept).
     if (existing.isFocused()) {
       existing.close()
       return existing
@@ -245,63 +249,12 @@ export function createListWindow(listId: string, position?: { x: number; y: numb
   return win
 }
 
-/** Idempotent. Create the hot list window once at app startup with
- *  show:false, parking it hidden so the first Cmd+Shift+H summon is a
- *  `win.show()` (~10ms) instead of a cold renderer spawn (150-300ms).
- *  Hot list is single-instance + hotkey-summoned → naturally the easiest
- *  list to prewarm. See `docs/architecture/quickadd-prewarm.md` for the
- *  pattern.
- *
- *  Unlike QuickAdd's prewarm, the hot list renderer does NOT use a
- *  hidden-state DOM gate — state (scroll position, focusIndex, edit
- *  mode, filter) is preserved across summons. The window simply hides
- *  at the OS level; the React tree stays mounted with all its useState
- *  values + DOM scroll position intact, so the next show reveals the
- *  user's prior context instantly. See the `closeWindow` IPC handler
- *  below for the hide-instead-of-close routing. */
-export function ensureHotListPrewarmed(): void {
-  if (listWindows.get(HOT_LIST_ID) && !listWindows.get(HOT_LIST_ID)!.isDestroyed()) {
-    return
-  }
-
-  const workArea = screen.getPrimaryDisplay().workArea
-  const listWindowHeight = Math.round(workArea.height * 0.97)
-  const { x, y } = calculateHotListPosition(listWindowHeight)
-  const win = makeWindow(`list:${HOT_LIST_ID}`, {
-    width: LIST_WINDOW_WIDTH,
-    height: listWindowHeight,
-    minWidth: 320,
-    minHeight: 150,
-    x,
-    y,
-    resizable: true,
-    alwaysOnTop: true
-  })
-
-  listWindows.set(HOT_LIST_ID, win)
-  loadRoute(win, `/list/${HOT_LIST_ID}`)
-  win.once('ready-to-show', () => {
-    // Intentionally no win.show() — we're warming the renderer only.
-    orchestrator.refreshPosition()
-  })
-  win.on('closed', () => listWindows.delete(HOT_LIST_ID))
-  trackForOnboarding(win)
-}
-
 // ── Quick-Add Window ────────────────────────────────────────────
 
-/** Pre-warm the QuickAdd window at app startup. Creates the BrowserWindow
- *  once with show:false, loads the renderer route, and parks it hidden so
- *  every user summon is just a `win.show()` + IPC state-reset — no cold
- *  renderer process spawn, no JS bundle parse, no React mount, no theme
- *  hydration. The window stays alive for the app's lifetime; on user
- *  close it `hide()`s instead of `close()`-ing.
- *
- *  Idempotent: if already pre-warmed, no-op. Called from main/index.ts on
- *  app ready and re-callable defensively if the window gets destroyed
- *  unexpectedly. */
-export function ensureQuickAddPrewarmed(): void {
-  if (quickAddWindow && !quickAddWindow.isDestroyed()) return
+/** Create QuickAdd on its first actual summon. Its native window therefore
+ * belongs to the Space where the user invoked it; subsequent summons reuse
+ * the hidden, already-warm renderer. */
+function createInitialQuickAddWindow(variant: 'fixed' | 'select', targetListId?: string): BrowserWindow {
 
   const { x, y } = getCenteredPosition(QUICKADD_WIDTH, QUICKADD_HEIGHT)
   const win = makeWindow('quickadd', {
@@ -314,14 +267,13 @@ export function ensureQuickAddPrewarmed(): void {
   })
   quickAddWindow = win
 
-  // Load with empty listId — actual target is supplied via the
-  // 'quickadd:show' IPC on each summon, so we don't need to recreate the
-  // window when the target list changes.
-  loadRoute(win, '/quickadd/fixed/')
+  loadRoute(
+    win,
+    variant === 'select' ? '/quickadd/select' : `/quickadd/fixed/${targetListId ?? ''}`
+  )
 
   win.once('ready-to-show', () => {
-    // DO NOT call win.show() here — that's the whole point. We're warming
-    // the renderer, not displaying it.
+    win.show()
     orchestrator.refreshPosition()
   })
 
@@ -330,12 +282,10 @@ export function ensureQuickAddPrewarmed(): void {
   })
 
   trackForOnboarding(win)
+  return win
 }
 
-/** Show the (pre-warmed or freshly-created) QuickAdd window with the
- *  given target listId. Sends a 'quickadd:show' IPC ahead of the show
- *  call so the renderer can reset its state and trigger the fade-up
- *  remount before the window paints. */
+/** Show the QuickAdd window with the given target listId. */
 export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?: string): BrowserWindow {
   // If the QuickAdd window is currently visible AND focused, treat the
   // shortcut as a toggle and hide it. Send 'quickadd:hidden' first so
@@ -348,10 +298,8 @@ export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?:
     return quickAddWindow
   }
 
-  // Defensive: if the prewarmed window got destroyed (e.g., GC under
-  // memory pressure or a never-prewarmed startup race), recreate.
   if (!quickAddWindow || quickAddWindow.isDestroyed()) {
-    ensureQuickAddPrewarmed()
+    return createInitialQuickAddWindow(variant, targetListId)
   }
 
   const win = quickAddWindow!
@@ -366,12 +314,9 @@ export function createQuickAddWindow(variant: 'fixed' | 'select', targetListId?:
 
 // ── Feedback Window ─────────────────────────────────────────────
 
-/** Idempotent. Mirrors ensureQuickAddPrewarmed: builds the BrowserWindow
- *  with show:false, loads the renderer route, parks it hidden. PR 2 calls
- *  this lazily on first summon (so the second summon is fast); PR 3 will
- *  call it eagerly at startup so the *first* summon is fast too. */
-export function ensureFeedbackPrewarmed(): void {
-  if (feedbackWindow && !feedbackWindow.isDestroyed()) return
+/** Create Feedback on its first actual summon; later summons reuse the
+ * hidden renderer just like QuickAdd. */
+function createInitialFeedbackWindow(): BrowserWindow {
 
   const { x, y } = getCenteredPosition(FEEDBACK_WIDTH, FEEDBACK_HEIGHT)
   const win = makeWindow('feedback', {
@@ -387,17 +332,17 @@ export function ensureFeedbackPrewarmed(): void {
   loadRoute(win, '/feedback')
 
   win.once('ready-to-show', () => {
-    // Intentionally no win.show() — we're warming the renderer only.
+    win.show()
     orchestrator.refreshPosition()
   })
 
   win.on('closed', () => {
     feedbackWindow = null
   })
+  return win
 }
 
-/** Show the (pre-warmed or freshly-created) feedback window. Toggles
- *  hide if already visible+focused, same as QuickAdd. */
+/** Show the feedback window. Toggles hide if already visible+focused. */
 export function createFeedbackWindow(): BrowserWindow {
   if (
     feedbackWindow &&
@@ -411,7 +356,7 @@ export function createFeedbackWindow(): BrowserWindow {
   }
 
   if (!feedbackWindow || feedbackWindow.isDestroyed()) {
-    ensureFeedbackPrewarmed()
+    return createInitialFeedbackWindow()
   }
 
   const win = feedbackWindow!
@@ -737,10 +682,9 @@ export function registerWindowIpcHandlers(): void {
   ipcMain.handle('closeWindow', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return
-    // Hot list is prewarmed — its "close" is a hide so the next summon
-    // reveals the preserved state instantly instead of cold-spawning a
-    // fresh renderer. Send `list:hidden` BEFORE `win.hide()` per the
-    // flicker-prevention contract documented in quickadd-prewarm.md
+    // Hot list stays alive after its first summon — its "close" is a hide
+    // so later summons preserve the renderer state. Send `list:hidden`
+    // BEFORE `win.hide()` so the renderer can run pre-hide cleanup
     // (renderer can blur any focused input + run any pre-hide cleanup
     // before the OS hide steals the focus).
     const hotListWin = listWindows.get(HOT_LIST_ID)
@@ -752,8 +696,8 @@ export function registerWindowIpcHandlers(): void {
     win.close()
   })
 
-  // QuickAdd is pre-warmed and stays alive — its "close" is really a hide
-  // so the renderer process doesn't have to cold-start on the next summon.
+  // QuickAdd stays alive after its first summon — its "close" is really a
+  // hide so later summons don't cold-start a renderer.
   // We send 'quickadd:hidden' to the renderer BEFORE hiding the window so
   // the form's motion.div unmounts synchronously — that prevents a flash
   // of stale content on the next summon (window paints faster than the
@@ -768,7 +712,8 @@ export function registerWindowIpcHandlers(): void {
     }
   })
 
-  // Feedback window: same prewarm-and-hide pattern as QuickAdd.
+  // Feedback window: same create-on-first-summon, then hide-and-reuse
+  // pattern as QuickAdd.
   ipcMain.handle('feedback:hide', () => {
     if (feedbackWindow && !feedbackWindow.isDestroyed()) {
       feedbackWindow.webContents.send('feedback:hidden')

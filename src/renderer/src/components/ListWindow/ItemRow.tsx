@@ -5,18 +5,22 @@ import { CSS } from '@dnd-kit/utilities'
 import { StatusDot } from '../shared/StatusDot'
 import { GlowSurface } from '../shared/GlowSurface'
 import { useStore } from '../../store/useStore'
-import type { Item, ItemStatus, List } from '../../../../../shared/types'
-
-const nextStatus: Record<ItemStatus, ItemStatus> = {
-  active: 'done',
-  done: 'hold',
-  hold: 'active'
-}
+import { getNextItemStatus, ITEM_STATUS_CYCLE, type Item, type ItemStatus, type List } from '@shared/types'
 
 const statusOpacity: Record<ItemStatus, number> = {
+  default: 1,
   active: 1,
-  done: 0.6,
-  hold: 0.35
+  pending: 0.6,
+  complete: 0.6,
+  hidden: 0.35
+}
+
+const statusLabels: Record<ItemStatus, string> = {
+  default: 'Default',
+  active: 'Active',
+  pending: 'Pending',
+  complete: 'Complete',
+  hidden: 'Hidden'
 }
 
 // Resize a textarea to match its content height. The reset-then-measure
@@ -76,7 +80,7 @@ export function ItemRow({
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(item.text)
   const [hovered, setHovered] = useState(false)
-  const [showCopyConfirmation, setShowCopyConfirmation] = useState(false)
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
   // Save-confirmation flash. The flash is rendered as an overlay sibling
   // inside the row container with a unique `key` per save event — React
   // mounts a fresh element each time, so the CSS animation runs from
@@ -97,8 +101,9 @@ export function ItemRow({
     return ageMs < 1000 ? `mount-${item.id}` : null
   })
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const copyFunctionRef = useRef<() => void>()
+  const previousStatusRef = useRef(item.status)
   // Set to true in the undo-cancel handler right before we move focus
   // out of the textarea. The synchronous focus-move (via
   // `onEditUndoCancel` → parent's `scrollContainerRef.current?.focus()`)
@@ -192,11 +197,30 @@ export function ItemRow({
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current)
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current)
       }
     }
   }, [])
+
+  const showFeedback = useCallback((message: string): void => {
+    setFeedbackMessage(message)
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setFeedbackMessage(null)
+      feedbackTimeoutRef.current = null
+    }, 400)
+  }, [])
+
+  // The source of a status change is intentionally irrelevant here:
+  // Space, dot click, context-menu selection, undo, and redo all update
+  // the item prop. Observing that committed prop change gives every path
+  // the same short visual receipt without duplicating feedback plumbing.
+  useEffect(() => {
+    if (previousStatusRef.current === item.status) return
+    previousStatusRef.current = item.status
+    showFeedback(`Status Updated To: ${statusLabels[item.status]}`)
+  }, [item.status, showFeedback])
 
   // Cross-list arrival flash. Fires when the parent flags this row's
   // id as just-arrived (carry-mode send / right-click "Send to List" /
@@ -258,24 +282,14 @@ export function ItemRow({
   }, [text, item.id, item.text, editItem])
 
   const cycleStatus = useCallback(() => {
-    changeItemStatus(item.id, nextStatus[item.status])
+    changeItemStatus(item.id, getNextItemStatus(item.status))
   }, [item.id, item.status, changeItemStatus])
 
   // Centralized copy function with feedback - called from any copy trigger
   const copyItemWithFeedback = useCallback(() => {
     navigator.clipboard.writeText(item.text)
-    setShowCopyConfirmation(true)
-
-    // Clear any existing timeout
-    if (copyTimeoutRef.current) {
-      clearTimeout(copyTimeoutRef.current)
-    }
-
-    // Hide confirmation after 400ms
-    copyTimeoutRef.current = setTimeout(() => {
-      setShowCopyConfirmation(false)
-    }, 400)
-  }, [item.text])
+    showFeedback('Copied text to clipboard.')
+  }, [item.text, showFeedback])
 
   // Keep ref updated with current copy function
   copyFunctionRef.current = copyItemWithFeedback
@@ -285,7 +299,7 @@ export function ItemRow({
       e.preventDefault()
       onFocus()
 
-      const statusSubmenu = (['active', 'done', 'hold'] as ItemStatus[]).map((s) => ({
+      const statusSubmenu = ITEM_STATUS_CYCLE.map((s) => ({
         label: s.charAt(0).toUpperCase() + s.slice(1),
         type: 'radio' as const,
         checked: item.status === s,
@@ -336,8 +350,6 @@ export function ItemRow({
     },
     [item, lists, onFocus]
   )
-
-  const isDone = item.status === 'done'
 
   return (
     <motion.div
@@ -457,7 +469,7 @@ export function ItemRow({
       )}
       {/* Content with baseline alignment */}
       <div className="flex items-baseline gap-1 flex-1 transition-opacity duration-150"
-           style={{ opacity: showCopyConfirmation ? 0.2 : 1 }}>
+           style={{ opacity: feedbackMessage ? 0.2 : 1 }}>
         {/* Status dot */}
         <div className="-translate-y-0.5">
           <StatusDot status={item.status} onClick={cycleStatus} />
@@ -510,7 +522,9 @@ export function ItemRow({
           />
         ) : (
           <span
-            className={`flex-1 text-[length:var(--font-size-md)] [overflow-wrap:anywhere]`}
+            className={`flex-1 text-[length:var(--font-size-md)] [overflow-wrap:anywhere] ${
+              item.status === 'complete' ? 'line-through' : ''
+            }`}
             style={{ opacity: statusOpacity[item.status], lineHeight: '1.5rem' }}
           >
             {item.text}
@@ -525,7 +539,7 @@ export function ItemRow({
       <div
         className="flex items-center gap-1 shrink-0 transition-default"
         style={{
-          opacity: showCopyConfirmation
+          opacity: feedbackMessage
             ? 0.2
             : hovered && !editing
               ? 1
@@ -580,7 +594,7 @@ export function ItemRow({
       <div
         className="no-drag cursor-grab active:cursor-grabbing text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-default self-center"
         style={{
-          opacity: showCopyConfirmation
+          opacity: feedbackMessage
             ? 0.2
             : hovered && !editing
               ? 1
@@ -602,15 +616,17 @@ export function ItemRow({
         </svg>
       </div>
 
-      {/* Copy confirmation overlay */}
-      {showCopyConfirmation && (
+      {/* One shared confirmation surface for copy and committed status
+          changes. Keeping the same overlay vocabulary makes status
+          movement feel like an acknowledged action, not a new mode. */}
+      {feedbackMessage && (
         <div className="absolute inset-0 rounded bg-[rgba(0,0,0,0.2)] flex items-center justify-center z-10"
              style={{
-               animation: showCopyConfirmation ? 'fadeIn 150ms ease-out' : 'fadeOut 200ms ease-out'
+               animation: 'fadeIn 150ms ease-out'
              }}
         >
           <span className="text-[length:var(--font-size-sm)] text-white font-medium">
-            Copied text to clipboard.
+            {feedbackMessage}
           </span>
         </div>
       )}
