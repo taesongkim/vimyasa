@@ -219,7 +219,7 @@ export function ItemRow({
   useEffect(() => {
     if (previousStatusRef.current === item.status) return
     previousStatusRef.current = item.status
-    showFeedback(`Status Updated To: ${statusLabels[item.status]}`)
+    showFeedback(`Status: ${statusLabels[item.status]}`)
   }, [item.status, showFeedback])
 
   // Cross-list arrival flash. Fires when the parent flags this row's
