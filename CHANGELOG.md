@@ -10,6 +10,32 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.10 — *Clearer statuses + windows that stay with you* (2026-07-23)
+
+This release makes two parts of Vimyasa feel much more settled: the state
+of an item is legible at a glance, and the app stays in the context where
+you summoned it.
+
+**A five-state item lifecycle.** Items now move through Default, Active,
+Pending, Complete, and Hidden. Active work reads in warm yellow; Pending
+breathes gently so it stays present without shouting; Complete resolves in
+green with a quiet strike-through; Hidden preserves its place without
+disappearing from the row layout. Every change gets a compact confirmation,
+so cycling status stays fast and unambiguous.
+
+**Vimyasa windows follow you.** Lists, Entry, Feedback, Settings, and the
+other utility surfaces open in the macOS Space you are already using,
+including fullscreen apps, and float above the work beneath them. Entry,
+Feedback, and the Hot List are created on first use so macOS assigns them
+correctly; from then on they stay warm across summons.
+
+**Focus has a clearer meaning.** The Magic Colors input glow now appears
+only when both the Vimyasa window and its actual input are focused. The
+same focus signal is ready for the quieter default cue planned for a future
+pass.
+
+---
+
 ## v0.1.9 — *Update-pipeline UX + Magic Colors light-mode* (2026-07-16)
 
 A focused polish release, all follow-on to what shipped in v0.1.8.
