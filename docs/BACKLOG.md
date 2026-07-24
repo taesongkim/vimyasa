@@ -27,6 +27,7 @@ Live release: **v0.1.10**. Planned next sequence:
 | ~~**v0.1.8**~~ | ~~Light mode + Undo + release-notes-in-update + hot-list prewarm~~ | ✅ Shipped — Phase 1 (invisible tokenization restructure) + Phase 2 (light mode + Settings → Appearance: Light/Dark/Auto, default Dark). Undo/Redo (5-step ring buffer, cross-list, cross-window; main-process log with broadcast; edit-cancel and carry-cancel handled without log consumption; permanent delete now guarded by confirmation modal). Custom auto-update window with GitHub release notes rendered as markdown (aesthetics visual pass shipped separately as PR #51: typography hierarchy, adaptive height, Onboarding button treatment). Hot list PR-4 prewarm (first-summon latency drop; scroll/focus/edit state preserved across hides). Bug batch (Undo focus after cancel, delete-modal opacity, radio-dot centering). |
 | ~~**v0.1.9**~~ | ~~Update-pipeline UX + Magic Colors light-mode~~ | ✅ Shipped — About surface in Settings → General renders current version's release notes as markdown (fetched by tag from GitHub, cached per-version). Manual update tray entries: Check for Updates… (user-initiated check + up-to-date/error affordances) and View Update Details (re-summons dismissed pending payloads). Magic Colors light-mode calibration on the four Theme 1 surfaces — discovery: it wasn't hue, it was geometry (glowDepth 0.5→0.8, strength 0.95→1.3) via a new `lightBeam` per-mode override on `BorderBeamConfig`; dark mode byte-for-byte unchanged. Small alongside: adaptive update-window vertical re-centering, Settings width auto-fits tab strip, light-mode legibility fix on shared onboarding-style buttons, About release-notes bullet/numbered lists render, tuned `glowDepth: 0.25` default on the small callout-button surface. |
 | ~~**v0.1.10**~~ | ~~Clearer statuses + windows that stay with you~~ | ✅ Shipped — five-state item lifecycle (Default / Active / Pending / Complete / Hidden), status-change confirmation, and filters temporarily removed from the list UI. All user-opened utility windows float above other apps and open in the current macOS Space, including fullscreen apps. Entry, Feedback, and Hot List create on first summon, then persist for fast later summons; input glow is gated by both window and field focus. Data safety, diagnostics, and remaining bug-bash items were deliberately deferred rather than expanding this release. |
+| **v0.1.11** | **Auto-update hotfix (P1) + deferred items** | Headline: replace `autoUpdater.quitAndInstall()` with a direct `child_process.spawn` of ShipIt in `src/main/updater.ts` — the fix that unblocks silent macOS 26 auto-update failures shipped in v0.1.7–v0.1.10 (root cause captured 2026-07-24). Small, targeted, ~15 lines. Also picks up deferred v0.1.10 items: Backup / restore user data (P1), Focus-state visual cue (P2), Mystery flicker on first entry-form launch (P2), Onboarding dim z-order, Scrollbar lag, Auto-updater EPIPE defensive wrap. **First release where WORKFLOW step 4 (verify auto-update path pre-publish) is non-negotiable + must be exercised on macOS 26 specifically.** Post-ship: outreach to every ≤v0.1.10 tester with manual DMG install link — they can't receive v0.1.11 via auto-update because the broken code is what they're running. |
 | **v0.2.0** (someday) | Real Theme 2 + switcher | Path B from theme-system docs, or first significant new surface area. Reserved for genuinely big change. |
 
 ### On flexibility
@@ -314,20 +315,50 @@ not silently grab next-priority items.
 
 ## Bugs
 
-### v0.1.7 auto-updater install failure — diagnose retrospectively
-- **Lane:** features (main-process electron-updater)
-- **Priority:** P2
-- **Version:** v0.1.10 (diagnostic only — cannot ship a fix that reaches broken v0.1.7 installs)
-- **Status:** open (2026-07-16, discovered post-v0.1.9-publish when Justin's own install failed to upgrade)
-- **Symptoms:** On v0.1.7, auto-update detects newer versions and downloads them successfully. Clicking Install & Restart on the downloaded prompt quits the app but does not relaunch into the new version. On manual reopen, the app is still on v0.1.7 and the same failure loop begins. Reproduced twice — both v0.1.7→v0.1.8 (didn't notice because we assumed auto-update worked) and v0.1.7→v0.1.9 (caught because Justin flagged that the update window was still native — v0.1.7's UI — not the custom v0.1.8+ window).
-- **Impact:** Every v0.1.7 tester is stuck on v0.1.7 unless they manually reinstall the newest DMG. Coordination-side outreach with a link to the latest GitHub release is the only fix that reaches them.
-- **Diagnosis path:**
-  1. `git log --oneline v0.1.6..v0.1.7 -- src/main/updater.ts src/main/index.ts electron-builder.yml` — see what changed in the updater path between the last known-working version (v0.1.6, assuming Justin got to v0.1.7 via auto-update from v0.1.6 successfully) and the broken version.
-  2. Compare with electron-updater upstream changelog for the version range shipped in v0.1.6 vs v0.1.7 (`npm ls electron-updater` on those tags).
-  3. Check `~/Library/Caches/vimyasa-updater/pending/` on a still-broken-v0.1.7 tester machine for install-log breadcrumbs (if any tester still on v0.1.7 is willing to peek before they manually reinstall).
-  4. Suspect areas: signing cert or entitlements changes between v0.1.6 and v0.1.7 that break the Squirrel install swap; `quitAndInstall` args or timing; helper app packaging.
-- **Cross-linked with:** "Add auto-update verification step to release cycle" (below) — the procedural fix that prevents this class of bug from shipping again.
-- **Not blocking:** any future release. Diagnosis is retrospective. Testers still on v0.1.7 need direct outreach regardless of what we learn.
+### macOS 26 auto-updater silent failure — root-caused 2026-07-24
+- **Lane:** features (main-process updater.ts) + coordination (outreach + release cycle)
+- **Priority:** P1 (blocks every macOS 26 tester from auto-updating; v0.1.11 must ship the fix)
+- **Version:** v0.1.11 fix (P1); retrospective analysis complete
+- **Status:** ✅ root-caused (2026-07-24, during Justin's v0.1.10 install investigation). **Working fix pattern identified and proven end-to-end** by manually invoking ShipIt from Terminal on Justin's machine — the install completed, Vimyasa relaunched to v0.1.10.
+- **Original symptom:** Every version since v0.1.7 has appeared to auto-update but silently fails to swap `/Applications/Vimyasa.app`. User clicks Install & Restart → app quits → never comes back → manual reopen shows the old version. Shipped four consecutive releases (v0.1.7 → v0.1.10) undetected because release cycle step 4 (verify upgrade path pre-publish) was never actually exercised.
+- **Root cause (proven):** `autoUpdater.quitAndInstall()` from electron-updater 6.8.3 relies on `Squirrel.framework` (inside Vimyasa's process) to spawn a `ShipIt` helper binary as a detached child right before Vimyasa quits. **On macOS 26 (Tahoe), that spawn silently fails.** ShipIt is never launched. The state plist gets written, the update stages, but the swap never happens. No error is surfaced anywhere — no stderr, no crash report, no `log show` fingerprint.
+- **What we proved works:** ShipIt itself is completely functional on macOS 26. Invoking it directly with `<binary-path> <bundle-id> <state-plist-path>` from Terminal moves `/Applications/Vimyasa.app` to a temp location, moves the staged v0.1.10 into place, and relaunches the app. Same code path that Squirrel.framework's spawn would have used — the only difference is the invocation context. The bug is in the spawn attribution / permission layer, not in ShipIt.
+- **The v0.1.11 fix:** Replace `autoUpdater.quitAndInstall()` in `src/main/updater.ts` (`update:restart` IPC handler) with a direct `child_process.spawn` call to ShipIt, replicating what worked from Terminal:
+  ```ts
+  ipcMain.handle('update:restart', () => {
+    if (!app.isPackaged) return
+    const shipItPath = path.join(process.resourcesPath,
+      '../Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt')
+    const stateFile = path.join(homedir(),
+      'Library/Caches/com.taesongkim.vimyasa.ShipIt/ShipItState.plist')
+    spawn(shipItPath, ['com.taesongkim.vimyasa.ShipIt', stateFile],
+      { detached: true, stdio: 'ignore' }).unref()
+    app.quit()
+  })
+  ```
+  Small, targeted, low risk. Falls back to `quitAndInstall()` behavior only if the direct spawn setup fails.
+- **Confirmed unaffected:** electron-updater's download + staging code path works fine. The `update-available` and `update-downloaded` events fire correctly. The custom UpdatePromptWindow (v0.1.8+) renders correctly. Only the final `quitAndInstall()` spawn is broken.
+- **Confirmed *systemic*:** Other Electron apps on Justin's machine (Notion, Superhuman, Claude) also have stuck ShipIt processes on macOS 26 — they hit a related but different failure mode (their ShipIts spawn but hang forever in `waitForTerminationOfProcessWithIdentifier`). This is a broad macOS 26 + electron-updater 6.x issue in the ecosystem, not vimyasa-specific.
+- **Diagnostic pattern (worth memorializing):** when this class of failure is suspected, the disambiguating test is manually invoking ShipIt from Terminal against the current staged state. If manual invocation works but the auto-update flow doesn't, the bug is in Squirrel.framework's spawn, not ShipIt itself. That's the direct-spawn fix scope. If manual invocation ALSO fails, the bug is in the install logic, and the fix path is different.
+- **Testers still on ≤v0.1.10:** cannot auto-update to v0.1.11 (the broken code is in what they're running). Every one of them needs direct outreach with a manual-install link once v0.1.11 ships. See separate coordination action item.
+- **Related:** the WORKFLOW step 4 was skipped for the v0.1.9 and v0.1.10 releases despite being formally codified — that's the process gap that let this ship again after being caught. See WORKFLOW.md release-cycle section for the reinforced step 4 procedure (updated 2026-07-24 with macOS 26 specifics + manual-ShipIt diagnostic as a fallback).
+
+### v0.1.11 hotfix — replace `quitAndInstall()` with direct ShipIt spawn (P1)
+- **Lane:** features (small, targeted change in `src/main/updater.ts`)
+- **Priority:** P1 — first thing to ship in v0.1.11
+- **Version:** v0.1.11
+- **Status:** open (2026-07-24); fix pattern proven; needs code implementation + release cycle
+- **Scope:** ~15 lines in `src/main/updater.ts`. Replace the `autoUpdater.quitAndInstall()` call in the `update:restart` IPC handler with a `child_process.spawn` of ShipIt using the pattern proven in the diagnosis above (see previous entry). Keep the download / staging / prompt UI paths untouched — they all work.
+- **Verify:** on Justin's now-v0.1.10 machine, exercise the actual v0.1.10 → v0.1.11 auto-update path per WORKFLOW step 4 before publishing v0.1.11. This is the first release where step 4 is non-negotiable.
+- **Testers outreach coupling:** v0.1.11 is what heals the bug. Every tester ≤v0.1.10 still needs a manual-install message pointing at the v0.1.11 DMG when it ships. Coordination sends after v0.1.11 publishes.
+- **Not in scope:** upgrading electron-updater to a newer version. That may be worth doing eventually (v0.2.0 window) but is a bigger change with more risk. The direct-spawn fix is minimal and targets the specific broken step.
+
+### v0.1.10 auto-updater outreach — direct-message every macOS 26 tester
+- **Lane:** coordination (Justin owns the sends)
+- **Priority:** P1 — action after v0.1.11 ships
+- **Version:** post-v0.1.11 ship
+- **Status:** open (2026-07-24)
+- **Notes:** Every friends-and-family tester on macOS 26 has been silently locked out of auto-updates since v0.1.7. Once v0.1.11 ships (with the fix), send each tester a message pointing at the v0.1.11 DMG on GitHub Releases with quit-and-drag-into-Applications instructions. From v0.1.11 onward their auto-updates will work. Suggested outreach template is the one already used for v0.1.9 outreach, updated to point at v0.1.11. Track which testers are on macOS 26 vs older — the older ones may already have working auto-updates (nobody has actually verified that either, but the systemic bug is macOS-26-specific per our 2026-07-24 diagnosis).
 
 ### Add auto-update verification step to release cycle
 - **Lane:** coordination (procedural)
