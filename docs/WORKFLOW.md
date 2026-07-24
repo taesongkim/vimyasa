@@ -285,6 +285,48 @@ sign them before submissions go through.
    Account Holder, the acceptance option won't appear.
 4. Wait ~2 min for propagation, then re-run `npm run dist:mac`.
 
+### macOS 26 auto-update trap (root-caused 2026-07-24)
+
+**Every version v0.1.7 → v0.1.10 shipped with a silent auto-update
+failure on macOS 26.** Users click Install & Restart → app quits →
+never comes back. Root cause: `autoUpdater.quitAndInstall()`
+relies on Squirrel.framework to spawn the `ShipIt` helper as a
+detached child; on macOS 26 that spawn silently fails.
+
+Step 4 above should catch this — but only if you actually run it
+on macOS 26. Step 4 was formally codified after v0.1.7 shipped
+and STILL wasn't exercised for v0.1.8/v0.1.9/v0.1.10. Don't skip.
+
+**When step 4's auto-update attempt fails silently on macOS 26:**
+
+The disambiguating diagnostic is manually invoking ShipIt from
+Terminal. If manual invocation succeeds, the bug is in Squirrel's
+spawn (fixable per the v0.1.11 direct-spawn pattern). If manual
+invocation also fails, the bug is elsewhere.
+
+Reproduce the failure fresh, THEN run:
+
+```
+/Applications/Vimyasa.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt \
+  com.taesongkim.vimyasa.ShipIt \
+  ~/Library/Caches/com.taesongkim.vimyasa.ShipIt/ShipItState.plist
+```
+
+This is safe to run manually — ShipIt just does the file swap and
+relaunches the app. If it works, the install completes exactly as
+if auto-update had worked, and the user is on the new version.
+
+**The v0.1.11+ fix** (once shipped) is a direct `child_process.spawn`
+of ShipIt from `src/main/updater.ts`'s `update:restart` handler,
+bypassing Squirrel.framework's broken spawn. See BACKLOG entry
+"v0.1.11 hotfix — replace `quitAndInstall()` with direct ShipIt
+spawn" for the exact code pattern.
+
+**Testers stuck on ≤v0.1.10 need direct outreach + manual DMG
+install** — the broken code is what they're running, so they can't
+receive the fix via auto-update. This outreach is a coordination
+action for every release cycle until v0.1.11 has propagated.
+
 ## Session rituals: clocking in and clocking out
 
 Two phrases mark the start and end of a focused work session with the
