@@ -10,6 +10,42 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.11 — *Auto-update actually works + list flick gone* (2026-07-24)
+
+A hotfix release focused entirely on two bugs — one you couldn't
+see, and one you probably could.
+
+**Auto-update on macOS 26 actually works now.** Every release since
+v0.1.7 shipped with a silent auto-update bug on macOS 26 (Tahoe):
+you'd click Install & Restart, the app would quit, and then never
+come back — you'd be stuck on the old version until you manually
+reinstalled. Root cause was a change deep in how macOS 26 handles
+the way our updater framework tries to hand off to its install
+helper. This release bypasses the broken hand-off with a direct
+launch of the same helper, which does work. If you're reading these
+notes inside the update prompt on macOS 26 and installing v0.1.11
+via auto-update actually lands you on v0.1.11 — the fix worked, and
+every future update from here on will just work.
+
+If you've been on any v0.1.7–v0.1.10 build and never noticed a
+missed update, you were probably stuck too. You wouldn't have known.
+
+**No more list flick when items shift up.** When you archived,
+deleted, or reordered items — anything that caused rows below to
+shift up into a freed slot — the affected rows would briefly appear
+at their old lower position for a frame, then slide up to their new
+position. It read as a jarring "flick down + slide up." Turned out
+to be an over-engineered smoothing animation that snapping cleanly
+is just better than. Removed. Now rows snap into place; the vibe
+matches the rest of the app's motion.
+
+Nothing else in this release. All deferred v0.1.10 items (backup,
+focus cues, flicker hunt, scrollbar polish) still queued for a
+future release — this one is scoped tight so the auto-update
+mechanism can heal cleanly.
+
+---
+
 ## v0.1.10 — *Clearer statuses + windows that stay with you* (2026-07-23)
 
 This release makes two parts of Vimyasa feel much more settled: the state
