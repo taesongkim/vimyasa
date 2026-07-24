@@ -1,3 +1,6 @@
+import { spawn } from 'child_process'
+import { homedir } from 'os'
+import path from 'path'
 import { app, ipcMain } from 'electron'
 import pkg from 'electron-updater'
 import {
@@ -176,10 +179,45 @@ function registerUpdaterIpcHandlers(): void {
   })
 
   // User clicked "Restart Now" on the update-downloaded prompt.
-  // quitAndInstall closes the app + relaunches into the new version.
+  //
+  // Historically this called autoUpdater.quitAndInstall(), which
+  // relies on Squirrel.framework (inside our process) to spawn the
+  // ShipIt helper as a detached child right before quit. On macOS 26
+  // (Tahoe), that spawn silently fails — the state plist gets
+  // written and the update stages, but ShipIt never launches, no
+  // error surfaces anywhere, and the app just quits without ever
+  // swapping /Applications/Vimyasa.app. Root-caused 2026-07-24; see
+  // BACKLOG entry "macOS 26 auto-updater silent failure" for the
+  // full trace. ShipIt itself is fine — invoking it directly from
+  // Terminal with the same state plist installs cleanly. Only the
+  // Squirrel-framework-invokes-ShipIt spawn is broken.
+  //
+  // Workaround: bypass Squirrel's spawn entirely. Directly launch
+  // ShipIt via child_process.spawn with the same args Squirrel
+  // would have used, then quit ourselves so ShipIt can proceed.
+  // Detached + stdio ignore + unref so ShipIt survives our death.
   ipcMain.handle('update:restart', () => {
     if (!app.isPackaged) return
-    autoUpdater.quitAndInstall()
+    try {
+      const shipItPath = path.join(
+        process.resourcesPath,
+        '../Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt'
+      )
+      const stateFile = path.join(
+        homedir(),
+        'Library/Caches/com.taesongkim.vimyasa.ShipIt/ShipItState.plist'
+      )
+      spawn(shipItPath, ['com.taesongkim.vimyasa.ShipIt', stateFile], {
+        detached: true,
+        stdio: 'ignore'
+      }).unref()
+      app.quit()
+    } catch (err) {
+      // If the manual spawn fails for any reason, fall back to the
+      // historical behavior so we're no worse off than before the fix.
+      console.error('[updater] direct ShipIt spawn failed, falling back:', err)
+      autoUpdater.quitAndInstall()
+    }
   })
 
   // Both phases share the Later / backdrop / Esc dismiss path —

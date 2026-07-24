@@ -1248,7 +1248,7 @@ html, body, #root {
 
    If user-testing decides the dim is too much, removing this rule alone
    reverts the behavior — the carried row's lift remains untouched. */
-.list-carrying [data-flip-id]:not(.item-row-carrying) {
+.list-carrying [data-item-row-id]:not(.item-row-carrying) {
   opacity: var(--carry-dim-multiplier);
   transition: opacity 200ms ease;
 }
