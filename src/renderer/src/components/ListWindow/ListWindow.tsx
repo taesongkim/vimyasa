@@ -20,7 +20,6 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useStore } from '../../store/useStore'
 import { useKeyboard } from '../../hooks/useKeyboard'
-import { useUpwardFlip } from '../../hooks/useUpwardFlip'
 import { TitleBar } from './TitleBar'
 import { ItemRow } from './ItemRow'
 import { DraftItemRow } from './DraftItemRow'
@@ -100,10 +99,9 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   const cycleTargetRef = useRef<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   // Container holding the items themselves (inside the scroll container,
-  // outside DndContext/SortableContext). Passed to useUpwardFlip so it
-  // can find rows tagged with data-flip-id and animate ones moving up.
+  // outside DndContext/SortableContext). Used by the arriving-item
+  // scroll-into-view lookup (querySelector by data-item-row-id).
   const itemsContainerRef = useRef<HTMLDivElement>(null)
-  useUpwardFlip(itemsContainerRef, '[data-flip-id]')
 
   // Custom scrollbar state
   const [scrollbarVisible, setScrollbarVisible] = useState(false)
@@ -604,7 +602,7 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
       return
     }
     const el = container.querySelector(
-      `[data-flip-id="${pendingScrollItemId}"]`
+      `[data-item-row-id="${pendingScrollItemId}"]`
     )
     if (el instanceof HTMLElement) {
       const containerRect = container.getBoundingClientRect()

@@ -427,10 +427,14 @@ export function ItemRow({
             : ''
       }`}
       data-index={dataIndex}
-      // Tag for useUpwardFlip in ListWindow. The hook measures these
-      // elements' positions before/after each render and animates
-      // upward shifts (archive, delete, editing-row-shrink).
-      data-flip-id={item.id}
+      // Stable per-row identifier used by (a) the carry-mode dimming
+      // CSS selector in globals.css that fades non-carrying rows, and
+      // (b) the arriving-item scroll-into-view lookup in ListWindow.
+      // Was previously named data-flip-id when useUpwardFlip owned it;
+      // renamed in v0.1.11 when that hook was removed (it caused a
+      // visible flick-down-then-slide-up bug — see v0.1.11 hotfix
+      // BACKLOG entry).
+      data-item-row-id={item.id}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={onFocus}
