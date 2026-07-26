@@ -347,7 +347,7 @@ not silently grab next-priority items.
 ### v0.1.11 hotfix — remove `useUpwardFlip` (list-flick bug)
 - **Lane:** features
 - **Priority:** P2 (shipped alongside the auto-updater P1)
-- **Version:** v0.1.11 — **shipped 2026-07-24**
+- **Version:** v0.1.11 — **shipped 2026-07-26**
 - **Status:** ✅ shipped. Deleted `src/renderer/src/hooks/useUpwardFlip.ts` + the hook call and import in ListWindow.tsx. Renamed `data-flip-id` → `data-item-row-id` (preserved the carry-mode dimming selector in globals.css + the arriving-item scroll-into-view lookup in ListWindow.tsx querySelector). Rows now snap into place on upward shifts (archive, delete, carry-mode reorder, edit-row shrink). Justin dev-verified snap-only behavior before implementation.
 - **Symptom:** When items shift up in a list (via archive/delete, via item-below-editing shrinking, or during carry-mode reorders), a two-phase visual glitch fires — items visibly appear at their OLD lower position for one frame, then transition upward to their new position. Reads as a jarring "flick down + slide back up." Position-sensitive: more items shifting = more visible. Justin observed it in two triggers: (a) archive an item that's been moved higher in the list, then press j/k → flick on items below, (b) mid carry-mode after moving up-then-back-down → flick on displaced items.
 - **Root cause:** `src/renderer/src/hooks/useUpwardFlip.ts` uses standard FLIP (First, Last, Invert, Play) — measures each item's `offsetTop`, applies inline `transform: translateY(delta)` to visually pull items moving-up back to their old (lower) position, forces sync reflow via `void container.offsetHeight`, then sets `transition: transform 50ms ease-out` and clears the transform. The invert step is meant to be committed atomically before browser paint. On macOS 26 / current WebKit compositor timing (or possibly always), the invert frame IS visible — user sees the item briefly at its old position (below where it "should" be), then it slides up. The 50ms transition doesn't hide the invert-frame.
@@ -365,7 +365,7 @@ not silently grab next-priority items.
 ### v0.1.11 hotfix — replace `quitAndInstall()` with direct ShipIt spawn (P1)
 - **Lane:** features
 - **Priority:** P1
-- **Version:** v0.1.11 — **shipped 2026-07-24**
+- **Version:** v0.1.11 — **shipped 2026-07-26**
 - **Status:** ✅ shipped. The `update:restart` IPC handler in `src/main/updater.ts` now directly spawns ShipIt via `child_process.spawn` with `detached: true, stdio: 'ignore'` + `.unref()`, then calls `app.quit()`. Uses `homedir()` + `path` to construct the ShipIt binary path (from `process.resourcesPath`) and the state plist path (from user Library caches). Wrapped in try/catch with a fallback to `autoUpdater.quitAndInstall()` — if the direct spawn throws, we're no worse off than before. Step 4 (verify auto-update path on macOS 26) was exercised for the first time on this release — Justin's v0.1.10 install successfully auto-updated to v0.1.11 via the real auto-update flow, confirming the fix.
 - **Not in scope:** upgrading electron-updater to a newer version. That may still be worth doing eventually (v0.2.0 window) but is a bigger change with more risk. The direct-spawn fix is minimal and targets the specific broken step.
 

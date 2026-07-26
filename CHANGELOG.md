@@ -10,7 +10,7 @@ project and the changelog reflects that. (See
 
 ---
 
-## v0.1.11 — *Auto-update actually works + list flick gone* (2026-07-24)
+## v0.1.11 — *Auto-update actually works + list flick gone* (2026-07-26)
 
 A hotfix release focused entirely on two bugs — one you couldn't
 see, and one you probably could.
