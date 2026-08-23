@@ -10,6 +10,37 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.13 — *Auto-update, actually this time + download progress* (2026-08-23)
+
+Two things.
+
+**Auto-update actually installs now.** The v0.1.11 attempt at fixing
+the silent-install bug on macOS 26 turned out to be broken at a
+design level — it bypassed the setup step that writes the state file
+ShipIt needs to do anything. This release does it properly:
+Squirrel runs its normal setup work (writes the state plist,
+attempts and silently fails at its own ShipIt spawn), and a
+`will-quit` listener spawns ShipIt ourselves right before the app
+dies, using the state file Squirrel just wrote. If you're reading
+these notes inside the update prompt on your machine and clicking
+Install & Restart actually lands you on v0.1.13 — the real fix
+worked, and every future update from here on will just work.
+
+**Download progress you can actually see.** When you clicked Download
+Now, the window used to just close and leave you wondering whether
+anything was happening. Now the window stays visible through the
+download with a live progress bar, then transitions smoothly into
+the install prompt when ready. One continuous experience instead of
+two discrete windows.
+
+Also: dev-only mock for the downloading phase (right-click tray →
+"Show Update Prompt (downloading, 42%)") so the UI can be tuned
+without a real download.
+
+Nothing else in this release.
+
+---
+
 ## v0.1.12 — *Small polish pass* (2026-07-28)
 
 Four small things. Nothing structural.

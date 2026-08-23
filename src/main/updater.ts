@@ -104,6 +104,36 @@ export function setupAutoUpdater(): void {
     updateTrayMenu()
   })
 
+  // v0.1.13: keep the update window visible during download with a
+  // live progress bar, so the user isn't stuck wondering whether
+  // anything's happening after they clicked Download Now. Each event
+  // pushes a fresh payload with the current percent; the same window
+  // updates in place (showUpdatePrompt handles the idempotent path).
+  // Only fires between update:install → 'update-downloaded'; if the
+  // user dismissed the download-prompt window, the payload updates
+  // still land but the window stays hidden.
+  //
+  // Latest electron-updater versions may pass an `info` object with
+  // {bytesPerSecond, percent, transferred, total}; use `percent`
+  // rounded to the nearest int. Fallback to 0 if the field is missing
+  // (some providers omit it early in the download).
+  autoUpdater.on('download-progress', (info) => {
+    const percent =
+      typeof info?.percent === 'number' && isFinite(info.percent)
+        ? Math.max(0, Math.min(100, Math.round(info.percent)))
+        : 0
+    // Read the version from whatever the last actionable payload was;
+    // the download-progress event doesn't carry the version itself.
+    const prior = getWindowPayload()
+    const version = prior?.version ?? app.getVersion()
+    showUpdatePrompt({
+      phase: 'downloading',
+      version,
+      releaseNotes: '',
+      downloadProgress: percent
+    })
+  })
+
   autoUpdater.on('update-downloaded', (info) => {
     userInitiatedCheck = false
     showUpdatePrompt({
@@ -166,58 +196,95 @@ export function checkForUpdatesManual(): void {
 }
 
 function registerUpdaterIpcHandlers(): void {
-  // User clicked "Install Now" on the update-available prompt.
-  // electron-updater downloads in the background; update-downloaded
-  // fires when it's ready. We close the prompt window — the next
-  // event opens a fresh one with the release notes.
+  // User clicked "Download Now" on the update-available prompt.
+  // v0.1.13: keep the window visible and immediately transition it
+  // into the 'downloading' phase with progress = 0. The
+  // download-progress event listener above updates the payload as
+  // bytes arrive; update-downloaded then transitions to 'downloaded'
+  // with the Install & Restart button. One continuous window
+  // experience instead of the previous open → hide → reopen dance.
   ipcMain.handle('update:install', () => {
     if (!app.isPackaged) return
+    // Read version from whichever payload was last shown (should be
+    // 'available' since the user just clicked Download Now from it).
+    const prior = getWindowPayload()
+    const version = prior?.version ?? app.getVersion()
+    showUpdatePrompt({
+      phase: 'downloading',
+      version,
+      releaseNotes: '',
+      downloadProgress: 0
+    })
     autoUpdater.downloadUpdate().catch((err) => {
       console.error('[updater] downloadUpdate failed:', err)
     })
-    hideUpdatePromptWindow()
   })
 
   // User clicked "Restart Now" on the update-downloaded prompt.
   //
-  // Historically this called autoUpdater.quitAndInstall(), which
-  // relies on Squirrel.framework (inside our process) to spawn the
-  // ShipIt helper as a detached child right before quit. On macOS 26
-  // (Tahoe), that spawn silently fails — the state plist gets
-  // written and the update stages, but ShipIt never launches, no
-  // error surfaces anywhere, and the app just quits without ever
-  // swapping /Applications/Vimyasa.app. Root-caused 2026-07-24; see
-  // BACKLOG entry "macOS 26 auto-updater silent failure" for the
-  // full trace. ShipIt itself is fine — invoking it directly from
-  // Terminal with the same state plist installs cleanly. Only the
-  // Squirrel-framework-invokes-ShipIt spawn is broken.
+  // History of this handler:
   //
-  // Workaround: bypass Squirrel's spawn entirely. Directly launch
-  // ShipIt via child_process.spawn with the same args Squirrel
-  // would have used, then quit ourselves so ShipIt can proceed.
-  // Detached + stdio ignore + unref so ShipIt survives our death.
+  // v0.1.7 → v0.1.10: called `autoUpdater.quitAndInstall()`, which
+  //   relies on Squirrel.framework (inside our process) to spawn the
+  //   ShipIt helper as a detached child right before quit. On macOS 26
+  //   (Tahoe) that spawn silently fails, so nothing installs.
+  //
+  // v0.1.11 → v0.1.12 (broken attempt): bypassed quitAndInstall()
+  //   entirely and spawned ShipIt directly via child_process. This
+  //   ALSO didn't work — but for a different reason. ShipIt requires
+  //   a state plist at ~/Library/Caches/<app-bundle-id>.ShipIt/
+  //   ShipItState.plist that tells it what to install where. That
+  //   plist is normally written by Squirrel INSIDE quitAndInstall.
+  //   By bypassing quitAndInstall entirely, we skipped the state-
+  //   plist write. ShipIt was being spawned with a path to a
+  //   non-existent state file, silently exiting. The direct-spawn
+  //   pattern only "worked" in manual Terminal tests because leftover
+  //   state from previous failed quitAndInstall attempts happened to
+  //   still be sitting in the cache dir.
+  //
+  // v0.1.13 (current): let Squirrel do its state-plist setup by
+  //   calling quitAndInstall() normally. Its own spawn attempt will
+  //   still fail silently on macOS 26 — but by that point, the state
+  //   plist has been written to disk with the correct staged-update
+  //   path. Meanwhile, we register a `will-quit` listener that spawns
+  //   ShipIt ourselves via child_process, right before the app dies.
+  //   Since Squirrel's setup already ran by then, ShipIt now has a
+  //   valid state file to read from. Combines Squirrel's staging
+  //   correctness with our direct-spawn workaround.
   ipcMain.handle('update:restart', () => {
     if (!app.isPackaged) return
-    try {
-      const shipItPath = path.join(
-        process.resourcesPath,
-        '../Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt'
-      )
-      const stateFile = path.join(
-        homedir(),
-        'Library/Caches/com.taesongkim.vimyasa.ShipIt/ShipItState.plist'
-      )
-      spawn(shipItPath, ['com.taesongkim.vimyasa.ShipIt', stateFile], {
-        detached: true,
-        stdio: 'ignore'
-      }).unref()
-      app.quit()
-    } catch (err) {
-      // If the manual spawn fails for any reason, fall back to the
-      // historical behavior so we're no worse off than before the fix.
-      console.error('[updater] direct ShipIt spawn failed, falling back:', err)
-      autoUpdater.quitAndInstall()
-    }
+
+    // Register the direct-spawn ShipIt launch to fire right before
+    // the app quits. quitAndInstall() (below) triggers app.quit()
+    // internally after Squirrel's setup + failed spawn, so will-quit
+    // fires with the state plist already on disk.
+    app.once('will-quit', () => {
+      try {
+        const shipItPath = path.join(
+          process.resourcesPath,
+          '../Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt'
+        )
+        const stateFile = path.join(
+          homedir(),
+          'Library/Caches/com.taesongkim.vimyasa.ShipIt/ShipItState.plist'
+        )
+        spawn(shipItPath, ['com.taesongkim.vimyasa.ShipIt', stateFile], {
+          detached: true,
+          stdio: 'ignore'
+        }).unref()
+      } catch (err) {
+        // If our spawn throws (rare — path or state plist missing),
+        // there's nothing else to fall back on at this point since
+        // the app is already quitting.
+        console.error('[updater] will-quit ShipIt spawn failed:', err)
+      }
+    })
+
+    // This does: (a) write ShipItState.plist with the correct
+    // staged-update path, (b) attempt Squirrel's own ShipIt spawn
+    // (silently fails on macOS 26 — harmless), (c) triggers
+    // app.quit() which fires our will-quit listener above.
+    autoUpdater.quitAndInstall()
   })
 
   // Both phases share the Later / backdrop / Esc dismiss path —

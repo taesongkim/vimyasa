@@ -65,11 +65,13 @@ export function UpdatePromptWindow() {
 
   // Focus the primary action when the payload arrives, so Enter
   // commits the obvious choice. (Download Now for 'available',
-  // Install & Restart for 'downloaded', Done for the status phases.)
+  // Install & Restart for 'downloaded', Done for the status phases,
+  // nothing for 'downloading' since there's no primary action.)
   useEffect(() => {
     if (!payload) return
     if (payload.phase === 'available') installBtnRef.current?.focus()
     else if (payload.phase === 'downloaded') restartBtnRef.current?.focus()
+    else if (payload.phase === 'downloading') { /* no primary action */ }
     else doneBtnRef.current?.focus()
   }, [payload])
 
@@ -130,6 +132,7 @@ export function UpdatePromptWindow() {
   }
 
   const isDownloaded = payload.phase === 'downloaded'
+  const isDownloading = payload.phase === 'downloading'
   // 'up-to-date' + 'error' are transient status displays: a single
   // Done button, no release notes, no download/restart action.
   const isStatus = payload.phase === 'up-to-date' || payload.phase === 'error'
@@ -138,19 +141,23 @@ export function UpdatePromptWindow() {
   const title =
     payload.phase === 'downloaded'
       ? `Vimyasa ${payload.version} is ready to install`
-      : payload.phase === 'available'
-        ? `Vimyasa ${payload.version} is available`
-        : payload.phase === 'up-to-date'
-          ? "You're up to date"
-          : "Couldn't check for updates"
+      : payload.phase === 'downloading'
+        ? `Downloading Vimyasa ${payload.version}…`
+        : payload.phase === 'available'
+          ? `Vimyasa ${payload.version} is available`
+          : payload.phase === 'up-to-date'
+            ? "You're up to date"
+            : "Couldn't check for updates"
   const subtitle =
     payload.phase === 'downloaded'
       ? 'Restart to install the update. You can restart later if you prefer.'
-      : payload.phase === 'available'
-        ? 'Begin download? You will be prompted to install and restart when the download is complete.'
-        : payload.phase === 'up-to-date'
-          ? `Vimyasa v${payload.version} is the latest version.`
-          : 'Check your connection and try again.'
+      : payload.phase === 'downloading'
+        ? "You can dismiss this window and we'll resume when it's ready."
+        : payload.phase === 'available'
+          ? 'Begin download? You will be prompted to install and restart when the download is complete.'
+          : payload.phase === 'up-to-date'
+            ? `Vimyasa v${payload.version} is the latest version.`
+            : 'Check your connection and try again.'
 
   return (
     // Outer: full-window glass cover. Stays at window height even
@@ -189,6 +196,45 @@ export function UpdatePromptWindow() {
             </div>
           )}
         </div>
+
+        {/* Progress bar (only on 'downloading'). Slim horizontal bar
+            with an accent-colored fill that grows with downloadProgress
+            (0-100). Uses a CSS transition on width so mid-download
+            payload updates read as a smooth fill rather than a stutter.
+            Keeps the same visual language as the rest of the window —
+            no spinner, no bytes counter — just a quiet progression
+            indicator. */}
+        <AnimatePresence mode="wait" initial={false}>
+          {isDownloading && (
+            <motion.div
+              key="progress"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              className="flex flex-col gap-1.5"
+            >
+              <div
+                className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface)]"
+                role="progressbar"
+                aria-valuenow={payload.downloadProgress ?? 0}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className="h-full rounded-full bg-[var(--color-accent)]"
+                  style={{
+                    width: `${payload.downloadProgress ?? 0}%`,
+                    transition: 'width 250ms ease-out'
+                  }}
+                />
+              </div>
+              <div className="text-[length:var(--font-size-xs)] text-[color:var(--color-text-ghost)] font-mono tabular-nums">
+                {payload.downloadProgress ?? 0}%
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Release notes (only on 'downloaded'). The notes scroll
             inside the window so very long bodies don't push the action
@@ -256,9 +302,16 @@ export function UpdatePromptWindow() {
                 className="onb-btn onb-btn-secondary focus:outline-none"
                 onClick={() => void window.api.update.dismiss()}
               >
-                Later
+                {isDownloading ? 'Dismiss' : 'Later'}
               </button>
-              {isDownloaded ? (
+              {isDownloading ? (
+                // Downloading: no primary action. The progress bar
+                // itself is the "here's what's happening." Later
+                // dismisses; when the download completes the phase
+                // transitions to 'downloaded' and Install & Restart
+                // appears here.
+                null
+              ) : isDownloaded ? (
                 <GlowSurface
                   surface="welcome-callout-start-button"
                   style={{ display: 'inline-block' }}

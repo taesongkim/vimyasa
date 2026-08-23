@@ -344,18 +344,26 @@ export interface VimyasaAPI {
 
 export interface UpdatePromptPayload {
   /** 'available' = electron-updater found a new version; show
-   *  Install Now / Later. 'downloaded' = download finished;
-   *  show Restart Now / Later + release notes. 'up-to-date' =
-   *  a user-initiated check found nothing newer; show a single
-   *  Done. 'error' = a user-initiated check failed; show a single
-   *  Done. The two status phases (up-to-date / error) are transient
-   *  and never carry release notes. */
-  phase: 'available' | 'downloaded' | 'up-to-date' | 'error'
+   *  Download Now / Later. 'downloading' = user chose to download;
+   *  show progress bar + Later (v0.1.13; keeps the window visible
+   *  through the download so it flows naturally into 'downloaded'
+   *  instead of two discrete open/close windows). 'downloaded' =
+   *  download finished; show Restart Now / Later + release notes.
+   *  'up-to-date' = a user-initiated check found nothing newer;
+   *  show a single Done. 'error' = a user-initiated check failed;
+   *  show a single Done. The two status phases (up-to-date / error)
+   *  are transient and never carry release notes. */
+  phase: 'available' | 'downloading' | 'downloaded' | 'up-to-date' | 'error'
   version: string
   /** Concatenated markdown body of every release the user hasn't
    *  installed yet, latest at top. Empty string if the GitHub
-   *  release had no body. Always empty for the status phases. */
+   *  release had no body. Always empty for the status + downloading
+   *  phases. */
   releaseNotes: string
+  /** 0–100. Set only during the 'downloading' phase; ignored on all
+   *  others. Updated on every electron-updater download-progress
+   *  event via a fresh showUpdatePrompt call. */
+  downloadProgress?: number
 }
 
 export interface UpdateAPI {

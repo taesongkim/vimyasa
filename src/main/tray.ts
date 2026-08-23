@@ -237,6 +237,17 @@ export function updateTrayMenu(): void {
             }
           },
           {
+            label: 'Show Update Prompt (downloading, 42%)',
+            click: () => {
+              showUpdatePrompt({
+                phase: 'downloading',
+                version: '0.1.99-dev',
+                releaseNotes: '',
+                downloadProgress: 42
+              })
+            }
+          },
+          {
             label: 'Show Update Prompt (downloaded)',
             click: () => {
               showUpdatePrompt({
