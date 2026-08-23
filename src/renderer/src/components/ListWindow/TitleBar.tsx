@@ -11,7 +11,7 @@ export function TitleBar({
   listNumber: number
   numberFlashKey: number
 }) {
-  const { editList, removeList } = useStore()
+  const { editList, removeList, addList, groups } = useStore()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(list.name)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -54,6 +54,19 @@ export function TitleBar({
     await removeList(list.id)
     window.api.closeWindow()
   }, [confirmDelete, list.id, removeList])
+
+  // v0.1.12: matches the tray "New List..." action — creates a
+  // regular list in the default group with placeholder name "New
+  // List" and immediately opens its window. Persistence + group
+  // bookkeeping go through the same addList → createList IPC path
+  // the tray uses (via createListInStore in main).
+  const handleCreateList = useCallback(async () => {
+    const defaultGroup = groups[0]
+    if (!defaultGroup) return
+    setMenuOpen(false)
+    const newList = await addList(defaultGroup.id, 'New List')
+    void window.api.openListWindow(newList.id)
+  }, [groups, addList])
 
   return (
     <div className="drag-region flex items-center justify-between px-1 py-2 border-b border-[var(--color-border)]">
@@ -109,6 +122,12 @@ export function TitleBar({
               className="absolute right-0 top-8 z-50 min-w-[140px] py-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-menu)]"
               style={{ boxShadow: 'var(--shadow-tooltip)' }}
             >
+              <button
+                className="w-full text-left px-3 py-1.5 text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
+                onClick={handleCreateList}
+              >
+                Create new list
+              </button>
               <button
                 className="w-full text-left px-3 py-1.5 text-[length:var(--font-size-xs)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-primary)] hover:bg-[var(--hover-highlight)] transition-default"
                 onClick={() => { startEditing(); setMenuOpen(false) }}

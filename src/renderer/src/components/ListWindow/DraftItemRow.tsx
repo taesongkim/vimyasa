@@ -35,8 +35,28 @@ interface DraftItemRowProps {
 
 export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
   const [text, setText] = useState('')
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Mirror of ItemRow's showFeedback pattern (v0.1.12) — transient
+  // overlay hint on the row. Currently used only for the Tab-in-edit
+  // "Press Enter to save" cue.
+  const showFeedback = useCallback((message: string): void => {
+    setFeedbackMessage(message)
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setFeedbackMessage(null)
+      feedbackTimeoutRef.current = null
+    }, 400)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+    }
+  }, [])
 
   const commit = useCallback(() => {
     const trimmed = text.trim()
@@ -101,7 +121,13 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
           fires automatically during creation and tears down on
           save/discard. */}
       <GlowSurface surface="list-add-new" mode="overlay" />
-      <div className="flex items-baseline gap-1 flex-1">
+      {/* Content wrapper dims during feedback overlay so the "Press
+          Enter to save" hint reads cleanly against a low-visibility
+          text backdrop. Parity with ItemRow. */}
+      <div
+        className="flex items-baseline gap-1 flex-1 transition-opacity duration-150"
+        style={{ opacity: feedbackMessage ? 0.2 : 1 }}
+      >
         <div className="-translate-y-0.5">
           <StatusDot status="default" />
         </div>
@@ -133,11 +159,14 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
               e.preventDefault()
               onDiscard()
             } else if (e.key === 'Tab') {
-              // Don't tab-out of the textarea (default behavior). Hand
-              // off to the parent so it can save-or-discard and cycle
-              // to the next list as it normally would on Tab.
+              // v0.1.12: suppress Tab behavior in the draft too — the
+              // parent's onTab handler is a no-op now. Show the same
+              // "Press Enter to save" hint as the ItemRow edit-mode
+              // textarea for parity. The preventDefault still fires so
+              // there's no browser focus-jump.
               e.preventDefault()
               onTab(text.trim())
+              showFeedback('Press Enter to save')
             }
           }}
         />
@@ -188,6 +217,21 @@ export function DraftItemRow({ onSave, onDiscard, onTab }: DraftItemRowProps) {
           <circle cx="7" cy="12" r="1.5" />
         </svg>
       </div>
+
+      {/* Shared confirmation-overlay pattern (mirrors ItemRow's — v0.1.12).
+          Currently only fires for the Tab-in-edit hint. Backdrop at
+          0.55 alpha keeps the overlay message readable over the row's
+          content even when the underlying text is long. */}
+      {feedbackMessage && (
+        <div
+          className="absolute inset-0 rounded bg-[rgba(0,0,0,0.55)] flex items-center justify-center z-10"
+          style={{ animation: 'fadeIn 150ms ease-out' }}
+        >
+          <span className="text-[length:var(--font-size-sm)] text-white font-medium">
+            {feedbackMessage}
+          </span>
+        </div>
+      )}
     </motion.div>
   )
 }

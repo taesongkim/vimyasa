@@ -10,6 +10,38 @@ project and the changelog reflects that. (See
 
 ---
 
+## v0.1.12 — *Small polish pass* (2026-07-28)
+
+Four small things. Nothing structural.
+
+**Create a new list from the list window.** The three-dot menu at the
+top of any list window now has a **Create new list** option at the top.
+Same mechanics as the tray's *New List...* — creates a placeholder and
+opens its window. Saves the trip to Settings when you're already
+looking at a list.
+
+**Draggable shortcuts window.** The keyboard-shortcuts overview
+(⌘⇧') used to be pinned wherever it opened. Now you can drag it by
+the title area to wherever it should live on your screen.
+
+**Tab is quieter during editing.** Pressing Tab while typing a new
+item (via `n`) or editing an existing one (via `r` or double-click)
+used to do something surprising — either move focus out of the
+textarea, or commit-and-cycle-lists without warning. Now Tab does
+nothing during edit, and a transient "Press Enter to save" hint
+appears so you know how to commit. Enter still saves, Escape still
+discards.
+
+The hint uses the same shared confirmation overlay that fires for
+status changes and copy actions — one visual vocabulary for *here's
+what just happened / here's what you can do*.
+
+Also, if you only have one list, Tab is now recognized as a no-op
+(there's nowhere to cycle to). This was already the code's behavior;
+just making the intent explicit.
+
+---
+
 ## v0.1.11 — *Auto-update actually works + list flick gone* (2026-07-26)
 
 A hotfix release focused entirely on two bugs — one you couldn't
