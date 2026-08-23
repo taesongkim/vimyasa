@@ -522,6 +522,18 @@ export function ItemRow({
                 setText(item.text)
                 setEditing(false)
               }
+              if (e.key === 'Tab') {
+                // v0.1.12: suppress Tab during item edit. Without this,
+                // the browser's default Tab behavior moves focus out of
+                // the textarea (to next tabbable element in DOM), which
+                // reads as a jarring focus-jump mid-typing. Show a
+                // transient hint via the shared feedback overlay so the
+                // user knows how to commit instead of leaving the Tab
+                // silent. May revisit later as "Tab commits + cycles to
+                // next list" if the flow needs it.
+                e.preventDefault()
+                showFeedback('Press Enter to save')
+              }
             }}
           />
         ) : (
@@ -624,7 +636,7 @@ export function ItemRow({
           changes. Keeping the same overlay vocabulary makes status
           movement feel like an acknowledged action, not a new mode. */}
       {feedbackMessage && (
-        <div className="absolute inset-0 rounded bg-[rgba(0,0,0,0.2)] flex items-center justify-center z-10"
+        <div className="absolute inset-0 rounded bg-[rgba(0,0,0,0.55)] flex items-center justify-center z-10"
              style={{
                animation: 'fadeIn 150ms ease-out'
              }}

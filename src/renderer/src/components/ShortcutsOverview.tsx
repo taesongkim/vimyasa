@@ -68,8 +68,9 @@ export function ShortcutsOverview() {
   return (
     <div className="h-full glass-surface p-4">
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[var(--color-border)]">
+        {/* Header — drag region (v0.1.12: frameless-window drag). Text
+            spans are non-interactive so no-drag isn't needed on them. */}
+        <div className="drag-region flex items-center justify-between mb-4 pb-2 border-b border-[var(--color-border)]">
           <h1 className="text-[length:var(--font-size-lg)] font-semibold text-[color:var(--color-text-primary)]">
             Keyboard Shortcuts
           </h1>

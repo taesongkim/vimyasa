@@ -727,6 +727,11 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
   // List-cycle helper. Used by Tab in the empty list area and Tab inside
   // the draft row's textarea (where the parent's keyboard listener doesn't
   // fire because focus is in a text input).
+  //
+  // The `sortedLists.length > 1` guard makes Tab a no-op when the user
+  // only has one regular list — cycling to yourself is a jarring pointless
+  // animation (v0.1.12). Also guards the mid-transition case (cyclePhase
+  // must be 'idle' or the cycle animation is already in flight).
   const cycleToNextList = useCallback(() => {
     const idx = sortedLists.findIndex((l) => l.id === activeListId)
     if (sortedLists.length > 1 && cyclePhase === 'idle') {
@@ -775,19 +780,17 @@ export function ListWindow({ listId: initialListId }: { listId: string }) {
     setIsAddingItem(false)
   }, [])
 
-  // Tab from inside the draft textarea: commit-or-discard, then cycle to
-  // the next list. The parent's onTab in useKeyboard doesn't fire while
-  // focus is in a text input, so we route Tab through here explicitly.
-  const handleDraftTab = useCallback(
-    (text: string) => {
-      if (text) {
-        void addItem(activeListId, text)
-      }
-      setIsAddingItem(false)
-      cycleToNextList()
-    },
-    [addItem, activeListId, cycleToNextList]
-  )
+  // Tab from inside the draft textarea (v0.1.12: suppressed). Previously
+  // committed-or-discarded then cycled to the next list, but that reads
+  // as an unexpected focus-jump mid-typing — same reason the ItemRow
+  // edit-mode textarea also suppresses Tab now. The DraftItemRow's
+  // keydown handler already preventDefault()s Tab before calling this,
+  // so no browser focus jump either. May revisit later as a real
+  // keyboard-flow polish (e.g., "Tab commits + cycles" as a distinct
+  // opt-in), but for now it's a no-op.
+  const handleDraftTab = useCallback(() => {
+    // intentionally no-op
+  }, [])
 
   // Keyboard navigation
   useKeyboard({
